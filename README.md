@@ -53,10 +53,35 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
     pip install -r requirements.txt
     ```
 2. Configure the environment
-    ```bash
-    cp configs/llm_config.yaml.example configs/llm_config.yaml
+   - Create a `.env` file in the root directory
+     ```bash
+     cp .env.example .env
+     ```
+   - Set the following environment variables:
+     ```bash
+     SYNTHESIZER_MODEL=your_synthesizer_model_name
+     SYNTHESIZER_BASE_URL=your_base_url_for_synthesizer_model
+     SYNTHESIZER_API_KEY=your_api_key_for_synthesizer_model
+     TRAINEE_MODEL=your_trainee_model_name
+     TRAINEE_BASE_URL=your_base_url_for_trainee_model
+     TRAINEE_API_KEY=your_api_key_for_trainee_model
+     ```
+3. (Optional) If you want to modify the default generated configuration, you can edit the content of the configs/graphgen_config.yaml file.
+    ```yaml
+    # configs/graphgen_config.yaml
+    # Example configuration
+    data_type: "raw"
+    input_file: "resources/examples/raw_demo.jsonl"
+    # more configurations...
     ```
-
+4. Run the generation script
+   ```bash
+   bash scripts/generate.sh
+   ```
+5. Get the generated data
+   ```bash
+   ls cache/data/graphgen
+   ```
 
 
 ## 📌 Latest Updates
