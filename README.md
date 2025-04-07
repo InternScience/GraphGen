@@ -9,7 +9,7 @@
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
-<details>
+<details open>
 <summary><b>📚 Table of Contents</b></summary>
 
 - 📝 [What is GraphGen?](#-what-is-graphgen)
