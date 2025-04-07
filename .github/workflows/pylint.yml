@@ -31,4 +31,4 @@ jobs:
 
     - name: Run Pylint
       run: |
-          pylint --rcfile=.pylintrc baselines/ graphgen/ models/ templates/ utils/ webui/ evaluate.py generate.py
+          pylint --rcfile=.pylintrc baselines/ graphgen/ models/ templates/ utils/ webui/ evaluate.py generate.py judge.py
