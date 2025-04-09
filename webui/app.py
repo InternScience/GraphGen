@@ -2,19 +2,24 @@ import json
 import os
 import gradio as gr
 import yaml
+
+import sys
+root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+sys.path.append(root_dir)
+
+from gradio_i18n import Translate, gettext as _
+
 from graphgen.graphgen import GraphGen
 from models import OpenAIModel, Tokenizer, TraverseStrategy
-
+from test_api import test_api_connection
 
 def load_config() -> dict:
     with open("config.yaml", "r", encoding='utf-8') as f:
         return yaml.safe_load(f)
 
-
 def save_config(config: dict):
     with open("config.yaml", "w", encoding='utf-8') as f:
         yaml.dump(config, f)
-
 
 def load_env() -> dict:
     env = {}
@@ -26,12 +31,10 @@ def load_env() -> dict:
                     env[key] = value
     return env
 
-
 def save_env(env: dict):
     with open(".env", "w", encoding='utf-8') as f:
         for key, value in env.items():
             f.write(f"{key}={value}\n")
-
 
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     graph_gen = GraphGen()
@@ -160,62 +163,106 @@ def run_graphgen(
     except Exception as e: # pylint: disable=broad-except
         return f"Error occurred: {str(e)}"
 
+config = load_env()
 
 # Create Gradio interface
-with gr.Blocks(title="GraphGen Configuration") as iface:
-    with gr.Row():
-        # Input Configuration Column
-        with gr.Column(scale=1):
-            gr.Markdown("### Input Configuration")
-            input_file = gr.Textbox(label="Input File Path", value="resources/examples/raw_demo.jsonl")
-            data_type = gr.Radio(choices=["raw", "chunked"], label="Data Type", value="raw")
-            qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"], label="QA Form", value="multi_hop")
-            tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base")
-            web_search = gr.Checkbox(label="Enable Web Search", value=False)
-            quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1)
-
-        # Traverse Strategy Column
-        with gr.Column(scale=1):
-            gr.Markdown("### Traverse Strategy")
-            expand_method = gr.Radio(choices=["max_width", "max_tokens"], label="Expand Method", value="max_tokens")
-            bidirectional = gr.Checkbox(label="Bidirectional", value=True)
-            max_extra_edges = gr.Slider(minimum=1, maximum=10, value=5, label="Max Extra Edges", step=1)
-            max_tokens = gr.Slider(minimum=64, maximum=1024, value=256, label="Max Tokens", step=64)
-            max_depth = gr.Slider(minimum=1, maximum=5, value=2, label="Max Depth", step=1)
-            edge_sampling = gr.Radio(choices=["max_loss", "min_loss", "random"], label="Edge Sampling",
-                                     value="max_loss")
-            isolated_node_strategy = gr.Radio(choices=["add", "ignore"], label="Isolated Node Strategy", value="ignore")
-            difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
-
-        # Model Configuration Column
-        with gr.Column(scale=1):
-            gr.Markdown("### Model Configuration")
-            synthesizer_model = gr.Textbox(label="Synthesizer Model")
-            synthesizer_base_url = gr.Textbox(label="Synthesizer Base URL")
-            synthesizer_api_key = gr.Textbox(label="Synthesizer API Key", type="password")
-            trainee_model = gr.Textbox(label="Trainee Model")
-            trainee_base_url = gr.Textbox(label="Trainee Base URL")
-            trainee_api_key = gr.Textbox(label="Trainee API Key", type="password")
-
-    # Submission and Output Rows
-    with gr.Row():
-        submit_btn = gr.Button("Run GraphGen")
-    with gr.Row():
-        output = gr.Textbox(label="Output")
-
-    # Event Handling
-    submit_btn.click(
-        run_graphgen,
-        inputs=[
-            input_file, data_type, qa_form, tokenizer, web_search,
-            expand_method, bidirectional, max_extra_edges, max_tokens,
-            max_depth, edge_sampling, isolated_node_strategy, difficulty_level,
-            synthesizer_model, synthesizer_base_url, synthesizer_api_key,
-            trainee_model, trainee_base_url, trainee_api_key,
-            quiz_samples
+with gr.Blocks(title="GraphGen Demo") as demo:
+    lang = gr.Radio(
+        choices=[
+            ("English", "en"),
+            ("简体中文", "zh"),
         ],
-        outputs=output
+        value="en",
+        label=_("Language"),
+        render=False,
     )
+    with Translate(
+        "translation.yaml",
+        lang,
+        placeholder_langs=["en", "zh"],
+        persistant=False,  # True to save the language setting in the browser. Requires gradio >= 5.6.0
+    ):
+        lang.render()
+        # Header
+        gr.Image(
+            value=f"{root_dir}/resources/images/logo.png",
+            label="GraphGen Banner",
+            elem_id="banner",
+            show_label=False,
+            interactive=False,
+        )
+        gr.Markdown(
+            """
+            This is a demo for the [GraphGen](https://github.com/open-sciencelab/GraphGen) project. 
+            GraphGen is a framework for synthetic data generation guided by knowledge graphs. 
+            """
+        )
+        with gr.Row():
+            # Model Configuration Column
+            with gr.Column(scale=1):
+                gr.Markdown("### Model Configuration")
+                synthesizer_model = gr.Textbox(label="Synthesizer Model", value=config.get("SYNTHESIZER_MODEL", ""))
+                synthesizer_base_url = gr.Textbox(label="Synthesizer Base URL", value=config.get("SYNTHESIZER_BASE_URL", ""))
+                synthesizer_api_key = gr.Textbox(label="Synthesizer API Key", type="password", value=config.get("SYNTHESIZER_API_KEY", ""))
+                trainee_model = gr.Textbox(label="Trainee Model", value=config.get("TRAINEE_MODEL", ""))
+                trainee_base_url = gr.Textbox(label="Trainee Base URL", value=config.get("TRAINEE_BASE_URL", ""))
+                trainee_api_key = gr.Textbox(label="Trainee API Key", type="password", value=config.get("TRAINEE_API_KEY", ""))
+                test_connection_btn = gr.Button("Test Connection", variant="primary")
+                gr.Button("Save Config", variant="primary")
+
+            # Input Configuration Column
+            with gr.Column(scale=1):
+                gr.Markdown("### Input Configuration")
+                input_file = gr.Textbox(label="Input File Path", value="resources/examples/raw_demo.jsonl")
+                data_type = gr.Radio(choices=["raw", "chunked"], label="Data Type", value="raw")
+                qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"], label="QA Form", value="multi_hop")
+                tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base")
+                web_search = gr.Checkbox(label="Enable Web Search", value=False)
+                quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1)
+
+            # Traverse Strategy Column
+            with gr.Column(scale=1):
+                gr.Markdown("### Traverse Strategy")
+                expand_method = gr.Radio(choices=["max_width", "max_tokens"], label="Expand Method", value="max_tokens")
+                bidirectional = gr.Checkbox(label="Bidirectional", value=True)
+                max_extra_edges = gr.Slider(minimum=1, maximum=10, value=5, label="Max Extra Edges", step=1)
+                max_tokens = gr.Slider(minimum=64, maximum=1024, value=256, label="Max Tokens", step=64)
+                max_depth = gr.Slider(minimum=1, maximum=5, value=2, label="Max Depth", step=1)
+                edge_sampling = gr.Radio(choices=["max_loss", "min_loss", "random"], label="Edge Sampling",
+                                         value="max_loss")
+                isolated_node_strategy = gr.Radio(choices=["add", "ignore"], label="Isolated Node Strategy", value="ignore")
+                difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
+
+        # Submission and Output Rows
+        with gr.Row():
+            submit_btn = gr.Button("Run GraphGen")
+        with gr.Row():
+            output = gr.Textbox(label="Output")
+
+        # Test Connection
+        test_connection_btn.click(
+            test_api_connection,
+            inputs=[synthesizer_base_url, synthesizer_api_key, synthesizer_model],
+            outputs=output
+        ).then(
+            test_api_connection,
+            inputs=[trainee_base_url, trainee_api_key, trainee_model],
+            outputs=output
+        )
+
+        # Event Handling
+        submit_btn.click(
+            run_graphgen,
+            inputs=[
+                input_file, data_type, qa_form, tokenizer, web_search,
+                expand_method, bidirectional, max_extra_edges, max_tokens,
+                max_depth, edge_sampling, isolated_node_strategy, difficulty_level,
+                synthesizer_model, synthesizer_base_url, synthesizer_api_key,
+                trainee_model, trainee_base_url, trainee_api_key,
+                quiz_samples
+            ],
+            outputs=output
+        )
 
 if __name__ == "__main__":
-    iface.launch()
+    demo.launch()

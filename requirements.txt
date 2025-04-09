@@ -15,5 +15,6 @@ torch
 plotly
 pandas
 gradio
+gradio-i18n
 kaleido
 pyyaml
