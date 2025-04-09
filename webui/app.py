@@ -1,17 +1,29 @@
-import json
 import os
-import gradio as gr
+import sys
+import json
+
 import yaml
 
-import sys
+import gradio as gr
+
+from i18n import Translate, gettext as _
+
+from test_api import test_api_connection
+
+# pylint: disable=wrong-import-position
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(root_dir)
 
-from gradio_i18n import Translate, gettext as _
-
 from graphgen.graphgen import GraphGen
 from models import OpenAIModel, Tokenizer, TraverseStrategy
-from test_api import test_api_connection
+
+css = """
+.center-row {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+"""
 
 def load_config() -> dict:
     with open("config.yaml", "r", encoding='utf-8') as f:
@@ -20,21 +32,6 @@ def load_config() -> dict:
 def save_config(config: dict):
     with open("config.yaml", "w", encoding='utf-8') as f:
         yaml.dump(config, f)
-
-def load_env() -> dict:
-    env = {}
-    if os.path.exists(".env"):
-        with open(".env", "r", encoding='utf-8') as f:
-            for line in f:
-                if "=" in line:
-                    key, value = line.strip().split("=", 1)
-                    env[key] = value
-    return env
-
-def save_env(env: dict):
-    with open(".env", "w", encoding='utf-8') as f:
-        for key, value in env.items():
-            f.write(f"{key}={value}\n")
 
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     graph_gen = GraphGen()
@@ -126,7 +123,6 @@ def run_graphgen(
         "TRAINEE_BASE_URL": trainee_base_url,
         "TRAINEE_API_KEY": trainee_api_key
     }
-    save_env(env)
 
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
@@ -163,52 +159,71 @@ def run_graphgen(
     except Exception as e: # pylint: disable=broad-except
         return f"Error occurred: {str(e)}"
 
-config = load_env()
-
 # Create Gradio interface
-with gr.Blocks(title="GraphGen Demo") as demo:
-    lang = gr.Radio(
+with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Citrus(), css=css) as demo:
+    # Header
+    gr.Image(
+        value=f"{root_dir}/resources/images/logo.png",
+        label="GraphGen Banner",
+        elem_id="banner",
+        interactive=False,
+        container=False,
+        show_download_button=False,
+        show_fullscreen_button=False
+    )
+    lang_btn = gr.Radio(
         choices=[
             ("English", "en"),
             ("简体中文", "zh"),
         ],
         value="en",
-        label=_("Language"),
+        # label=_("Language"),
         render=False,
+        container=False,
+        elem_classes=["center-row"],
     )
+
+    gr.HTML("""
+    <div style="display: flex; gap: 8px; margin-left: auto; align-items: center; justify-content: center;">
+        <a href="https://github.com/open-sciencelab/GraphGen/releases">
+            <img src="https://img.shields.io/badge/Version-v0.1.0-blue" alt="Version">
+        </a>
+        <a href="https://graphgen-docs.example.com">
+            <img src="https://img.shields.io/badge/Docs-Latest-brightgreen" alt="Documentation">
+        </a>
+        <a href="https://github.com/open-sciencelab/GraphGen">
+            <img src="https://img.shields.io/github/stars/open-sciencelab/GraphGen?style=social" alt="GitHub Stars">
+        </a>
+        <a href="https://arxiv.org/xxxxx">
+            <img src="https://img.shields.io/badge/arXiv-2401.00001-yellow" alt="arXiv">
+        </a>
+    </div>
+    """)
     with Translate(
-        "translation.yaml",
-        lang,
+        "translation.json",
+        lang_btn,
         placeholder_langs=["en", "zh"],
         persistant=False,  # True to save the language setting in the browser. Requires gradio >= 5.6.0
     ):
-        lang.render()
-        # Header
-        gr.Image(
-            value=f"{root_dir}/resources/images/logo.png",
-            label="GraphGen Banner",
-            elem_id="banner",
-            show_label=False,
-            interactive=False,
-        )
+        lang_btn.render()
+
         gr.Markdown(
-            """
-            This is a demo for the [GraphGen](https://github.com/open-sciencelab/GraphGen) project. 
-            GraphGen is a framework for synthetic data generation guided by knowledge graphs. 
-            """
+            value = "# " + _("Title") + "\n\n" + \
+                "### [GraphGen](https://github.com/open-sciencelab/GraphGen) " + _("Intro")
         )
+
+
         with gr.Row():
             # Model Configuration Column
             with gr.Column(scale=1):
                 gr.Markdown("### Model Configuration")
-                synthesizer_model = gr.Textbox(label="Synthesizer Model", value=config.get("SYNTHESIZER_MODEL", ""))
-                synthesizer_base_url = gr.Textbox(label="Synthesizer Base URL", value=config.get("SYNTHESIZER_BASE_URL", ""))
-                synthesizer_api_key = gr.Textbox(label="Synthesizer API Key", type="password", value=config.get("SYNTHESIZER_API_KEY", ""))
-                trainee_model = gr.Textbox(label="Trainee Model", value=config.get("TRAINEE_MODEL", ""))
-                trainee_base_url = gr.Textbox(label="Trainee Base URL", value=config.get("TRAINEE_BASE_URL", ""))
-                trainee_api_key = gr.Textbox(label="Trainee API Key", type="password", value=config.get("TRAINEE_API_KEY", ""))
-                test_connection_btn = gr.Button("Test Connection", variant="primary")
-                gr.Button("Save Config", variant="primary")
+                synthesizer_model = gr.Textbox(label="Synthesizer Model", value="")
+                synthesizer_base_url = gr.Textbox(label="Synthesizer Base URL", value="")
+                synthesizer_api_key = gr.Textbox(label="Synthesizer API Key", type="password", value="")
+                trainee_model = gr.Textbox(label="Trainee Model", value="")
+                trainee_base_url = gr.Textbox(label="Trainee Base URL", value="")
+                trainee_api_key = gr.Textbox(label="Trainee API Key", type="password", value="")
+                test_connection_btn = gr.Button("Test Connection")
 
             # Input Configuration Column
             with gr.Column(scale=1):

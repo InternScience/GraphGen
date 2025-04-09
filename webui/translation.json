@@ -1,0 +1,10 @@
+{
+  "en": {
+    "Title": "Revolutionizing Data Generation for LLMs",
+    "Intro": "is a framework for synthetic data generation guided by knowledge graphs, designed to tackle challenges for knowledge-intensive QA generation."
+  },
+  "zh": {
+    "Title": "革新LLM数据生成",
+    "Intro": "是一个基于知识图谱的合成数据生成框架，旨在解决知识密集型问答生成的挑战。"
+  }
+}
