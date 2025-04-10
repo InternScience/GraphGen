@@ -160,7 +160,7 @@ def run_graphgen(
         return f"Error occurred: {str(e)}"
 
 # Create Gradio interface
-with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Citrus(), css=css) as demo:
+with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
     # Header
     gr.Image(
         value=f"{root_dir}/resources/images/logo.png",
@@ -212,32 +212,23 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Citrus(), css=css) as demo
                 "### [GraphGen](https://github.com/open-sciencelab/GraphGen) " + _("Intro")
         )
 
+        # Model Configuration Column
+        with gr.Accordion(label=_("Model Config"), open=False):
+            base_url = gr.Textbox(label="Base URL", value="https://api.siliconflow.cn/v1",
+                                  info=_("Base URL Info"), interactive=True)
+            synthesizer_model = gr.Textbox(label="Synthesizer Model", value="Qwen/Qwen2.5-72B-Instruct",
+                                           info=_("Synthesizer Model Info"), interactive=True)
+            trainee_model = gr.Textbox(label="Trainee Model", value="Qwen/Qwen2.5-7B-Instruct",
+                                       info=_("Trainee Model Info"), interactive=True)
 
-        with gr.Row():
-            # Model Configuration Column
-            with gr.Column(scale=1):
-                gr.Markdown("### Model Configuration")
-                synthesizer_model = gr.Textbox(label="Synthesizer Model", value="")
-                synthesizer_base_url = gr.Textbox(label="Synthesizer Base URL", value="")
-                synthesizer_api_key = gr.Textbox(label="Synthesizer API Key", type="password", value="")
-                trainee_model = gr.Textbox(label="Trainee Model", value="")
-                trainee_base_url = gr.Textbox(label="Trainee Base URL", value="")
-                trainee_api_key = gr.Textbox(label="Trainee API Key", type="password", value="")
-                test_connection_btn = gr.Button("Test Connection")
+        with gr.Accordion(label=_("Generation Config"), open=False):
+            qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"], label="QA Form",
+                               value="multi_hop", interactive=True)
+            tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base")
+            # web_search = gr.Checkbox(label="Enable Web Search", value=False)
+            # quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1)
 
-            # Input Configuration Column
             with gr.Column(scale=1):
-                gr.Markdown("### Input Configuration")
-                input_file = gr.Textbox(label="Input File Path", value="resources/examples/raw_demo.jsonl")
-                data_type = gr.Radio(choices=["raw", "chunked"], label="Data Type", value="raw")
-                qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"], label="QA Form", value="multi_hop")
-                tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base")
-                web_search = gr.Checkbox(label="Enable Web Search", value=False)
-                quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1)
-
-            # Traverse Strategy Column
-            with gr.Column(scale=1):
-                gr.Markdown("### Traverse Strategy")
                 expand_method = gr.Radio(choices=["max_width", "max_tokens"], label="Expand Method", value="max_tokens")
                 bidirectional = gr.Checkbox(label="Bidirectional", value=True)
                 max_extra_edges = gr.Slider(minimum=1, maximum=10, value=5, label="Max Extra Edges", step=1)
@@ -248,36 +239,56 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Citrus(), css=css) as demo
                 isolated_node_strategy = gr.Radio(choices=["add", "ignore"], label="Isolated Node Strategy", value="ignore")
                 difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
 
-        # Submission and Output Rows
-        with gr.Row():
-            submit_btn = gr.Button("Run GraphGen")
-        with gr.Row():
-            output = gr.Textbox(label="Output")
+        with gr.Row(equal_height=True):
+            with gr.Column(scale=3):
+                api_key = gr.Textbox(label="SiliconFlow API Key", type="password", value="")
+            with gr.Column(scale=1):
+                test_connection_btn = gr.Button("Test Connection")
+
+        with gr.Blocks():
+            with gr.Row(equal_height=True):
+                with gr.Column(scale=1):
+                    upload_btn = gr.File(
+                        label="Upload File",
+                        file_count="multiple",
+                        value=["translation.json", "translation.json"],
+                        interactive=True,
+                    )
+                with gr.Column(scale=1):
+                    download_file = gr.File(
+                        label="Output",
+                        file_count="single",
+                        interactive=False,
+                    )
+
+        submit_btn = gr.Button("Run GraphGen")
 
         # Test Connection
         test_connection_btn.click(
             test_api_connection,
-            inputs=[synthesizer_base_url, synthesizer_api_key, synthesizer_model],
-            outputs=output
-        ).then(
+            inputs=[base_url, api_key, synthesizer_model],
+            outputs=[]
+        )
+
+        test_connection_btn.click(
             test_api_connection,
-            inputs=[trainee_base_url, trainee_api_key, trainee_model],
-            outputs=output
+            inputs=[base_url, api_key, trainee_model],
+            outputs=[]
         )
 
         # Event Handling
-        submit_btn.click(
-            run_graphgen,
-            inputs=[
-                input_file, data_type, qa_form, tokenizer, web_search,
-                expand_method, bidirectional, max_extra_edges, max_tokens,
-                max_depth, edge_sampling, isolated_node_strategy, difficulty_level,
-                synthesizer_model, synthesizer_base_url, synthesizer_api_key,
-                trainee_model, trainee_base_url, trainee_api_key,
-                quiz_samples
-            ],
-            outputs=output
-        )
+        # submit_btn.click(
+        #     run_graphgen,
+        #     inputs=[
+        #         input_file, data_type, qa_form, tokenizer, web_search,
+        #         expand_method, bidirectional, max_extra_edges, max_tokens,
+        #         max_depth, edge_sampling, isolated_node_strategy, difficulty_level,
+        #         synthesizer_model, synthesizer_base_url, synthesizer_api_key,
+        #         trainee_model, trainee_base_url, trainee_api_key,
+        #         quiz_samples
+        #     ],
+        #     outputs=output
+        # )
 
 if __name__ == "__main__":
     demo.launch()

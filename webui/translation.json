@@ -1,10 +1,20 @@
 {
   "en": {
-    "Title": "Revolutionizing Data Generation for LLMs",
-    "Intro": "is a framework for synthetic data generation guided by knowledge graphs, designed to tackle challenges for knowledge-intensive QA generation."
+    "Title": "Revolutionizing Training Data Generation for LLMs",
+    "Intro": "is a framework for synthetic data generation guided by knowledge graphs, designed to tackle challenges for knowledge-intensive QA generation.",
+    "Base URL Info": "Base URL for the API, use SiliconFlow as default",
+    "Synthesizer Model Info": "Synthesizer Model Info",
+    "Trainee Model Info": "Model for training",
+    "Model Config": "Model Configuration",
+    "Generation Config": "Generation Config"
   },
   "zh": {
-    "Title": "革新LLM数据生成",
-    "Intro": "是一个基于知识图谱的合成数据生成框架，旨在解决知识密集型问答生成的挑战。"
+    "Title": "革新LLM训练数据生成",
+    "Intro": "是一个基于知识图谱的合成数据生成框架，旨在解决知识密集型问答生成的挑战。",
+    "Base URL Info": "调用模型API的URL，默认使用硅基流动",
+    "Synthesizer Model Info": "Synthesizer Model Info",
+    "Trainee Model Info": "用于训练的模型",
+    "Model Config": "模型配置",
+    "Generation Config": "生成配置"
   }
 }
