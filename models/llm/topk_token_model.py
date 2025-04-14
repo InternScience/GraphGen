@@ -19,7 +19,7 @@ class Token:
 class TopkTokenModel:
     do_sample: bool = False
     temperature: float = 0
-    max_tokens: int = 10240
+    max_tokens: int = 4096
     repetition_penalty: float = 1.05
     num_beams: int = 1
     topk: int = 50

@@ -45,7 +45,6 @@ async def extract_kg(
             hint_prompt = KG_EXTRACTION_PROMPT[language]["TEMPLATE"].format(
                 **KG_EXTRACTION_PROMPT["FORMAT"], input_text=content
             )
-            print(hint_prompt, len(hint_prompt))
 
             final_result = await llm_client.generate_answer(hint_prompt)
             logger.info('First result: %s', final_result)
