@@ -150,3 +150,10 @@ class NetworkXStorage(BaseGraphStorage):
             logger.info("Node %s deleted from the graph.", node_id)
         else:
             logger.warning("Node %s not found in the graph for deletion.", node_id)
+
+    async def clear(self):
+        """
+        Clear the graph by removing all nodes and edges.
+        """
+        self._graph.clear()
+        logger.info("Graph %s cleared.", self.namespace)

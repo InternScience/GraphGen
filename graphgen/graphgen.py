@@ -1,4 +1,4 @@
-# https://github.com/HKUDS/LightRAG
+# Adapt from https://github.com/HKUDS/LightRAG
 
 import os
 import asyncio
@@ -16,7 +16,6 @@ from .operators import (extract_kg, search_wikipedia, quiz, judge_statement, tra
 
 
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-
 
 @dataclass
 class GraphGen:
@@ -207,3 +206,17 @@ class GraphGen:
                                                    self.graph_storage, self.traverse_strategy, self.text_chunks_storage)
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
+
+    def clear(self):
+        loop = create_event_loop()
+        loop.run_until_complete(self.async_clear())
+
+    async def async_clear(self):
+        await self.full_docs_storage.clear()
+        await self.text_chunks_storage.clear()
+        await self.wiki_storage.clear()
+        await self.graph_storage.clear()
+        await self.rephrase_storage.clear()
+        await self.qa_storage.clear()
+
+        logger.info("All caches are cleared")
