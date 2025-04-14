@@ -21,7 +21,6 @@ async def extract_kg(
         max_concurrent: int = 1000
 ):
     """
-
     :param llm_client: Synthesizer LLM model to extract entities and relationships
     :param kg_instance
     :param tokenizer_instance

@@ -45,7 +45,3 @@ class JsonKVStorage(BaseKVStorage):
 
     async def drop(self):
         self._data = {}
-
-    async def clear(self):
-        if os.path.exists(self._file_name):
-            os.remove(self._file_name)

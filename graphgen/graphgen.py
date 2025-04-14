@@ -212,11 +212,11 @@ class GraphGen:
         loop.run_until_complete(self.async_clear())
 
     async def async_clear(self):
-        await self.full_docs_storage.clear()
-        await self.text_chunks_storage.clear()
-        await self.wiki_storage.clear()
+        await self.full_docs_storage.drop()
+        await self.text_chunks_storage.drop()
+        await self.wiki_storage.drop()
         await self.graph_storage.clear()
-        await self.rephrase_storage.clear()
-        await self.qa_storage.clear()
+        await self.rephrase_storage.drop()
+        await self.qa_storage.drop()
 
         logger.info("All caches are cleared")
