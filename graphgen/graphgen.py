@@ -11,7 +11,8 @@ from tqdm.asyncio import tqdm as tqdm_async
 from models import Chunk, JsonKVStorage, OpenAIModel, NetworkXStorage, WikiSearch, Tokenizer, TraverseStrategy
 from models.storage.base_storage import StorageNameSpace
 from utils import create_event_loop, logger, compute_content_hash
-from .operators import (extract_kg, search_wikipedia, quiz, judge_statement, traverse_graph_by_edge,
+from .operators import (extract_kg, search_wikipedia, quiz, judge_statement,
+                        skip_judge_statement, traverse_graph_by_edge,
                         traverse_graph_atomically, traverse_graph_for_multi_hop)
 
 
@@ -175,14 +176,18 @@ class GraphGen:
         await quiz(self.synthesizer_llm_client, self.graph_storage, self.rephrase_storage, max_samples)
         await self.rephrase_storage.index_done_callback()
 
-    def judge(self, re_judge=False):
+    def judge(self, re_judge=False, skip=False):
         loop = create_event_loop()
-        loop.run_until_complete(self.async_judge(re_judge))
+        loop.run_until_complete(self.async_judge(re_judge, skip))
 
-    async def async_judge(self, re_judge=False):
-        _update_relations = await judge_statement(self.trainee_llm_client, self.graph_storage,
-                                                  self.rephrase_storage, re_judge)
+    async def async_judge(self, re_judge=False, skip=False):
+        if skip:
+            _update_relations = await skip_judge_statement(self.graph_storage)
+        else:
+            _update_relations = await judge_statement(self.trainee_llm_client, self.graph_storage,
+                                                      self.rephrase_storage, re_judge)
         await _update_relations.index_done_callback()
+
 
     def traverse(self):
         loop = create_event_loop()

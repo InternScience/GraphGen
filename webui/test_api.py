@@ -10,7 +10,7 @@ def test_api_connection(api_base, api_key, model_name):
             max_tokens=1
         )
         if not response.choices or not response.choices[0].message:
-            gr.Error(f"{model_name}: Invalid response from API")
+            raise gr.Error(f"{model_name}: Invalid response from API")
         gr.Success(f"{model_name}: API connection successful")
     except Exception as e:
-        gr.Error(f"{model_name}: API connection failed: {str(e)}")
+        raise gr.Error(f"{model_name}: API connection failed: {str(e)}")

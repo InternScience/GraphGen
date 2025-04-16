@@ -123,3 +123,66 @@ async def judge_statement( # pylint: disable=too-many-statements
         results.append(await result)
 
     return graph_storage
+
+async def skip_judge_statement(
+        graph_storage: NetworkXStorage,
+        max_concurrent: int = 1000
+):
+    """
+    Skip the judgement of the statement
+    :param graph_storage: graph storage instance
+    :param max_concurrent: max concurrent
+    :return:
+    """
+    semaphore = asyncio.Semaphore(max_concurrent)
+
+    async def _skip_single_relation(
+        edge: tuple,
+    ):
+        async with semaphore:
+            source_id = edge[0]
+            target_id = edge[1]
+            edge_data = edge[2]
+
+            if "loss" in edge_data and edge_data["loss"] is not None:
+                logger.info("Edge %s -> %s already judged, loss: %s, skip", source_id, target_id, edge_data["loss"])
+                return source_id, target_id, edge_data
+
+            edge_data["loss"] = -math.log(0.1)
+            await graph_storage.update_edge(source_id, target_id, edge_data)
+            return source_id, target_id, edge_data
+
+    edges = await graph_storage.get_all_edges()
+    results = []
+    for result in tqdm_async(
+            asyncio.as_completed([_skip_single_relation(edge) for edge in edges]),
+            total=len(edges),
+            desc="Skipping judgement of relations"
+    ):
+        results.append(await result)
+
+    async def _skip_single_entity(
+        node: tuple,
+    ):
+        async with semaphore:
+            node_id = node[0]
+            node_data = node[1]
+
+            if "loss" in node_data and node_data["loss"] is not None:
+                logger.info("Node %s already judged, loss: %s, skip", node_id, node_data["loss"])
+                return node_id, node_data
+
+            node_data["loss"] = -math.log(0.1)
+            await graph_storage.update_node(node_id, node_data)
+            return node_id, node_data
+
+    nodes = await graph_storage.get_all_nodes()
+    results = []
+    for result in tqdm_async(
+            asyncio.as_completed([_skip_single_entity(node) for node in nodes]),
+            total=len(nodes),
+            desc="Skipping judgement of entities"
+    ):
+        results.append(await result)
+
+    return graph_storage
