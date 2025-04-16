@@ -8,9 +8,9 @@ from dataclasses import dataclass
 
 from tqdm.asyncio import tqdm as tqdm_async
 
-from models import Chunk, JsonKVStorage, OpenAIModel, NetworkXStorage, WikiSearch, Tokenizer, TraverseStrategy
-from models.storage.base_storage import StorageNameSpace
-from utils import create_event_loop, logger, compute_content_hash
+from .models import Chunk, JsonKVStorage, OpenAIModel, NetworkXStorage, WikiSearch, Tokenizer, TraverseStrategy
+from .models.storage.base_storage import StorageNameSpace
+from .utils import create_event_loop, logger, compute_content_hash
 from .operators import (extract_kg, search_wikipedia, quiz, judge_statement,
                         skip_judge_statement, traverse_graph_by_edge,
                         traverse_graph_atomically, traverse_graph_for_multi_hop)

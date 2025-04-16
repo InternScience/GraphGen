@@ -9,8 +9,8 @@ from typing import List
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from models import OpenAIModel
-from utils import create_event_loop, compute_content_hash
+from graphgen.models import OpenAIModel
+from graphgen.utils import create_event_loop, compute_content_hash
 
 
 PROMPT_TEMPLATE = '''A chat between a curious user and an artificial intelligence assistant.

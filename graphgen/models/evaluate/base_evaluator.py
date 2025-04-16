@@ -2,8 +2,8 @@ import asyncio
 
 from dataclasses import dataclass
 from tqdm.asyncio import tqdm as tqdm_async
-from utils import create_event_loop
-from models.text.text_pair import TextPair
+from graphgen.utils import create_event_loop
+from graphgen.models.text.text_pair import TextPair
 
 @dataclass
 class BaseEvaluator:

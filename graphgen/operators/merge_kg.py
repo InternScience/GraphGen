@@ -2,11 +2,11 @@ from collections import Counter
 import asyncio
 from tqdm.asyncio import tqdm as tqdm_async
 
-from utils.format import split_string_by_multi_markers
-from utils import logger, detect_main_language
-from models import TopkTokenModel, Tokenizer
-from models.storage.base_storage import BaseGraphStorage
-from templates import KG_SUMMARIZATION_PROMPT, KG_EXTRACTION_PROMPT
+from graphgen.utils.format import split_string_by_multi_markers
+from graphgen.utils import logger, detect_main_language
+from graphgen.models import TopkTokenModel, Tokenizer
+from graphgen.models.storage.base_storage import BaseGraphStorage
+from graphgen.templates import KG_SUMMARIZATION_PROMPT, KG_EXTRACTION_PROMPT
 
 async def _handle_kg_summary(
     entity_or_relation_name: str,

@@ -1,6 +1,6 @@
 import math
 from typing import List
-from models.llm.topk_token_model import Token
+from graphgen.models.llm.topk_token_model import Token
 
 def preprocess_tokens(tokens: List[Token]) -> List[Token]:
     """Preprocess tokens for calculating confidence."""

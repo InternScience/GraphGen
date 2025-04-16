@@ -1,8 +1,8 @@
 import os
 
 from dataclasses import dataclass
-from utils import logger, load_json, write_json
-from models.storage.base_storage import BaseKVStorage
+from graphgen.utils import logger, load_json, write_json
+from graphgen.models.storage.base_storage import BaseKVStorage
 
 
 @dataclass

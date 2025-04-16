@@ -3,7 +3,7 @@ import argparse
 import asyncio
 from dotenv import load_dotenv
 
-from models import NetworkXStorage, JsonKVStorage, OpenAIModel
+from graphgen.models import NetworkXStorage, JsonKVStorage, OpenAIModel
 from graphgen.operators import judge_statement
 
 sys_path = os.path.abspath(os.path.dirname(__file__))

@@ -4,7 +4,7 @@ from typing import Any, Union, cast, Optional
 from dataclasses import dataclass
 import networkx as nx
 
-from utils import logger
+from graphgen.utils import logger
 from .base_storage import BaseGraphStorage
 
 @dataclass

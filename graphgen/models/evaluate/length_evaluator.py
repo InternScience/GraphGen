@@ -1,8 +1,8 @@
 from dataclasses import dataclass
-from models.evaluate.base_evaluator import BaseEvaluator
-from models.llm.tokenizer import Tokenizer
-from models.text.text_pair import TextPair
-from utils import create_event_loop
+from graphgen.models.evaluate.base_evaluator import BaseEvaluator
+from graphgen.models.llm.tokenizer import Tokenizer
+from graphgen.models.text.text_pair import TextPair
+from graphgen.utils import create_event_loop
 
 
 @dataclass

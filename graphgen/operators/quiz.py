@@ -2,9 +2,9 @@ import asyncio
 from collections import defaultdict
 
 from tqdm.asyncio import tqdm as tqdm_async
-from models import JsonKVStorage, OpenAIModel, NetworkXStorage
-from utils import logger, detect_main_language
-from templates import DESCRIPTION_REPHRASING_PROMPT
+from graphgen.models import JsonKVStorage, OpenAIModel, NetworkXStorage
+from graphgen.utils import logger, detect_main_language
+from graphgen.templates import DESCRIPTION_REPHRASING_PROMPT
 
 
 async def quiz(

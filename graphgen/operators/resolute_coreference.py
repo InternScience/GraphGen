@@ -1,8 +1,8 @@
 from typing import List
-from models import Chunk
-from models import OpenAIModel
-from templates import COREFERENCE_RESOLUTION_TEMPLATE
-from utils import detect_main_language
+from graphgen.models import Chunk
+from graphgen.models import OpenAIModel
+from graphgen.templates import COREFERENCE_RESOLUTION_TEMPLATE
+from graphgen.utils import detect_main_language
 
 async def resolute_coreference(
         llm_client: OpenAIModel,

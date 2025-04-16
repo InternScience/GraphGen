@@ -4,12 +4,12 @@ import asyncio
 from typing import List
 from collections import defaultdict
 from tqdm.asyncio import tqdm as tqdm_async
-from models import Chunk, OpenAIModel, Tokenizer
-from models.storage.base_storage import BaseGraphStorage
-from templates import KG_EXTRACTION_PROMPT
-from utils import (logger, pack_history_conversations, split_string_by_multi_markers,
-                   handle_single_entity_extraction, handle_single_relationship_extraction,
-                   detect_if_chinese)
+from graphgen.models import Chunk, OpenAIModel, Tokenizer
+from graphgen.models.storage.base_storage import BaseGraphStorage
+from graphgen.templates import KG_EXTRACTION_PROMPT
+from graphgen.utils import (logger, pack_history_conversations, split_string_by_multi_markers,
+                            handle_single_entity_extraction, handle_single_relationship_extraction,
+                            detect_if_chinese)
 from graphgen.operators.merge_kg import merge_nodes, merge_edges
 
 

@@ -9,8 +9,8 @@ from dataclasses import dataclass
 from tqdm.asyncio import tqdm as tqdm_async
 from dotenv import load_dotenv
 
-from models import OpenAIModel
-from utils import create_event_loop, compute_content_hash
+from graphgen.models import OpenAIModel
+from graphgen.utils import create_event_loop, compute_content_hash
 
 PROMPT_TEMPLATE = '''Instruction: Given the next [document], create a [question] and [answer] pair that are grounded \
 in the main point of the document, don't add any additional information that is not in the document. The [question] is \

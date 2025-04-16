@@ -10,7 +10,7 @@ from tenacity import (
     retry_if_exception_type,
 )
 
-from models.llm.topk_token_model import TopkTokenModel, Token
+from graphgen.models.llm.topk_token_model import TopkTokenModel, Token
 
 
 def get_top_response_tokens(response: openai.ChatCompletion) -> List[Token]:

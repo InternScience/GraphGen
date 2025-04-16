@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from tqdm import tqdm
-from models.text.text_pair import TextPair
+from graphgen.models.text.text_pair import TextPair
 
 
 @dataclass

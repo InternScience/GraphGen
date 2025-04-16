@@ -6,8 +6,8 @@ import yaml
 from dotenv import load_dotenv
 
 from graphgen.graphgen import GraphGen
-from models import OpenAIModel, Tokenizer, TraverseStrategy
-from utils import set_logger
+from graphgen.models import OpenAIModel, Tokenizer, TraverseStrategy
+from graphgen.utils import set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 unique_id = int(time.time())

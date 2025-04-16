@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field, fields
 
-from models.strategy.base_strategy import BaseStrategy
+from graphgen.models.strategy.base_strategy import BaseStrategy
 
 
 @dataclass

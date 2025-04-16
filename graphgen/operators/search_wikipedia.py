@@ -1,8 +1,8 @@
 import asyncio
-from models import WikiSearch, OpenAIModel
-from models.storage.base_storage import BaseGraphStorage
-from templates import SEARCH_JUDGEMENT_PROMPT
-from utils import logger
+from graphgen.models import WikiSearch, OpenAIModel
+from graphgen.models.storage.base_storage import BaseGraphStorage
+from graphgen.templates import SEARCH_JUDGEMENT_PROMPT
+from graphgen.utils import logger
 
 
 async def _process_single_entity(entity_name: str,

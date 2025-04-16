@@ -1,9 +1,9 @@
 import random
 from collections import defaultdict
 from tqdm.asyncio import tqdm as tqdm_async
-from utils import logger
+from graphgen.utils import logger
 
-from models import NetworkXStorage, TraverseStrategy
+from graphgen.models import NetworkXStorage, TraverseStrategy
 
 async def _get_node_info(
     node_id: str,

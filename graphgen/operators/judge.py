@@ -1,9 +1,9 @@
 import math
 import asyncio
 from tqdm.asyncio import tqdm as tqdm_async
-from models import NetworkXStorage, OpenAIModel, JsonKVStorage
-from utils import logger, yes_no_loss_entropy
-from templates import STATEMENT_JUDGEMENT_PROMPT
+from graphgen.models import NetworkXStorage, OpenAIModel, JsonKVStorage
+from graphgen.utils import logger, yes_no_loss_entropy
+from graphgen.templates import STATEMENT_JUDGEMENT_PROMPT
 
 
 async def judge_statement( # pylint: disable=too-many-statements

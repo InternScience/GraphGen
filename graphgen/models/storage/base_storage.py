@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from typing import Union, Generic, TypeVar
-from models.embed.embedding import EmbeddingFunc
+from graphgen.models.embed.embedding import EmbeddingFunc
 
 T = TypeVar("T")
 

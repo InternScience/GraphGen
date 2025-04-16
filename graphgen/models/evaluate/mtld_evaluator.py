@@ -1,9 +1,9 @@
 from dataclasses import  dataclass, field
 from typing import Set
 
-from models.evaluate.base_evaluator import BaseEvaluator
-from models.text.text_pair import TextPair
-from utils import detect_main_language, NLTKHelper, create_event_loop
+from graphgen.models.evaluate.base_evaluator import BaseEvaluator
+from graphgen.models.text.text_pair import TextPair
+from graphgen.utils import detect_main_language, NLTKHelper, create_event_loop
 
 
 nltk_helper = NLTKHelper()

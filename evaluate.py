@@ -5,8 +5,8 @@ import json
 import argparse
 import pandas as pd
 from dotenv import load_dotenv
-from models import LengthEvaluator, MTLDEvaluator, RewardEvaluator, TextPair, UniEvaluator
-from utils import logger, set_logger
+from graphgen.models import LengthEvaluator, MTLDEvaluator, RewardEvaluator, TextPair, UniEvaluator
+from graphgen.utils import logger, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 set_logger(os.path.join(sys_path, "cache", "logs", "evaluate.log"))

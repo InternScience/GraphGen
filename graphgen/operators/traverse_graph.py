@@ -2,9 +2,9 @@ import asyncio
 
 from tqdm.asyncio import tqdm as tqdm_async
 
-from models import OpenAIModel, NetworkXStorage, TraverseStrategy, Tokenizer, JsonKVStorage
-from templates import ANSWER_REPHRASING_PROMPT, QUESTION_GENERATION_PROMPT, MULTI_HOP_GENERATION_PROMPT
-from utils import detect_main_language, compute_content_hash, logger
+from graphgen.models import OpenAIModel, NetworkXStorage, TraverseStrategy, Tokenizer, JsonKVStorage
+from graphgen.templates import ANSWER_REPHRASING_PROMPT, QUESTION_GENERATION_PROMPT, MULTI_HOP_GENERATION_PROMPT
+from graphgen.utils import detect_main_language, compute_content_hash, logger
 from graphgen.operators.split_graph import get_batches_with_strategy
 
 

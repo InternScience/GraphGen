@@ -3,7 +3,7 @@ from dataclasses import dataclass
 
 import wikipedia
 from wikipedia import set_lang
-from utils import detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 @dataclass

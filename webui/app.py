@@ -4,7 +4,6 @@ import json
 import tempfile
 
 import gradio as gr
-from fontTools.ttx import process
 
 from i18n import Translate, gettext as _
 from test_api import test_api_connection
@@ -14,7 +13,7 @@ root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(root_dir)
 
 from graphgen.graphgen import GraphGen
-from models import OpenAIModel, Tokenizer, TraverseStrategy
+from graphgen.models import OpenAIModel, Tokenizer, TraverseStrategy
 
 css = """
 .center-row {
