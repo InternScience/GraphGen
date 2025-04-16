@@ -24,6 +24,7 @@ css = """
 }
 """
 
+
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     graph_gen = GraphGen()
 
@@ -31,16 +32,15 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
     graph_gen.synthesizer_llm_client = OpenAIModel(
         model_name=env.get("SYNTHESIZER_MODEL", ""),
         base_url=env.get("SYNTHESIZER_BASE_URL", ""),
-        api_key=env.get("SYNTHESIZER_API_KEY", "")
-    )
+        api_key=env.get("SYNTHESIZER_API_KEY", ""))
 
     graph_gen.trainee_llm_client = OpenAIModel(
         model_name=env.get("TRAINEE_MODEL", ""),
         base_url=env.get("TRAINEE_BASE_URL", ""),
-        api_key=env.get("TRAINEE_API_KEY", "")
-    )
+        api_key=env.get("TRAINEE_API_KEY", ""))
 
-    graph_gen.tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
+    graph_gen.tokenizer_instance = Tokenizer(
+        config.get("tokenizer", "cl100k_base"))
 
     strategy_config = config.get("traverse_strategy", {})
     graph_gen.traverse_strategy = TraverseStrategy(
@@ -58,10 +58,8 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
 
     return graph_gen
 
-def run_graphgen(
-        *arguments: list,
-        progress=gr.Progress()
-):
+
+def run_graphgen(*arguments: list, progress=gr.Progress()):
     # Unpack arguments
     config = {
         "if_trainee_model": arguments[0],
@@ -94,7 +92,8 @@ def run_graphgen(
     }
 
     # Test API connection
-    test_api_connection(env["SYNTHESIZER_BASE_URL"], env["SYNTHESIZER_API_KEY"], env["SYNTHESIZER_MODEL"])
+    test_api_connection(env["SYNTHESIZER_BASE_URL"],
+                        env["SYNTHESIZER_API_KEY"], env["SYNTHESIZER_MODEL"])
     progress(0.1, "API Connection Successful")
 
     # Initialize GraphGen
@@ -127,7 +126,9 @@ def run_graphgen(
                 for line in lines:
                     content += line.strip() + " "
             size = int(config.get("chunk_size", 512))
-            chunks = [content[i:i + size] for i in range(0, len(content), size)]
+            chunks = [
+                content[i:i + size] for i in range(0, len(content), size)
+            ]
             data.extend([{"content": chunk} for chunk in chunks])
         else:
             raise ValueError(f"Unsupported file type: {file}")
@@ -159,8 +160,7 @@ def run_graphgen(
                 mode="w",
                 suffix=".jsonl",
                 delete=False,  # 防止自动删除
-                encoding="utf-8"
-        ) as tmpfile:
+                encoding="utf-8") as tmpfile:
             # 假设qa_storage有导出数据的方法
             json.dump(output_data, tmpfile, ensure_ascii=False)
             output_file = tmpfile.name
@@ -168,21 +168,20 @@ def run_graphgen(
         progress(1.0, "Graph traversed")
         return output_file
 
-    except Exception as e: # pylint: disable=broad-except
+    except Exception as e:  # pylint: disable=broad-except
         raise gr.Error(f"Error occurred: {str(e)}")
 
 
-with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
+with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
+               css=css) as demo:
     # Header
-    gr.Image(
-        value=f"{root_dir}/resources/images/logo.png",
-        label="GraphGen Banner",
-        elem_id="banner",
-        interactive=False,
-        container=False,
-        show_download_button=False,
-        show_fullscreen_button=False
-    )
+    gr.Image(value=f"{root_dir}/resources/images/logo.png",
+             label="GraphGen Banner",
+             elem_id="banner",
+             interactive=False,
+             container=False,
+             show_download_button=False,
+             show_fullscreen_button=False)
     lang_btn = gr.Radio(
         choices=[
             ("English", "en"),
@@ -212,10 +211,11 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
     </div>
     """)
     with Translate(
-        "translation.json",
-        lang_btn,
-        placeholder_langs=["en", "zh"],
-        persistant=False,  # True to save the language setting in the browser. Requires gradio >= 5.6.0
+            "translation.json",
+            lang_btn,
+            placeholder_langs=["en", "zh"],
+            persistant=
+            False,  # True to save the language setting in the browser. Requires gradio >= 5.6.0
     ):
         lang_btn.render()
 
@@ -224,54 +224,99 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
                 "### [GraphGen](https://github.com/open-sciencelab/GraphGen) " + _("Intro")
         )
 
-        if_trainee_model = gr.Checkbox(
-            label=_("Use Trainee Model"),
-            value=False,
-            interactive=True
-        )
+        if_trainee_model = gr.Checkbox(label=_("Use Trainee Model"),
+                                       value=False,
+                                       interactive=True)
 
         with gr.Accordion(label=_("Model Config"), open=False):
-            base_url = gr.Textbox(label="Base URL", value="https://api.siliconflow.cn/v1",
-                                  info=_("Base URL Info"), interactive=True)
-            synthesizer_model = gr.Textbox(label="Synthesizer Model", value="Qwen/Qwen2.5-7B-Instruct",
-                                           info=_("Synthesizer Model Info"), interactive=True)
-            trainee_model = gr.Textbox(label="Trainee Model", value="Qwen/Qwen2.5-7B-Instruct",
-                                       info=_("Trainee Model Info"), interactive=True,
-                                       visible=(if_trainee_model.value == True))
+            base_url = gr.Textbox(label="Base URL",
+                                  value="https://api.siliconflow.cn/v1",
+                                  info=_("Base URL Info"),
+                                  interactive=True)
+            synthesizer_model = gr.Textbox(label="Synthesizer Model",
+                                           value="Qwen/Qwen2.5-7B-Instruct",
+                                           info=_("Synthesizer Model Info"),
+                                           interactive=True)
+            trainee_model = gr.Textbox(
+                label="Trainee Model",
+                value="Qwen/Qwen2.5-7B-Instruct",
+                info=_("Trainee Model Info"),
+                interactive=True,
+                visible=(if_trainee_model.value == True))
 
         with gr.Accordion(label=_("Generation Config"), open=False):
-            chunk_size = gr.Slider(label="Chunk Size", minimum=256, maximum=4096, value=512, step=256, interactive=True)
-            tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base", interactive=True)
-            qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"], label="QA Form",
-                               value="open", interactive=True)
-            quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1, interactive=True,
+            chunk_size = gr.Slider(label="Chunk Size",
+                                   minimum=256,
+                                   maximum=4096,
+                                   value=512,
+                                   step=256,
+                                   interactive=True)
+            tokenizer = gr.Textbox(label="Tokenizer",
+                                   value="cl100k_base",
+                                   interactive=True)
+            qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"],
+                               label="QA Form",
+                               value="open",
+                               interactive=True)
+            quiz_samples = gr.Number(label="Quiz Samples",
+                                     value=2,
+                                     minimum=1,
+                                     interactive=True,
                                      visible=(if_trainee_model.value == True))
-            bidirectional = gr.Checkbox(label="Bidirectional", value=True, interactive=True)
+            bidirectional = gr.Checkbox(label="Bidirectional",
+                                        value=True,
+                                        interactive=True)
 
-            expand_method = gr.Radio(choices=["max_width", "max_tokens"], label="Expand Method",
-                                     value="max_tokens", interactive=True)
+            expand_method = gr.Radio(choices=["max_width", "max_tokens"],
+                                     label="Expand Method",
+                                     value="max_tokens",
+                                     interactive=True)
             max_extra_edges = gr.Slider(
-                minimum=1, maximum=10, value=5, label="Max Extra Edges",
-                step=1, interactive=True, visible=(expand_method.value == "max_width")
-            )
-            max_tokens = gr.Slider(
-                minimum=64, maximum=1024, value=256, label="Max Tokens",
-                step=64, interactive=True, visible=(expand_method.value != "max_width")
-            )
+                minimum=1,
+                maximum=10,
+                value=5,
+                label="Max Extra Edges",
+                step=1,
+                interactive=True,
+                visible=(expand_method.value == "max_width"))
+            max_tokens = gr.Slider(minimum=64,
+                                   maximum=1024,
+                                   value=256,
+                                   label="Max Tokens",
+                                   step=64,
+                                   interactive=True,
+                                   visible=(expand_method.value
+                                            != "max_width"))
 
-            max_depth = gr.Slider(minimum=1, maximum=5, value=2, label="Max Depth", step=1, interactive=True)
-            edge_sampling = gr.Radio(choices=["max_loss", "min_loss", "random"], label="Edge Sampling",
-                                     value="max_loss", interactive=True,
-                                     visible=(if_trainee_model.value == True))
-            isolated_node_strategy = gr.Radio(choices=["add", "ignore"], label="Isolated Node Strategy",
-                                              value="ignore", interactive=True)
-            loss_strategy = gr.Radio(choices=["only_edge", "both"], label="Loss Strategy",
-                                      value="only_edge", interactive=True)
+            max_depth = gr.Slider(minimum=1,
+                                  maximum=5,
+                                  value=2,
+                                  label="Max Depth",
+                                  step=1,
+                                  interactive=True)
+            edge_sampling = gr.Radio(
+                choices=["max_loss", "min_loss", "random"],
+                label="Edge Sampling",
+                value="max_loss",
+                interactive=True,
+                visible=(if_trainee_model.value == True))
+            isolated_node_strategy = gr.Radio(choices=["add", "ignore"],
+                                              label="Isolated Node Strategy",
+                                              value="ignore",
+                                              interactive=True)
+            loss_strategy = gr.Radio(choices=["only_edge", "both"],
+                                     label="Loss Strategy",
+                                     value="only_edge",
+                                     interactive=True)
             # difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
 
         with gr.Row(equal_height=True):
             with gr.Column(scale=3):
-                api_key = gr.Textbox(label="SiliconFlow API Key", type="password", value="")
+                api_key = gr.Textbox(
+                    label="SiliconCloud Token",
+                    type="password",
+                    value="",
+                    info="https://cloud.siliconflow.cn/account/ak")
             with gr.Column(scale=1):
                 test_connection_btn = gr.Button("Test Connection")
 
@@ -284,16 +329,14 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
                         file_types=[".txt", ".json", ".jsonl"],
                         interactive=True,
                     )
-                    gr.Examples(
-                        examples=[
-                            [f"{root_dir}/webui/examples/txt_demo.txt"],
-                            [f"{root_dir}/webui/examples/raw_demo.jsonl"],
-                            [f"{root_dir}/webui/examples/chunked_demo.json"],
-                        ],
-                        inputs=upload_file,
-                        label="Example Files",
-                        examples_per_page=3
-                    )
+                    gr.Examples(examples=[
+                        [f"{root_dir}/webui/examples/txt_demo.txt"],
+                        [f"{root_dir}/webui/examples/raw_demo.jsonl"],
+                        [f"{root_dir}/webui/examples/chunked_demo.json"],
+                    ],
+                                inputs=upload_file,
+                                label="Example Files",
+                                examples_per_page=3)
                 with gr.Column(scale=1):
                     output = gr.File(
                         label="Output",
@@ -307,43 +350,36 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
         test_connection_btn.click(
             test_api_connection,
             inputs=[base_url, api_key, synthesizer_model],
-            outputs=[]
-        )
-        test_connection_btn.click(
-            test_api_connection,
-            inputs=[base_url, api_key, trainee_model],
-            outputs=[]
-        )
+            outputs=[])
+        test_connection_btn.click(test_api_connection,
+                                  inputs=[base_url, api_key, trainee_model],
+                                  outputs=[])
 
-        expand_method.change(
-            lambda method: (
-                gr.update(visible=(method == "max_width")),
-                gr.update(visible=(method != "max_width"))
-            ),
-            inputs=expand_method,
-            outputs=[max_extra_edges, max_tokens]
-        )
+        expand_method.change(lambda method:
+                             (gr.update(visible=(method == "max_width")),
+                              gr.update(visible=(method != "max_width"))),
+                             inputs=expand_method,
+                             outputs=[max_extra_edges, max_tokens])
 
         if_trainee_model.change(
-            lambda use_trainee: (
-                gr.update(visible=(use_trainee == True)),
-                gr.update(visible=(use_trainee == True)),
-                gr.update(visible=(use_trainee == True))
-            ),
+            lambda use_trainee: (gr.update(visible=(use_trainee == True)),
+                                 gr.update(visible=(use_trainee == True)),
+                                 gr.update(visible=(use_trainee == True))),
             inputs=if_trainee_model,
-            outputs=[trainee_model, quiz_samples, edge_sampling]
-        )
+            outputs=[trainee_model, quiz_samples, edge_sampling])
 
         # run GraphGen
         submit_btn.click(
             run_graphgen,
             inputs=[
-                if_trainee_model, upload_file, tokenizer, qa_form, bidirectional, expand_method, max_extra_edges,
-                max_tokens, max_depth, edge_sampling, isolated_node_strategy, loss_strategy,
-                base_url, synthesizer_model, trainee_model, api_key, chunk_size
+                if_trainee_model, upload_file, tokenizer, qa_form,
+                bidirectional, expand_method, max_extra_edges, max_tokens,
+                max_depth, edge_sampling, isolated_node_strategy,
+                loss_strategy, base_url, synthesizer_model, trainee_model,
+                api_key, chunk_size
             ],
             outputs=[output],
         )
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name='0.0.0.0')

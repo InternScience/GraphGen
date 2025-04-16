@@ -5,15 +5,14 @@ numpy
 networkx
 graspologic
 tiktoken
-transformers
 pyecharts
 wikipedia
 tenacity
 nltk
 jieba
-torch
 plotly
 pandas
 gradio
 kaleido
 pyyaml
+langcodes
