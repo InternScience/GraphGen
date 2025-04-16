@@ -50,10 +50,9 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
    gradio app.py
    ```
 
+![ui](resources/images/interface.jpg)
 
 ### Run from PyPI
-
-![ui](resources/images/interface.jpg)
 
 ### Run from Source
 
