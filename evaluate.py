@@ -5,11 +5,6 @@ import json
 import argparse
 import pandas as pd
 from dotenv import load_dotenv
-try:
-    import torch
-    import torch.multiprocessing as mp
-except Exception as e:
-    print(f'Please install torch and torch.multiprocessing to use {__file__}')
 from models import LengthEvaluator, MTLDEvaluator, RewardEvaluator, TextPair, UniEvaluator
 from utils import logger, set_logger
 
@@ -74,11 +69,13 @@ def evaluate_uni(corpus, uni_model_name):
 
 
 def clean_gpu_cache():
+    import torch
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
 
 
 if __name__ == '__main__':
+    import torch.multiprocessing as mp
     parser = argparse.ArgumentParser()
 
     parser.add_argument('--folder', type=str, default='cache/data', help='folder to load data')

@@ -36,9 +36,13 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 
 ### Gradio Demo
 
+1. Enter `webui` directory
    ```bash
-   pip install -r requirements.txt
-   gradio webui/app.py
+   cd webui
+   ```
+2. Run the Gradio demo
+   ```bash
+   gradio app.py
    ```
 
 ![ui](resources/images/interface.jpg)

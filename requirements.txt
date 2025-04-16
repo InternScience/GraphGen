@@ -1,6 +1,6 @@
 tqdm
 openai
-python - dotenv
+python-dotenv
 numpy
 networkx
 graspologic
