@@ -38,11 +38,20 @@ It begins by constructing a fine-grained knowledge graph from the source text，
 Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture complex relational information and employs style-controlled generation to diversify the resulting QA data. 
 
 ## 🚀 Quick Start
-[//]: # (TODO)
-
-### Command Line
 
 ### Gradio Demo
+
+1. Enter `webui` directory
+   ```bash
+   cd webui
+   ```
+2. Run the Gradio demo
+   ```bash
+   gradio app.py
+   ```
+
+
+### Run from PyPI
 
 ![ui](resources/images/interface.jpg)
 
@@ -53,15 +62,17 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
     pip install -r requirements.txt
     ```
 2. Configure the environment
-   - Create a `.env` file in the root directory
+   - Create an `.env` file in the root directory
      ```bash
      cp .env.example .env
      ```
    - Set the following environment variables:
      ```bash
+     # Synthesizer is the model used to construct KG and generate data
      SYNTHESIZER_MODEL=your_synthesizer_model_name
      SYNTHESIZER_BASE_URL=your_base_url_for_synthesizer_model
      SYNTHESIZER_API_KEY=your_api_key_for_synthesizer_model
+     # Trainee is the model used to train with the generated data
      TRAINEE_MODEL=your_trainee_model_name
      TRAINEE_BASE_URL=your_base_url_for_trainee_model
      TRAINEE_API_KEY=your_api_key_for_trainee_model
