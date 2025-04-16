@@ -1,13 +1,12 @@
 import os
 import sys
 import json
-
-import yaml
+import tempfile
 
 import gradio as gr
+from fontTools.ttx import process
 
 from i18n import Translate, gettext as _
-
 from test_api import test_api_connection
 
 # pylint: disable=wrong-import-position
@@ -25,14 +24,6 @@ css = """
 }
 """
 
-def load_config() -> dict:
-    with open("config.yaml", "r", encoding='utf-8') as f:
-        return yaml.safe_load(f)
-
-def save_config(config: dict):
-    with open("config.yaml", "w", encoding='utf-8') as f:
-        yaml.dump(config, f)
-
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     graph_gen = GraphGen()
 
@@ -49,117 +40,138 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
         api_key=env.get("TRAINEE_API_KEY", "")
     )
 
-    # Set up tokenizer
     graph_gen.tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
 
-    # Set up traverse strategy
     strategy_config = config.get("traverse_strategy", {})
     graph_gen.traverse_strategy = TraverseStrategy(
-        qa_form=config.get("qa_form", "multi_hop"),
-        expand_method=strategy_config.get("expand_method", "max_tokens"),
-        bidirectional=strategy_config.get("bidirectional", True),
-        max_extra_edges=strategy_config.get("max_extra_edges", 5),
-        max_tokens=strategy_config.get("max_tokens", 256),
-        max_depth=strategy_config.get("max_depth", 2),
-        edge_sampling=strategy_config.get("edge_sampling", "max_loss"),
-        isolated_node_strategy=strategy_config.get("isolated_node_strategy", "add"),
-        difficulty_order=strategy_config.get("difficulty_order", ["medium", "medium", "medium"])
+        qa_form=config.get("qa_form"),
+        expand_method=strategy_config.get("expand_method"),
+        bidirectional=strategy_config.get("bidirectional"),
+        max_extra_edges=strategy_config.get("max_extra_edges"),
+        max_tokens=strategy_config.get("max_tokens"),
+        max_depth=strategy_config.get("max_depth"),
+        edge_sampling=strategy_config.get("edge_sampling"),
+        isolated_node_strategy=strategy_config.get("isolated_node_strategy"),
+        loss_strategy=str(strategy_config.get("loss_strategy")),
+        # difficulty_order=strategy_config.get("difficulty_order", ["medium", "medium", "medium"])
     )
-
-    graph_gen.if_web_search = config.get("web_search", False)
 
     return graph_gen
 
-# pylint: disable=redefined-outer-name
 def run_graphgen(
-        input_file: str,
-        data_type: str,
-        qa_form: str,
-        tokenizer: str,
-        web_search: bool,
-        expand_method: str,
-        bidirectional: bool,
-        max_extra_edges: int,
-        max_tokens: int,
-        max_depth: int,
-        edge_sampling: str,
-        isolated_node_strategy: str,
-        difficulty_level: str,
-        synthesizer_model: str,
-        synthesizer_base_url: str,
-        synthesizer_api_key: str,
-        trainee_model: str,
-        trainee_base_url: str,
-        trainee_api_key: str,
-        quiz_samples: int,
+        *arguments: list,
         progress=gr.Progress()
-) -> str:
-    # Save configurations
+):
+    # Unpack arguments
     config = {
-        "data_type": data_type,
-        "input_file": input_file,
-        "qa_form": qa_form,
-        "tokenizer": tokenizer,
-        "web_search": web_search,
-        "quiz_samples": quiz_samples,
+        "if_trainee_model": arguments[0],
+        "input_file": arguments[1],
+        "tokenizer": arguments[2],
+        "qa_form": arguments[3],
+        "web_search": False,
+        "quiz_samples": 2,
         "traverse_strategy": {
-            "expand_method": expand_method,
-            "bidirectional": bidirectional,
-            "max_extra_edges": max_extra_edges,
-            "max_tokens": max_tokens,
-            "max_depth": max_depth,
-            "edge_sampling": edge_sampling,
-            "isolated_node_strategy": isolated_node_strategy,
-            "difficulty_order": [difficulty_level] * 3
-        }
+            "bidirectional": arguments[4],
+            "expand_method": arguments[5],
+            "max_extra_edges": arguments[6],
+            "max_tokens": arguments[7],
+            "max_depth": arguments[8],
+            "edge_sampling": arguments[9],
+            "isolated_node_strategy": arguments[10],
+            "loss_strategy": arguments[11],
+            # "difficulty_order": [arguments[10]] * 3
+        },
+        "chunk_size": arguments[16],
     }
-    save_config(config)
 
     env = {
-        "SYNTHESIZER_MODEL": synthesizer_model,
-        "SYNTHESIZER_BASE_URL": synthesizer_base_url,
-        "SYNTHESIZER_API_KEY": synthesizer_api_key,
-        "TRAINEE_MODEL": trainee_model,
-        "TRAINEE_BASE_URL": trainee_base_url,
-        "TRAINEE_API_KEY": trainee_api_key
+        "SYNTHESIZER_BASE_URL": arguments[12],
+        "SYNTHESIZER_MODEL": arguments[13],
+        "TRAINEE_BASE_URL": arguments[12],
+        "TRAINEE_MODEL": arguments[14],
+        "SYNTHESIZER_API_KEY": arguments[15],
+        "TRAINEE_API_KEY": arguments[15]
     }
+
+    # Test API connection
+    test_api_connection(env["SYNTHESIZER_BASE_URL"], env["SYNTHESIZER_API_KEY"], env["SYNTHESIZER_MODEL"])
+    progress(0.1, "API Connection Successful")
 
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
+    graph_gen.clear()
+    progress(0.2, "Model Initialized")
 
     try:
         # Load input data
-        if data_type == "raw":
-            with open(input_file, "r", encoding='utf-8') as f:
-                data = [json.loads(line) for line in f]
-        else:  # chunked
-            with open(input_file, "r", encoding='utf-8') as f:
-                data = json.load(f)
+        file = config['input_file']
+        if isinstance(file, list):
+            file = file[0]
 
-        progress(0.2, "Data loaded")
+        data = []
+
+        if file.endswith(".jsonl"):
+            data_type = "raw"
+            with open(file, "r", encoding='utf-8') as f:
+                data.extend(json.loads(line) for line in f)
+        elif file.endswith(".json"):
+            data_type = "chunked"
+            with open(file, "r", encoding='utf-8') as f:
+                data.extend(json.load(f))
+        elif file.endswith(".txt"):
+            # 读取文件后根据chunk_size转成raw格式的数据
+            data_type = "raw"
+            content = ""
+            with open(file, "r", encoding='utf-8') as f:
+                lines = f.readlines()
+                for line in lines:
+                    content += line.strip() + " "
+            size = int(config.get("chunk_size", 512))
+            chunks = [content[i:i + size] for i in range(0, len(content), size)]
+            data.extend([{"content": chunk} for chunk in chunks])
+        else:
+            raise ValueError(f"Unsupported file type: {file}")
 
         # Process the data
         graph_gen.insert(data, data_type)
         progress(0.4, "Data inserted")
 
-        # Generate quiz
-        graph_gen.quiz(max_samples=quiz_samples)
-        progress(0.6, "Quiz generated")
+        if config['if_trainee_model']:
+            # Generate quiz
+            graph_gen.quiz(max_samples=quiz_samples)
+            progress(0.6, "Quiz generated")
 
-        # Judge statements
-        graph_gen.judge(re_judge=False)
-        progress(0.8, "Statements judged")
+            # Judge statements
+            graph_gen.judge()
+            progress(0.8, "Statements judged")
+        else:
+            graph_gen.traverse_strategy.edge_sampling = "random"
+            # Skip judge statements
+            graph_gen.judge(skip=True)
+            progress(0.8, "Statements judged")
 
         # Traverse graph
         graph_gen.traverse()
-        progress(1.0, "Graph traversed")
 
-        return "Task completed successfully!"
+        # Save output
+        output_data = graph_gen.qa_storage.data
+        with tempfile.NamedTemporaryFile(
+                mode="w",
+                suffix=".jsonl",
+                delete=False,  # 防止自动删除
+                encoding="utf-8"
+        ) as tmpfile:
+            # 假设qa_storage有导出数据的方法
+            json.dump(output_data, tmpfile, ensure_ascii=False)
+            output_file = tmpfile.name
+
+        progress(1.0, "Graph traversed")
+        return output_file
 
     except Exception as e: # pylint: disable=broad-except
-        return f"Error occurred: {str(e)}"
+        raise gr.Error(f"Error occurred: {str(e)}")
 
-# Create Gradio interface
+
 with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
     # Header
     gr.Image(
@@ -212,32 +224,50 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
                 "### [GraphGen](https://github.com/open-sciencelab/GraphGen) " + _("Intro")
         )
 
-        # Model Configuration Column
+        if_trainee_model = gr.Checkbox(
+            label=_("Use Trainee Model"),
+            value=False,
+            interactive=True
+        )
+
         with gr.Accordion(label=_("Model Config"), open=False):
             base_url = gr.Textbox(label="Base URL", value="https://api.siliconflow.cn/v1",
                                   info=_("Base URL Info"), interactive=True)
-            synthesizer_model = gr.Textbox(label="Synthesizer Model", value="Qwen/Qwen2.5-72B-Instruct",
+            synthesizer_model = gr.Textbox(label="Synthesizer Model", value="Qwen/Qwen2.5-7B-Instruct",
                                            info=_("Synthesizer Model Info"), interactive=True)
             trainee_model = gr.Textbox(label="Trainee Model", value="Qwen/Qwen2.5-7B-Instruct",
-                                       info=_("Trainee Model Info"), interactive=True)
+                                       info=_("Trainee Model Info"), interactive=True,
+                                       visible=(if_trainee_model.value == True))
 
         with gr.Accordion(label=_("Generation Config"), open=False):
+            chunk_size = gr.Slider(label="Chunk Size", minimum=256, maximum=4096, value=512, step=256, interactive=True)
+            tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base", interactive=True)
             qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"], label="QA Form",
-                               value="multi_hop", interactive=True)
-            tokenizer = gr.Textbox(label="Tokenizer", value="cl100k_base")
-            # web_search = gr.Checkbox(label="Enable Web Search", value=False)
-            # quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1)
+                               value="open", interactive=True)
+            quiz_samples = gr.Number(label="Quiz Samples", value=2, minimum=1, interactive=True,
+                                     visible=(if_trainee_model.value == True))
+            bidirectional = gr.Checkbox(label="Bidirectional", value=True, interactive=True)
 
-            with gr.Column(scale=1):
-                expand_method = gr.Radio(choices=["max_width", "max_tokens"], label="Expand Method", value="max_tokens")
-                bidirectional = gr.Checkbox(label="Bidirectional", value=True)
-                max_extra_edges = gr.Slider(minimum=1, maximum=10, value=5, label="Max Extra Edges", step=1)
-                max_tokens = gr.Slider(minimum=64, maximum=1024, value=256, label="Max Tokens", step=64)
-                max_depth = gr.Slider(minimum=1, maximum=5, value=2, label="Max Depth", step=1)
-                edge_sampling = gr.Radio(choices=["max_loss", "min_loss", "random"], label="Edge Sampling",
-                                         value="max_loss")
-                isolated_node_strategy = gr.Radio(choices=["add", "ignore"], label="Isolated Node Strategy", value="ignore")
-                difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
+            expand_method = gr.Radio(choices=["max_width", "max_tokens"], label="Expand Method",
+                                     value="max_tokens", interactive=True)
+            max_extra_edges = gr.Slider(
+                minimum=1, maximum=10, value=5, label="Max Extra Edges",
+                step=1, interactive=True, visible=(expand_method.value == "max_width")
+            )
+            max_tokens = gr.Slider(
+                minimum=64, maximum=1024, value=256, label="Max Tokens",
+                step=64, interactive=True, visible=(expand_method.value != "max_width")
+            )
+
+            max_depth = gr.Slider(minimum=1, maximum=5, value=2, label="Max Depth", step=1, interactive=True)
+            edge_sampling = gr.Radio(choices=["max_loss", "min_loss", "random"], label="Edge Sampling",
+                                     value="max_loss", interactive=True,
+                                     visible=(if_trainee_model.value == True))
+            isolated_node_strategy = gr.Radio(choices=["add", "ignore"], label="Isolated Node Strategy",
+                                              value="ignore", interactive=True)
+            loss_strategy = gr.Radio(choices=["only_edge", "both"], label="Loss Strategy",
+                                      value="only_edge", interactive=True)
+            # difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
 
         with gr.Row(equal_height=True):
             with gr.Column(scale=3):
@@ -248,14 +278,24 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
         with gr.Blocks():
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
-                    upload_btn = gr.File(
+                    upload_file = gr.File(
                         label="Upload File",
-                        file_count="multiple",
-                        value=["translation.json", "translation.json"],
+                        file_count="single",
+                        file_types=[".txt", ".json", ".jsonl"],
                         interactive=True,
                     )
+                    gr.Examples(
+                        examples=[
+                            [f"{root_dir}/webui/examples/txt_demo.txt"],
+                            [f"{root_dir}/webui/examples/raw_demo.jsonl"],
+                            [f"{root_dir}/webui/examples/chunked_demo.json"],
+                        ],
+                        inputs=upload_file,
+                        label="Example Files",
+                        examples_per_page=3
+                    )
                 with gr.Column(scale=1):
-                    download_file = gr.File(
+                    output = gr.File(
                         label="Output",
                         file_count="single",
                         interactive=False,
@@ -269,26 +309,41 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Base(), css=css) as demo:
             inputs=[base_url, api_key, synthesizer_model],
             outputs=[]
         )
-
         test_connection_btn.click(
             test_api_connection,
             inputs=[base_url, api_key, trainee_model],
             outputs=[]
         )
 
-        # Event Handling
-        # submit_btn.click(
-        #     run_graphgen,
-        #     inputs=[
-        #         input_file, data_type, qa_form, tokenizer, web_search,
-        #         expand_method, bidirectional, max_extra_edges, max_tokens,
-        #         max_depth, edge_sampling, isolated_node_strategy, difficulty_level,
-        #         synthesizer_model, synthesizer_base_url, synthesizer_api_key,
-        #         trainee_model, trainee_base_url, trainee_api_key,
-        #         quiz_samples
-        #     ],
-        #     outputs=output
-        # )
+        expand_method.change(
+            lambda method: (
+                gr.update(visible=(method == "max_width")),
+                gr.update(visible=(method != "max_width"))
+            ),
+            inputs=expand_method,
+            outputs=[max_extra_edges, max_tokens]
+        )
+
+        if_trainee_model.change(
+            lambda use_trainee: (
+                gr.update(visible=(use_trainee == True)),
+                gr.update(visible=(use_trainee == True)),
+                gr.update(visible=(use_trainee == True))
+            ),
+            inputs=if_trainee_model,
+            outputs=[trainee_model, quiz_samples, edge_sampling]
+        )
+
+        # run GraphGen
+        submit_btn.click(
+            run_graphgen,
+            inputs=[
+                if_trainee_model, upload_file, tokenizer, qa_form, bidirectional, expand_method, max_extra_edges,
+                max_tokens, max_depth, edge_sampling, isolated_node_strategy, loss_strategy,
+                base_url, synthesizer_model, trainee_model, api_key, chunk_size
+            ],
+            outputs=[output],
+        )
 
 if __name__ == "__main__":
     demo.launch()

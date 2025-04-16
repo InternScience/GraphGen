@@ -14,6 +14,10 @@ class JsonKVStorage(BaseKVStorage):
         self._data = load_json(self._file_name) or {}
         logger.info("Load KV %s with %d data", self.namespace, len(self._data))
 
+    @property
+    def data(self):
+        return self._data
+
     async def all_keys(self) -> list[str]:
         return list(self._data.keys())
 
