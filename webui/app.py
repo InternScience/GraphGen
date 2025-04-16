@@ -219,7 +219,10 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
     ):
         lang_btn.render()
 
-        gr.Markdown(value=_("Intro"))
+        gr.Markdown(
+            value = "# " + _("Title") + "\n\n" + \
+                "### [GraphGen](https://github.com/open-sciencelab/GraphGen) " + _("Intro")
+        )
 
         if_trainee_model = gr.Checkbox(label=_("Use Trainee Model"),
                                        value=False,
