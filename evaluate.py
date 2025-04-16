@@ -5,8 +5,11 @@ import json
 import argparse
 import pandas as pd
 from dotenv import load_dotenv
-import torch
-import torch.multiprocessing as mp
+try:
+    import torch
+    import torch.multiprocessing as mp
+except Exception as e:
+    print(f'Please install torch and torch.multiprocessing to use {__file__}')
 from models import LengthEvaluator, MTLDEvaluator, RewardEvaluator, TextPair, UniEvaluator
 from utils import logger, set_logger
 

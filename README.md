@@ -9,11 +9,6 @@
 [![open issues](https://img.shields.io/github/issues-raw/open-sciencelab/GraphGen)](https://github.com/open-sciencelab/GraphGen/issues)
 [![issue resolution](https://img.shields.io/github/issues-closed-raw/open-sciencelab/GraphGen)](https://github.com/open-sciencelab/GraphGen/issues)
 
-
-<p align="center">
-  <a href="README.md">English</a> | <a href="README_zh.md">简体中文</a>
-</p>
-
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
 <details open>
@@ -41,13 +36,9 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 
 ### Gradio Demo
 
-1. Enter `webui` directory
    ```bash
-   cd webui
-   ```
-2. Run the Gradio demo
-   ```bash
-   gradio app.py
+   pip install -r requirements.txt
+   gradio webui/app.py
    ```
 
 ![ui](resources/images/interface.jpg)
@@ -93,11 +84,6 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
    ls cache/data/graphgen
    ```
 
-
-## 📌 Latest Updates
-
-## 🌟 Key Features
-
 ## 🏗️ System Architecture
 
 ### Directory Structure
@@ -119,12 +105,5 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 └── README.md
 ```
 
-
 ### Workflow
 ![workflow](resources/images/flow.png)
-
-## ⚙️ Configurations
-
-## 📅 Roadmap
-
-## 💰 Cost Analysis

@@ -1,9 +1,5 @@
 from dataclasses import dataclass
 from tqdm import tqdm
-from transformers import AutoModelForSequenceClassification, AutoTokenizer
-import torch
-import torch.multiprocessing as mp
-
 from models.text.text_pair import TextPair
 
 
@@ -22,6 +18,8 @@ class RewardEvaluator:
 
     @staticmethod
     def process_chunk(rank, pairs, reward_name, max_length, return_dict):
+        import torch
+        from transformers import AutoModelForSequenceClassification, AutoTokenizer
         device = f'cuda:{rank}'
         torch.cuda.set_device(rank)
 
@@ -47,6 +45,7 @@ class RewardEvaluator:
         return_dict[rank] = results
 
     def evaluate(self, pairs: list[TextPair]) -> list[float]:
+        import torch.multiprocessing as mp
         chunk_size = len(pairs) // self.num_gpus
         chunks = []
         for i in range(self.num_gpus):

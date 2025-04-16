@@ -2,11 +2,6 @@
 
 from dataclasses import dataclass, field
 from tqdm import tqdm
-import torch
-from torch import nn
-import torch.multiprocessing as mp
-
-from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 from models.text.text_pair import TextPair
 
 
@@ -31,11 +26,14 @@ class UniEvaluator:
     results: dict = None
 
     def __post_init__(self):
+        import torch
         self.num_gpus = torch.cuda.device_count()
         self.results = {}
 
     @staticmethod
     def process_chunk(rank, pairs, model_name, max_length, dimension, return_dict):
+        import torch
+        from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
         device = f'cuda:{rank}'
         torch.cuda.set_device(rank)
 
@@ -44,7 +42,7 @@ class UniEvaluator:
         rank_model.to(device)
         rank_model.eval()
 
-        softmax = nn.Softmax(dim=1)
+        softmax = torch.nn.Softmax(dim=1)
 
         pos_id = tokenizer("Yes")["input_ids"][0]
         neg_id = tokenizer("No")["input_ids"][0]
@@ -94,6 +92,7 @@ class UniEvaluator:
         return_dict[rank] = results
 
     def evaluate(self, pairs: list[TextPair]) -> list[dict]:
+        import torch.multiprocessing as mp
         final_results = []
         for dimension in self.dimensions:
             chunk_size = len(pairs) // self.num_gpus

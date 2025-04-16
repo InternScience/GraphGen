@@ -1,0 +1,23 @@
+{
+  "en": {
+    "Title": "",
+    "\n\n": "\n\n",
+    "Intro": "[GraphGen](https://github.com/open-sciencelab/GraphGen) is a tool for generating synthetic SFT training data. \n\n By uploading your text chunks (such as knowledge in agriculture, healthcare, or marine science) and filling in the LLM API key, you can generate the training data required by **LLaMA-Factory** and **xtuner** online. After the synthesis is complete, we will automatically delete user information.",
+    "# ": "# ",
+    "Use Trainee Model": "Use Trainee Model",
+    "Base URL Info": "Base URL Info",
+    "Synthesizer Model Info": "Synthesizer Model Info",
+    "Trainee Model Info": "Trainee Model Info",
+    "Model Config": "openai API Config",
+    "Generation Config": "Generation Config"
+  },
+  "zh": {
+    "Intro": "[GraphGen](https://github.com/open-sciencelab/GraphGen) 是一个合成 SFT 训练数据的工具。\n\n 上传你的文本块（如农业、医疗、海洋知识），填写 LLM api key，即可在线生成 **LLaMA-Factory**、**xtuner** 所需训练数据。结束后我们将自动删除用户信息。",
+    "Use Trainee Model": "使用学生模型",
+    "Base URL Info": "openai API 地址",
+    "Synthesizer Model Info": "用哪个模型来合成数据",
+    "Trainee Model Info": "基于什么模型 SFT",
+    "Model Config": "openai API 配置",
+    "Generation Config": "GraphGen 合成参数"
+  }
+}
