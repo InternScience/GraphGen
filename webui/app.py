@@ -311,7 +311,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         with gr.Row(equal_height=True):
             with gr.Column(scale=3):
                 api_key = gr.Textbox(
-                    label="SiliconCloud Token",
+                    label=_("SiliconCloud Token"),
                     type="password",
                     value="",
                     info="https://cloud.siliconflow.cn/account/ak")
