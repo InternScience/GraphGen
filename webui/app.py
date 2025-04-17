@@ -170,11 +170,10 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     except Exception as e:  # pylint: disable=broad-except
         raise gr.Error(f"Error occurred: {str(e)}")
 
-
 with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                css=css) as demo:
     # Header
-    gr.Image(value=f"{root_dir}/resources/images/logo.png",
+    gr.Image(value=os.path.join(root_dir, 'resources', 'images', 'logo.png'),
              label="GraphGen Banner",
              elem_id="banner",
              interactive=False,
@@ -210,7 +209,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
     </div>
     """)
     with Translate(
-            "translation.json",
+            os.path.join(root_dir, 'webui', 'translation.json'),
             lang_btn,
             placeholder_langs=["en", "zh"],
             persistant=
@@ -328,10 +327,11 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                         file_types=[".txt", ".json", ".jsonl"],
                         interactive=True,
                     )
+                    examples_dir = os.path.join(root_dir, 'webui', 'examples')
                     gr.Examples(examples=[
-                        [f"{root_dir}/webui/examples/txt_demo.txt"],
-                        [f"{root_dir}/webui/examples/raw_demo.jsonl"],
-                        [f"{root_dir}/webui/examples/chunked_demo.json"],
+                        [os.path.join(examples_dir, "txt_demo.txt")],
+                        [os.path.join(examples_dir, "raw_demo.jsonl")],
+                        [os.path.join(examples_dir, "chunked_demo.json")],
                     ],
                                 inputs=upload_file,
                                 label="Example Files",
