@@ -57,7 +57,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
 
     return graph_gen
 
-
+# pylint: disable=too-many-statements
 def run_graphgen(*arguments: list, progress=gr.Progress()):
     # Unpack arguments
     config = {
@@ -241,7 +241,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 value="Qwen/Qwen2.5-7B-Instruct",
                 info=_("Trainee Model Info"),
                 interactive=True,
-                visible=(if_trainee_model.value == True))
+                visible=if_trainee_model.value is True)
 
         with gr.Accordion(label=_("Generation Config"), open=False):
             chunk_size = gr.Slider(label="Chunk Size",
@@ -261,7 +261,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                                      value=2,
                                      minimum=1,
                                      interactive=True,
-                                     visible=(if_trainee_model.value == True))
+                                     visible=if_trainee_model.value is True)
             bidirectional = gr.Checkbox(label="Bidirectional",
                                         value=True,
                                         interactive=True)
@@ -277,7 +277,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 label="Max Extra Edges",
                 step=1,
                 interactive=True,
-                visible=(expand_method.value == "max_width"))
+                visible=expand_method.value == "max_width")
             max_tokens = gr.Slider(minimum=64,
                                    maximum=1024,
                                    value=256,
@@ -298,7 +298,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 label="Edge Sampling",
                 value="max_loss",
                 interactive=True,
-                visible=(if_trainee_model.value == True))
+                visible=if_trainee_model.value is True)
             isolated_node_strategy = gr.Radio(choices=["add", "ignore"],
                                               label="Isolated Node Strategy",
                                               value="ignore",
@@ -355,15 +355,15 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                                   outputs=[])
 
         expand_method.change(lambda method:
-                             (gr.update(visible=(method == "max_width")),
-                              gr.update(visible=(method != "max_width"))),
+                             (gr.update(visible=method == "max_width"),
+                              gr.update(visible=method != "max_width")),
                              inputs=expand_method,
                              outputs=[max_extra_edges, max_tokens])
 
         if_trainee_model.change(
-            lambda use_trainee: (gr.update(visible=(use_trainee == True)),
-                                 gr.update(visible=(use_trainee == True)),
-                                 gr.update(visible=(use_trainee == True))),
+            lambda use_trainee: (gr.update(visible=use_trainee is True),
+                                 gr.update(visible=use_trainee is True),
+                                 gr.update(visible=use_trainee is True)),
             inputs=if_trainee_model,
             outputs=[trainee_model, quiz_samples, edge_sampling])
 

@@ -14,6 +14,7 @@ class RewardEvaluator:
     results: list[float] = None
 
     def __post_init__(self):
+        import torch
         self.num_gpus = torch.cuda.device_count()
 
     @staticmethod
