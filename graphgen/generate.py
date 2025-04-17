@@ -5,18 +5,20 @@ import argparse
 import yaml
 from dotenv import load_dotenv
 
-from graphgen.graphgen import GraphGen
-from graphgen.models import OpenAIModel, Tokenizer, TraverseStrategy
-from graphgen.utils import set_logger
+from .graphgen import GraphGen
+from .models import OpenAIModel, Tokenizer, TraverseStrategy
+from .utils import set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
-unique_id = int(time.time())
-set_logger(os.path.join(sys_path, "cache", "logs", f"graphgen_{unique_id}.log"), if_stream=False)
-config_path = os.path.join(sys_path, "cache", "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml")
 
 load_dotenv()
 
-def save_config(global_config):
+def set_working_dir(folder):
+    os.makedirs(folder, exist_ok=True)
+    os.makedirs(os.path.join(folder, "data", "graphgen"), exist_ok=True)
+    os.makedirs(os.path.join(folder, "logs"), exist_ok=True)
+
+def save_config(config_path, global_config):
     if not os.path.exists(os.path.dirname(config_path)):
         os.makedirs(os.path.dirname(config_path))
     with open(config_path, "w", encoding='utf-8') as config_file:
@@ -28,7 +30,19 @@ if __name__ == '__main__':
                         help='Config parameters for GraphGen.',
                         default='graphgen_config.yaml',
                         type=str)
+    parser.add_argument('--output_dir',
+                        help='Output directory for GraphGen.',
+                        default=sys_path,
+                        required=True,
+                        type=str)
+
     args = parser.parse_args()
+
+    working_dir = args.output_dir
+    set_working_dir(working_dir)
+    unique_id = int(time.time())
+    set_logger(os.path.join(working_dir, "logs", f"graphgen_{unique_id}.log"), if_stream=False)
+
     with open(args.config_file, "r", encoding='utf-8') as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
@@ -59,6 +73,7 @@ if __name__ == '__main__':
     )
 
     graph_gen = GraphGen(
+        working_dir=working_dir,
         unique_id=unique_id,
         synthesizer_llm_client=synthesizer_llm_client,
         trainee_llm_client=trainee_llm_client,
@@ -77,4 +92,5 @@ if __name__ == '__main__':
 
     graph_gen.traverse()
 
-    save_config(config)
+    path = os.path.join(working_dir, "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml")
+    save_config(path, config)

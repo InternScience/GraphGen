@@ -1,1 +1,1 @@
-python3 generate.py --config_file configs/graphgen_config.yaml
+python3 -m graphgen.generate --config_file graphgen/configs/graphgen_config.yaml --output_dir cache/

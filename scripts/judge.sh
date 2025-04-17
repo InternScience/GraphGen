@@ -1,2 +1,2 @@
-python3 judge.py  --input cache \
+python3 -m graphgen.judge  --input cache \
                   --output cache/output/new_graph.graphml \

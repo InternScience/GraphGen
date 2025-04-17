@@ -3,7 +3,7 @@ input_file: resources/examples/raw_demo.jsonl
 tokenizer: cl100k_base
 quiz_samples: 2
 traverse_strategy:
-  qa_form: atomic
+  qa_form: open
   bidirectional: true
   difficulty_order:
   - medium

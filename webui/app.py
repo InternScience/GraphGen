@@ -204,7 +204,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             <img src="https://img.shields.io/github/stars/open-sciencelab/GraphGen?style=social" alt="GitHub Stars">
         </a>
         <a href="https://arxiv.org/xxxxx">
-            <img src="https://img.shields.io/badge/arXiv-2401.00001-yellow" alt="arXiv">
+            <img src="https://img.shields.io/badge/arXiv-xxxxx-yellow" alt="arXiv">
         </a>
     </div>
     """)
