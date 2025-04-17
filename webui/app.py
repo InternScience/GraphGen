@@ -5,7 +5,7 @@ import tempfile
 
 import gradio as gr
 
-from i18n import Translate, gettext as _
+from gradio_i18n import Translate, gettext as _
 from test_api import test_api_connection
 
 # pylint: disable=wrong-import-position

@@ -13,6 +13,7 @@ jieba
 plotly
 pandas
 gradio
+gradio-i18n==0.3.0
 kaleido
 pyyaml
 langcodes
