@@ -2,7 +2,7 @@
   "en": {
     "Title": "✨Easy-to-use LLM Training Data Generation Framework✨",
     "Intro": "is a framework for synthetic data generation guided by knowledge graphs, designed to tackle challenges for knowledge-intensive QA generation. \n\nBy uploading your text chunks (such as knowledge in agriculture, healthcare, or marine science) and filling in the LLM API key, you can generate the training data required by **LLaMA-Factory** and **xtuner** online. We will automatically delete user information after completion.",
-    "Use Trainee Model": "Use Trainee Model to identify knowledge blind spots, disable by default",
+    "Use Trainee Model": "Use Trainee Model to identify knowledge blind spots, please keep disable for SiliconCloud",
     "Base URL Info": "Base URL for the API, use SiliconFlow as default",
     "Synthesizer Model Info": "Model for constructing KGs and generating QAs",
     "Trainee Model Info": "Model for training",
@@ -12,7 +12,7 @@
   "zh": {
     "Title": "✨开箱即用的LLM训练数据生成框架✨",
     "Intro": "是一个基于知识图谱的合成数据生成框架，旨在解决知识密集型问答生成的挑战。\n\n 上传你的文本块（如农业、医疗、海洋知识），填写 LLM api key，即可在线生成 **LLaMA-Factory**、**xtuner** 所需训练数据。结束后我们将自动删除用户信息。",
-    "Use Trainee Model": "使用Trainee Model来识别知识盲区，默认禁用",
+    "Use Trainee Model": "使用Trainee Model来识别知识盲区，使用硅基流动时请保持禁用",
     "Base URL Info": "调用模型API的URL，默认使用硅基流动",
     "Synthesizer Model Info": "用于构建知识图谱和生成问答的模型",
     "Trainee Model Info": "用于训练的模型",
