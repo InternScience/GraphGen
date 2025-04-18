@@ -7,7 +7,8 @@
     "Synthesizer Model Info": "Model for constructing KGs and generating QAs",
     "Trainee Model Info": "Model for training",
     "Model Config": "Model Configuration",
-    "Generation Config": "Generation Config"
+    "Generation Config": "Generation Config",
+    "SiliconCloud Token": "SiliconCloud API Key"
   },
   "zh": {
     "Title": "✨开箱即用的LLM训练数据生成框架✨",
@@ -17,6 +18,7 @@
     "Synthesizer Model Info": "用于构建知识图谱和生成问答的模型",
     "Trainee Model Info": "用于训练的模型",
     "Model Config": "模型配置",
-    "Generation Config": "生成配置"
+    "Generation Config": "生成配置",
+    "SiliconCloud Token": "硅基流动 API Key"
   }
 }
