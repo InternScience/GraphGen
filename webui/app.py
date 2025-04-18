@@ -371,7 +371,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                     value="",
                     info="https://cloud.siliconflow.cn/account/ak")
             with gr.Column(scale=1):
-                test_connection_btn = gr.Button("Test Connection")
+                test_connection_btn = gr.Button(_("Test Connection"))
 
         with gr.Blocks():
             with gr.Row(equal_height=True):
@@ -399,7 +399,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
                     upload_file = gr.File(
-                        label="Upload File",
+                        label=_("Upload File"),
                         file_count="single",
                         file_types=[".txt", ".json", ".jsonl"],
                         interactive=True,
@@ -411,7 +411,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                         [os.path.join(examples_dir, "chunked_demo.json")],
                     ],
                                 inputs=upload_file,
-                                label="Example Files",
+                                label=_("Example Files"),
                                 examples_per_page=3)
                 with gr.Column(scale=1):
                     output = gr.File(
@@ -428,7 +428,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                          visible=False,
                          wrap=True)
 
-        submit_btn = gr.Button("Run GraphGen")
+        submit_btn = gr.Button(_("Run GraphGen"))
 
         # Test Connection
         test_connection_btn.click(
