@@ -7,6 +7,7 @@ import gradio as gr
 
 from gradio_i18n import Translate, gettext as _
 from test_api import test_api_connection
+from cache_utils import setup_workspace, cleanup_workspace
 
 # pylint: disable=wrong-import-position
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -25,7 +26,12 @@ css = """
 
 
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
-    graph_gen = GraphGen()
+    # Set up working directory
+    working_dir = setup_workspace(os.path.join(root_dir, "cache"))
+
+    graph_gen = GraphGen(
+        working_dir=working_dir
+    )
 
     # Set up LLM clients
     graph_gen.synthesizer_llm_client = OpenAIModel(
@@ -160,11 +166,13 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
         with tempfile.NamedTemporaryFile(
                 mode="w",
                 suffix=".jsonl",
-                delete=False,  # 防止自动删除
+                delete=False,
                 encoding="utf-8") as tmpfile:
-            # 假设qa_storage有导出数据的方法
             json.dump(output_data, tmpfile, ensure_ascii=False)
             output_file = tmpfile.name
+
+        # Clean up workspace
+        cleanup_workspace(graph_gen.working_dir)
 
         progress(1.0, "Graph traversed")
         return output_file
