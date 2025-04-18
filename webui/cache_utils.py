@@ -15,4 +15,3 @@ def setup_workspace(folder):
 def cleanup_workspace(folder):
     if os.path.exists(folder):
         shutil.rmtree(folder)
-        return True
