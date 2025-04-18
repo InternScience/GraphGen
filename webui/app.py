@@ -203,7 +203,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
 
         progress(1.0, "Graph traversed")
         return output_file, gr.DataFrame(label='Token Stats',
-                         headers=["Source Text Token Count", "Predicted Token Count", "Token Used"],
+                         headers=["Source Text Token Count", "Expected Token Usage", "Token Used"],
                          datatype=["str", "str", "str"],
                          interactive=False,
                          value=data_frame,
@@ -389,7 +389,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
 
         with gr.Blocks():
             token_counter = gr.DataFrame(label='Token Stats',
-                         headers=["Source Text Token Count", "Predicted Token Count", "Token Used"],
+                         headers=["Source Text Token Count", "Estimated Token Usage", "Token Used"],
                          datatype=["str", "str", "str"],
                          interactive=False,
                          visible=False,

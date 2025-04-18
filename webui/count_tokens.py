@@ -2,9 +2,10 @@ import os
 import sys
 import json
 import pandas as pd
+
+# pylint: disable=wrong-import-position
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(root_dir)
-
 from graphgen.models import Tokenizer
 
 def count_tokens(file, tokenizer_name, data_frame):
@@ -50,7 +51,7 @@ def count_tokens(file, tokenizer_name, data_frame):
         )
         data_frame = new_df
 
-    except Exception as e:
+    except Exception as e: # pylint: disable=broad-except
         print("[ERROR] DataFrame操作异常:", str(e))
 
     return data_frame
