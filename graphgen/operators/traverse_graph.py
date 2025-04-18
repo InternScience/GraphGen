@@ -1,4 +1,5 @@
 import asyncio
+import gradio as gr
 
 from tqdm.asyncio import tqdm as tqdm_async
 
@@ -167,6 +168,7 @@ async def traverse_graph_by_edge(
     graph_storage: NetworkXStorage,
     traverse_strategy: TraverseStrategy,
     text_chunks_storage: JsonKVStorage,
+    progress_bar: gr.Progress = None,
     max_concurrent: int = 1000
 ) -> dict:
     """
@@ -177,6 +179,7 @@ async def traverse_graph_by_edge(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
+    :param progress_bar
     :param max_concurrent
     :return: question and answer
     """
@@ -289,11 +292,13 @@ async def traverse_graph_by_edge(
 
     for result in tqdm_async(asyncio.as_completed(
         [_process_single_batch(batch) for batch in processing_batches]
-    ), total=len(processing_batches), desc="Processing batches"):
+    ), total=len(processing_batches), desc="Generating QAs"):
         try:
             results.update(await result)
+            if progress_bar is not None:
+                progress_bar(len(results) / len(processing_batches), desc="Generating QAs")
         except Exception as e: # pylint: disable=broad-except
-            logger.error("Error occurred while processing batches: %s", e)
+            logger.error("Error occurred while generating QA: %s", e)
 
     return results
 
@@ -304,6 +309,7 @@ async def traverse_graph_atomically(
     graph_storage: NetworkXStorage,
     traverse_strategy: TraverseStrategy,
     text_chunks_storage: JsonKVStorage,
+    progress_bar: gr.Progress = None,
     max_concurrent: int = 1000
 ) -> dict:
     """
@@ -314,6 +320,7 @@ async def traverse_graph_atomically(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
+    :param progress_bar
     :param max_concurrent
     :return: question and answer
     """
@@ -391,12 +398,14 @@ async def traverse_graph_atomically(
     for result in tqdm_async(
         asyncio.as_completed([_generate_question(task) for task in tasks]),
         total=len(tasks),
-        desc="Generating questions"
+        desc="Generating QAs"
     ):
         try:
             results.update(await result)
+            if progress_bar is not None:
+                progress_bar(len(results) / len(tasks), desc="Generating QAs")
         except Exception as e: # pylint: disable=broad-except
-            logger.error("Error occurred while generating questions: %s", e)
+            logger.error("Error occurred while generating QA: %s", e)
     return results
 
 async def traverse_graph_for_multi_hop(
@@ -405,6 +414,7 @@ async def traverse_graph_for_multi_hop(
     graph_storage: NetworkXStorage,
     traverse_strategy: TraverseStrategy,
     text_chunks_storage: JsonKVStorage,
+    progress_bar: gr.Progress = None,
     max_concurrent: int = 1000
 ) -> dict:
     """
@@ -415,6 +425,7 @@ async def traverse_graph_for_multi_hop(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
+    :param progress_bar
     :param max_concurrent
     :return: question and answer
     """
@@ -499,10 +510,12 @@ async def traverse_graph_for_multi_hop(
     for result in tqdm_async(
         asyncio.as_completed([_process_single_batch(batch) for batch in processing_batches]),
         total=len(processing_batches),
-        desc="Processing batches"
+        desc="Generating QAs"
     ):
         try:
             results.update(await result)
+            if progress_bar is not None:
+                progress_bar(len(results) / len(processing_batches), desc="Generating QAs")
         except Exception as e: # pylint: disable=broad-except
-            logger.error("Error occurred while processing batches: %s", e)
+            logger.error("Error occurred while generating QA: %s", e)
     return results

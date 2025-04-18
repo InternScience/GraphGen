@@ -100,6 +100,8 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     graph_gen.clear()
     progress(0.2, "Model Initialized")
 
+    graph_gen.progress_bar = progress
+
     try:
         # Load input data
         file = config['input_file']

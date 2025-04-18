@@ -7,6 +7,7 @@ from typing import List, cast, Union
 from dataclasses import dataclass
 
 from tqdm.asyncio import tqdm as tqdm_async
+import gradio as gr
 
 from .models import Chunk, JsonKVStorage, OpenAIModel, NetworkXStorage, WikiSearch, Tokenizer, TraverseStrategy
 from .models.storage.base_storage import StorageNameSpace
@@ -38,6 +39,9 @@ class GraphGen:
 
     # traverse strategy
     traverse_strategy: TraverseStrategy = TraverseStrategy()
+
+    # webui
+    progress_bar: gr.Progress = None
 
     def __post_init__(self):
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(
@@ -78,6 +82,9 @@ class GraphGen:
                 logger.warning("All docs are already in the storage")
                 return {}
             logger.info("[New Docs] inserting %d docs", len(new_docs))
+
+            cur_index = 1
+            doc_number = len(new_docs)
             for doc_key, doc in tqdm_async(
                     new_docs.items(), desc="Chunking documents", unit="doc"
                 ):
@@ -89,6 +96,13 @@ class GraphGen:
                                                                             self.chunk_overlap_size, self.chunk_size)
                 }
                 inserting_chunks.update(chunks)
+
+                if self.progress_bar is not None:
+                    self.progress_bar(
+                        cur_index / doc_number, f"Chunking {doc_key}"
+                    )
+                    cur_index += 1
+
             _add_chunk_keys = await self.text_chunks_storage.filter_keys(list(inserting_chunks.keys()))
             inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
         elif data_type == "chunked":
@@ -141,7 +155,8 @@ class GraphGen:
             llm_client=self.synthesizer_llm_client,
             kg_instance=self.graph_storage,
             tokenizer_instance=self.tokenizer_instance,
-            chunks=[Chunk(id=k, content=v['content']) for k, v in inserting_chunks.items()]
+            chunks=[Chunk(id=k, content=v['content']) for k, v in inserting_chunks.items()],
+            progress_bar = self.progress_bar,
         )
         if not _add_entities_and_relations:
             logger.warning("No entities or relations extracted")
@@ -199,16 +214,19 @@ class GraphGen:
                                                       self.tokenizer_instance,
                                                       self.graph_storage,
                                                       self.traverse_strategy,
-                                                      self.text_chunks_storage)
+                                                      self.text_chunks_storage,
+                                                      self.progress_bar)
         elif self.traverse_strategy.qa_form == "multi_hop":
             results = await traverse_graph_for_multi_hop(self.synthesizer_llm_client,
                                                             self.tokenizer_instance,
                                                             self.graph_storage,
                                                             self.traverse_strategy,
-                                                            self.text_chunks_storage)
+                                                            self.text_chunks_storage,
+                                                            self.progress_bar)
         else:
             results = await traverse_graph_by_edge(self.synthesizer_llm_client, self.tokenizer_instance,
-                                                   self.graph_storage, self.traverse_strategy, self.text_chunks_storage)
+                                                   self.graph_storage, self.traverse_strategy, self.text_chunks_storage,
+                                                   self.progress_bar)
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 

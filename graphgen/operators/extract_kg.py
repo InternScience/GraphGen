@@ -1,8 +1,9 @@
 import re
 import asyncio
-
 from typing import List
 from collections import defaultdict
+
+import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
 from graphgen.models import Chunk, OpenAIModel, Tokenizer
 from graphgen.models.storage.base_storage import BaseGraphStorage
@@ -13,11 +14,13 @@ from graphgen.utils import (logger, pack_history_conversations, split_string_by_
 from graphgen.operators.merge_kg import merge_nodes, merge_edges
 
 
+# pylint: disable=too-many-statements
 async def extract_kg(
         llm_client: OpenAIModel,
         kg_instance: BaseGraphStorage,
         tokenizer_instance: Tokenizer,
         chunks: List[Chunk],
+        progress_bar: gr.Progress = None,
         max_concurrent: int = 1000
 ):
     """
@@ -25,6 +28,7 @@ async def extract_kg(
     :param kg_instance
     :param tokenizer_instance
     :param chunks
+    :param progress_bar: Gradio progress bar to show the progress of the extraction
     :param max_concurrent
     :return:
     """
@@ -98,6 +102,7 @@ async def extract_kg(
             return dict(nodes), dict(edges)
 
     results = []
+    chunk_number = len(chunks)
     for result in tqdm_async(
         asyncio.as_completed([_process_single_content(c) for c in chunks]),
         total=len(chunks),
@@ -106,6 +111,8 @@ async def extract_kg(
     ):
         try:
             results.append(await result)
+            if progress_bar is not None:
+                progress_bar(len(results) / chunk_number, desc="Extracting entities and relationships from chunks")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while extracting entities and relationships from chunks: %s", e)
 
