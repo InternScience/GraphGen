@@ -3,11 +3,13 @@ import sys
 import json
 import tempfile
 
+import pandas as pd
 import gradio as gr
 
 from gradio_i18n import Translate, gettext as _
 from test_api import test_api_connection
 from cache_utils import setup_workspace, cleanup_workspace
+from count_tokens import count_tokens
 
 # pylint: disable=wrong-import-position
 root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -23,7 +25,6 @@ css = """
     align-items: center;
 }
 """
-
 
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     # Set up working directory
@@ -65,6 +66,9 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
 
 # pylint: disable=too-many-statements
 def run_graphgen(*arguments: list, progress=gr.Progress()):
+    def sum_tokens(client):
+        return sum(u["total_tokens"] for u in client.token_usage)
+
     # Unpack arguments
     config = {
         "if_trainee_model": arguments[0],
@@ -174,14 +178,44 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
         # Clean up workspace
         cleanup_workspace(graph_gen.working_dir)
 
+        synthesizer_tokens = sum_tokens(graph_gen.synthesizer_llm_client)
+        trainee_tokens = sum_tokens(graph_gen.trainee_llm_client) if config['if_trainee_model'] else 0
+        total_tokens = synthesizer_tokens + trainee_tokens
+
+        data_frame = arguments[-1]
+        try:
+            data_frame = arguments[-1]
+            _update_data = [
+                [
+                    data_frame.iloc[0, 0],
+                    data_frame.iloc[0, 1],
+                    str(total_tokens)
+                ]
+            ]
+            new_df = pd.DataFrame(
+                _update_data,
+                columns=data_frame.columns
+            )
+            data_frame = new_df
+
+        except Exception as e:
+            raise gr.Error(f"DataFrame operation error: {str(e)}")
+
         progress(1.0, "Graph traversed")
-        return output_file
+        return output_file, gr.DataFrame(label='Token Stats',
+                         headers=["Source Text Token Count", "Predicted Token Count", "Token Used"],
+                         datatype=["str", "str", "str"],
+                         interactive=False,
+                         value=data_frame,
+                         visible=True,
+                         wrap=True)
 
     except Exception as e:  # pylint: disable=broad-except
         raise gr.Error(f"Error occurred: {str(e)}")
 
-with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
-               css=css) as demo:
+
+with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
+               css=css) as demo):
     # Header
     gr.Image(value=os.path.join(root_dir, 'resources', 'images', 'logo.png'),
              label="GraphGen Banner",
@@ -353,6 +387,14 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                         interactive=False,
                     )
 
+        with gr.Blocks():
+            token_counter = gr.DataFrame(label='Token Stats',
+                         headers=["Source Text Token Count", "Predicted Token Count", "Token Used"],
+                         datatype=["str", "str", "str"],
+                         interactive=False,
+                         visible=False,
+                         wrap=True)
+
         submit_btn = gr.Button("Run GraphGen")
 
         # Test Connection
@@ -377,17 +419,32 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             inputs=if_trainee_model,
             outputs=[trainee_model, quiz_samples, edge_sampling])
 
+        # 计算上传文件的token数
+        upload_file.change(
+            lambda x: (gr.update(visible=True)),
+            inputs=[upload_file],
+            outputs=[token_counter],
+        ).then(
+            count_tokens,
+            inputs=[upload_file, tokenizer, token_counter],
+            outputs=[token_counter],
+        )
+
         # run GraphGen
         submit_btn.click(
+            lambda x: (gr.update(visible=False)),
+            inputs=[token_counter],
+            outputs=[token_counter],
+        ).then(
             run_graphgen,
             inputs=[
                 if_trainee_model, upload_file, tokenizer, qa_form,
                 bidirectional, expand_method, max_extra_edges, max_tokens,
                 max_depth, edge_sampling, isolated_node_strategy,
                 loss_strategy, base_url, synthesizer_model, trainee_model,
-                api_key, chunk_size
+                api_key, chunk_size, token_counter
             ],
-            outputs=[output],
+            outputs=[output, token_counter],
         )
 
 if __name__ == "__main__":

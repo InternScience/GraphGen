@@ -1,5 +1,5 @@
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import List, Dict, Optional
 import openai
 from openai import AsyncOpenAI, RateLimitError, APIConnectionError, APITimeoutError
@@ -31,10 +31,10 @@ class OpenAIModel(TopkTokenModel):
     model_name: str = "gpt-4o-mini"
     api_key: str = None
     base_url: str = None
-
     system_prompt: str = ""
     json_mode: bool = False
     seed: int = None
+    token_usage: list = field(default_factory=list)
 
     def __post_init__(self):
         assert self.api_key is not None, "Please provide api key to access openai api."
@@ -99,7 +99,12 @@ class OpenAIModel(TopkTokenModel):
             model=self.model_name,
             **kwargs
         )
-
+        if hasattr(completion, "usage"):
+            self.token_usage.append({
+                "prompt_tokens": completion.usage.prompt_tokens,
+                "completion_tokens": completion.usage.completion_tokens,
+                "total_tokens": completion.usage.total_tokens,
+            })
         return completion.choices[0].message.content
 
     async def generate_inputs_prob(self, text: str, history: Optional[List[str]] = None) -> List[Token]:
