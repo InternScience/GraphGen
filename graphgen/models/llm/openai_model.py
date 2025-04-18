@@ -11,7 +11,8 @@ from tenacity import (
 )
 
 from graphgen.models.llm.topk_token_model import TopkTokenModel, Token
-
+from graphgen.models.llm.tokenizer import Tokenizer
+from graphgen.models.llm.limitter import RPM, TPM
 
 def get_top_response_tokens(response: openai.ChatCompletion) -> List[Token]:
     token_logprobs = response.choices[0].logprobs.content
@@ -31,10 +32,16 @@ class OpenAIModel(TopkTokenModel):
     model_name: str = "gpt-4o-mini"
     api_key: str = None
     base_url: str = None
+
     system_prompt: str = ""
     json_mode: bool = False
     seed: int = None
+
     token_usage: list = field(default_factory=list)
+    request_limit: bool = False
+    rpm: RPM = field(default_factory=lambda: RPM(rpm=1000))
+    tpm: TPM = field(default_factory=lambda: TPM(tpm=50000))
+
 
     def __post_init__(self):
         assert self.api_key is not None, "Please provide api key to access openai api."
@@ -62,6 +69,7 @@ class OpenAIModel(TopkTokenModel):
 
         kwargs['messages']= messages
         return kwargs
+
 
     @retry(
         stop=stop_after_attempt(5),
@@ -94,6 +102,15 @@ class OpenAIModel(TopkTokenModel):
     async def generate_answer(self, text: str, history: Optional[List[str]] = None, temperature: int = 0) -> str:
         kwargs = self._pre_generate(text, history)
         kwargs["temperature"] = temperature
+
+        prompt_tokens = 0
+        for message in kwargs['messages']:
+            prompt_tokens += len(Tokenizer().encode_string(message['content']))
+        estimated_tokens = prompt_tokens + kwargs['max_tokens']
+
+        if self.request_limit:
+            await self.rpm.wait(silent=True)
+            await self.tpm.wait(estimated_tokens, silent=True)
 
         completion = await self.client.chat.completions.create( # pylint: disable=E1125
             model=self.model_name,

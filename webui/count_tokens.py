@@ -9,6 +9,9 @@ sys.path.append(root_dir)
 from graphgen.models import Tokenizer
 
 def count_tokens(file, tokenizer_name, data_frame):
+    if not file or not os.path.exists(file):
+        return data_frame
+
     if file.endswith(".jsonl"):
         with open(file, "r", encoding='utf-8') as f:
             data = [json.loads(line) for line in f]

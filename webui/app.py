@@ -17,6 +17,7 @@ sys.path.append(root_dir)
 
 from graphgen.graphgen import GraphGen
 from graphgen.models import OpenAIModel, Tokenizer, TraverseStrategy
+from graphgen.models.llm.limitter import RPM, TPM
 
 css = """
 .center-row {
@@ -38,12 +39,20 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
     graph_gen.synthesizer_llm_client = OpenAIModel(
         model_name=env.get("SYNTHESIZER_MODEL", ""),
         base_url=env.get("SYNTHESIZER_BASE_URL", ""),
-        api_key=env.get("SYNTHESIZER_API_KEY", ""))
+        api_key=env.get("SYNTHESIZER_API_KEY", ""),
+        request_limit=True,
+        rpm= RPM(env.get("RPM", 1000)),
+        tpm= TPM(env.get("TPM", 50000)),
+    )
 
     graph_gen.trainee_llm_client = OpenAIModel(
         model_name=env.get("TRAINEE_MODEL", ""),
         base_url=env.get("TRAINEE_BASE_URL", ""),
-        api_key=env.get("TRAINEE_API_KEY", ""))
+        api_key=env.get("TRAINEE_API_KEY", ""),
+        request_limit=True,
+        rpm= RPM(env.get("RPM", 1000)),
+        tpm= TPM(env.get("TPM", 50000)),
+    )
 
     graph_gen.tokenizer_instance = Tokenizer(
         config.get("tokenizer", "cl100k_base"))
@@ -97,7 +106,9 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
         "TRAINEE_BASE_URL": arguments[12],
         "TRAINEE_MODEL": arguments[14],
         "SYNTHESIZER_API_KEY": arguments[15],
-        "TRAINEE_API_KEY": arguments[15]
+        "TRAINEE_API_KEY": arguments[15],
+        "RPM": arguments[17],
+        "TPM": arguments[18],
     }
 
     # Test API connection
@@ -364,6 +375,28 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
 
         with gr.Blocks():
             with gr.Row(equal_height=True):
+                with gr.Column():
+                    rpm = gr.Slider(
+                        label="RPM",
+                        minimum=500,
+                        maximum=10000,
+                        value=1000,
+                        step=100,
+                        interactive=True,
+                        visible=True)
+                with gr.Column():
+                    tpm = gr.Slider(
+                        label="TPM",
+                        minimum=5000,
+                        maximum=100000,
+                        value=50000,
+                        step=1000,
+                        interactive=True,
+                        visible=True)
+
+
+        with gr.Blocks():
+            with gr.Row(equal_height=True):
                 with gr.Column(scale=1):
                     upload_file = gr.File(
                         label="Upload File",
@@ -442,7 +475,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 bidirectional, expand_method, max_extra_edges, max_tokens,
                 max_depth, edge_sampling, isolated_node_strategy,
                 loss_strategy, base_url, synthesizer_model, trainee_model,
-                api_key, chunk_size, token_counter
+                api_key, chunk_size, rpm, tpm, token_counter
             ],
             outputs=[output, token_counter],
         )
