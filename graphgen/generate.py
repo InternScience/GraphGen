@@ -2,6 +2,7 @@ import os
 import json
 import time
 import argparse
+from importlib.resources import files
 import yaml
 from dotenv import load_dotenv
 
@@ -28,7 +29,8 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file',
                         help='Config parameters for GraphGen.',
-                        default=os.path.join(sys_path, "configs", "graphgen_config.yaml"),
+                        # default=os.path.join(sys_path, "configs", "graphgen_config.yaml"),
+                        default=files('graphgen').joinpath("configs", "graphgen_config.yaml"),
                         type=str)
     parser.add_argument('--output_dir',
                         help='Output directory for GraphGen.',
