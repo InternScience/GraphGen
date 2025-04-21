@@ -85,8 +85,8 @@ class GraphGen:
 
             cur_index = 1
             doc_number = len(new_docs)
-            for doc_key, doc in tqdm_async(
-                    new_docs.items(), desc="Chunking documents", unit="doc"
+            async for doc_key, doc in tqdm_async(
+                    new_docs.items(), desc="[1/4]Chunking documents", unit="doc"
                 ):
                 chunks = {
                     compute_content_hash(dp["content"], prefix="chunk-"): {
@@ -117,7 +117,7 @@ class GraphGen:
                 logger.warning("All docs are already in the storage")
                 return {}
             logger.info("[New Docs] inserting %d docs", len(new_docs))
-            for doc in tqdm_async(data, desc="Chunking documents", unit="doc"):
+            async for doc in tqdm_async(data, desc="[1/4]Chunking documents", unit="doc"):
                 doc_str = "".join([chunk['content'] for chunk in doc])
                 for chunk in doc:
                     chunk_key = compute_content_hash(chunk['content'], prefix="chunk-")

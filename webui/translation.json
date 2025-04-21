@@ -16,7 +16,7 @@
   },
   "zh": {
     "Title": "✨开箱即用的LLM训练数据生成框架✨",
-    "Intro": "是一个基于知识图谱的合成数据生成框架，旨在解决知识密集型问答生成的挑战。\n\n 上传你的文本块（如农业、医疗、海洋知识），填写 LLM api key，即可在线生成 **[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)**、**[xtuner](https://github.com/InternLM/xtuner)** 所需训练数据。结束后我们将自动删除用户信息。",
+    "Intro": "是一个基于知识图谱的数据合成框架，旨在知识密集型任务中生成问答。\n\n 上传你的文本块（如农业、医疗、海洋知识），填写 LLM api key，即可在线生成 **[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)**、**[xtuner](https://github.com/InternLM/xtuner)** 所需训练数据。结束后我们将自动删除用户信息。",
     "Use Trainee Model": "使用Trainee Model来识别知识盲区，使用硅基流动时请保持禁用",
     "Base URL Info": "调用模型API的URL，默认使用硅基流动",
     "Synthesizer Model Info": "用于构建知识图谱和生成问答的模型",

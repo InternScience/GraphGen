@@ -103,16 +103,16 @@ async def extract_kg(
 
     results = []
     chunk_number = len(chunks)
-    for result in tqdm_async(
+    async for result in tqdm_async(
         asyncio.as_completed([_process_single_content(c) for c in chunks]),
         total=len(chunks),
-        desc="Extracting entities and relationships from chunks",
+        desc="[3/4]Extracting entities and relationships from chunks",
         unit="chunk",
     ):
         try:
             results.append(await result)
             if progress_bar is not None:
-                progress_bar(len(results) / chunk_number, desc="Extracting entities and relationships from chunks")
+                progress_bar(len(results) / chunk_number, desc="[3/4]Extracting entities and relationships from chunks")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while extracting entities and relationships from chunks: %s", e)
 

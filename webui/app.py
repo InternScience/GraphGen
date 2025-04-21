@@ -119,7 +119,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
     graph_gen.clear()
-    progress(0.2, "Model Initialized")
+    progress(0.2, "[2/4]Model Initialized")
 
     graph_gen.progress_bar = progress
 
@@ -378,7 +378,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 with gr.Column():
                     rpm = gr.Slider(
                         label="RPM",
-                        minimum=500,
+                        minimum=10,
                         maximum=10000,
                         value=1000,
                         step=100,
@@ -388,7 +388,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                     tpm = gr.Slider(
                         label="TPM",
                         minimum=5000,
-                        maximum=100000,
+                        maximum=5000000,
                         value=50000,
                         step=1000,
                         interactive=True,
@@ -435,9 +435,11 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             test_api_connection,
             inputs=[base_url, api_key, synthesizer_model],
             outputs=[])
-        test_connection_btn.click(test_api_connection,
-                                  inputs=[base_url, api_key, trainee_model],
-                                  outputs=[])
+        
+        if if_trainee_model.value:
+            test_connection_btn.click(test_api_connection,
+                                    inputs=[base_url, api_key, trainee_model],
+                                    outputs=[])
 
         expand_method.change(lambda method:
                              (gr.update(visible=method == "max_width"),
