@@ -110,9 +110,11 @@ async def extract_kg(
         unit="chunk",
     ):
         try:
-            results.append(await result)
             if progress_bar is not None:
                 progress_bar(len(results) / chunk_number, desc="[3/4]Extracting entities and relationships from chunks")
+            results.append(await result)
+            if progress_bar is not None and len(results) == chunk_number:
+                progress_bar(1, desc="[3/4]Extracting entities and relationships from chunks")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while extracting entities and relationships from chunks: %s", e)
 

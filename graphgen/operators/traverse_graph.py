@@ -294,9 +294,11 @@ async def traverse_graph_by_edge(
         [_process_single_batch(batch) for batch in processing_batches]
     ), total=len(processing_batches), desc="[4/4]Generating QAs"):
         try:
-            results.update(await result)
             if progress_bar is not None:
                 progress_bar(len(results) / len(processing_batches), desc="[4/4]Generating QAs")
+            results.update(await result)
+            if progress_bar is not None and len(results) == len(processing_batches):
+                progress_bar(1, desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while generating QA: %s", e)
 
@@ -401,9 +403,11 @@ async def traverse_graph_atomically(
         desc="[4/4]Generating QAs"
     ):
         try:
-            results.update(await result)
             if progress_bar is not None:
                 progress_bar(len(results) / len(tasks), desc="[4/4]Generating QAs")
+            results.update(await result)
+            if progress_bar is not None and len(results) == len(tasks):
+                progress_bar(1, desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while generating QA: %s", e)
     return results
@@ -513,9 +517,11 @@ async def traverse_graph_for_multi_hop(
         desc="[4/4]Generating QAs"
     ):
         try:
-            results.update(await result)
             if progress_bar is not None:
                 progress_bar(len(results) / len(processing_batches), desc="[4/4]Generating QAs")
+            results.update(await result)
+            if progress_bar is not None and len(results) == len(processing_batches):
+                progress_bar(1, desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while generating QA: %s", e)
     return results
