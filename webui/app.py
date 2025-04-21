@@ -114,12 +114,10 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     # Test API connection
     test_api_connection(env["SYNTHESIZER_BASE_URL"],
                         env["SYNTHESIZER_API_KEY"], env["SYNTHESIZER_MODEL"])
-    progress(0.1, "API Connection Successful")
 
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
     graph_gen.clear()
-    progress(0.2, "[2/4]Model Initialized")
 
     graph_gen.progress_bar = progress
 
@@ -157,21 +155,17 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
 
         # Process the data
         graph_gen.insert(data, data_type)
-        progress(0.4, "Data inserted")
 
         if config['if_trainee_model']:
             # Generate quiz
             graph_gen.quiz(max_samples=quiz_samples)
-            progress(0.6, "Quiz generated")
 
             # Judge statements
             graph_gen.judge()
-            progress(0.8, "Statements judged")
         else:
             graph_gen.traverse_strategy.edge_sampling = "random"
             # Skip judge statements
             graph_gen.judge(skip=True)
-            progress(0.8, "Statements judged")
 
         # Traverse graph
         graph_gen.traverse()
@@ -212,7 +206,6 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
         except Exception as e:
             raise gr.Error(f"DataFrame operation error: {str(e)}")
 
-        progress(1.0, "Graph traversed")
         return output_file, gr.DataFrame(label='Token Stats',
                          headers=["Source Text Token Count", "Expected Token Usage", "Token Used"],
                          datatype=["str", "str", "str"],
@@ -435,7 +428,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             test_api_connection,
             inputs=[base_url, api_key, synthesizer_model],
             outputs=[])
-        
+
         if if_trainee_model.value:
             test_connection_btn.click(test_api_connection,
                                     inputs=[base_url, api_key, trainee_model],
