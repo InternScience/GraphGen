@@ -24,11 +24,11 @@ def save_config(config_path, global_config):
     with open(config_path, "w", encoding='utf-8') as config_file:
         yaml.dump(global_config, config_file, default_flow_style=False, allow_unicode=True)
 
-if __name__ == '__main__':
+def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--config_file',
                         help='Config parameters for GraphGen.',
-                        default='graphgen_config.yaml',
+                        default=os.path.join(sys_path, "configs", "graphgen_config.yaml"),
                         type=str)
     parser.add_argument('--output_dir',
                         help='Output directory for GraphGen.',
@@ -94,3 +94,6 @@ if __name__ == '__main__':
 
     path = os.path.join(working_dir, "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml")
     save_config(path, config)
+
+if __name__ == '__main__':
+    main()

@@ -60,5 +60,5 @@ if __name__ == '__main__':
             'Intended Audience :: Education',
             'Intended Audience :: Science/Research',
         ],
-        entry_points={'console_scripts': ['graphgen=generate:__main__']},
+        entry_points={'console_scripts': ['graphgen=graphgen.generate:main']},
     )
