@@ -292,11 +292,11 @@ async def traverse_graph_by_edge(
 
     for result in tqdm_async(asyncio.as_completed(
         [_process_single_batch(batch) for batch in processing_batches]
-    ), total=len(processing_batches), desc="Generating QAs"):
+    ), total=len(processing_batches), desc="[4/4]Generating QAs"):
         try:
             results.update(await result)
             if progress_bar is not None:
-                progress_bar(len(results) / len(processing_batches), desc="Generating QAs")
+                progress_bar(len(results) / len(processing_batches), desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while generating QA: %s", e)
 
@@ -398,12 +398,12 @@ async def traverse_graph_atomically(
     for result in tqdm_async(
         asyncio.as_completed([_generate_question(task) for task in tasks]),
         total=len(tasks),
-        desc="Generating QAs"
+        desc="[4/4]Generating QAs"
     ):
         try:
             results.update(await result)
             if progress_bar is not None:
-                progress_bar(len(results) / len(tasks), desc="Generating QAs")
+                progress_bar(len(results) / len(tasks), desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while generating QA: %s", e)
     return results
@@ -507,15 +507,15 @@ async def traverse_graph_for_multi_hop(
                 logger.error("Error occurred while processing batch: %s", e)
                 return {}
 
-    for result in tqdm_async(
+    async for result in tqdm_async(
         asyncio.as_completed([_process_single_batch(batch) for batch in processing_batches]),
         total=len(processing_batches),
-        desc="Generating QAs"
+        desc="[4/4]Generating QAs"
     ):
         try:
             results.update(await result)
             if progress_bar is not None:
-                progress_bar(len(results) / len(processing_batches), desc="Generating QAs")
+                progress_bar(len(results) / len(processing_batches), desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
             logger.error("Error occurred while generating QA: %s", e)
     return results

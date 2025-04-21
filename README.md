@@ -108,3 +108,9 @@ Experience it on the [OpenXLab Application Center](https://openxlab.org.cn/apps/
 
 ### Workflow
 ![workflow](resources/images/flow.png)
+
+
+## 🍀 Acknowledgements
+- [SiliconCloud](https://siliconflow.cn) Abundant LLM API, some models are free
+- [LightRAG](https://github.com/HKUDS/LightRAG) Simple and efficient graph retrieval solution
+- [ROGRAG](https://github.com/tpoisonooo/ROGRAG) ROGRAG: A Robustly Optimized GraphRAG Framework
