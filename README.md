@@ -39,7 +39,7 @@ Experience it on the [OpenXLab Application Center](https://openxlab.org.cn/apps/
 ### Gradio Demo
 
    ```bash
-   gradio webui/app.py
+   python webui/app.py
    ```
 
 ![ui](resources/images/interface.jpg)

@@ -7,7 +7,6 @@ import pandas as pd
 import gradio as gr
 
 from gradio_i18n import Translate, gettext as _
-from numba.cuda import shared
 
 from test_api import test_api_connection
 from cache_utils import setup_workspace, cleanup_workspace
