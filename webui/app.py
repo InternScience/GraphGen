@@ -7,6 +7,8 @@ import pandas as pd
 import gradio as gr
 
 from gradio_i18n import Translate, gettext as _
+from numba.cuda import shared
+
 from test_api import test_api_connection
 from cache_utils import setup_workspace, cleanup_workspace
 from count_tokens import count_tokens
@@ -180,9 +182,6 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
             json.dump(output_data, tmpfile, ensure_ascii=False)
             output_file = tmpfile.name
 
-        # Clean up workspace
-        cleanup_workspace(graph_gen.working_dir)
-
         synthesizer_tokens = sum_tokens(graph_gen.synthesizer_llm_client)
         trainee_tokens = sum_tokens(graph_gen.trainee_llm_client) if config['if_trainee_model'] else 0
         total_tokens = synthesizer_tokens + trainee_tokens
@@ -216,6 +215,10 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
 
     except Exception as e:  # pylint: disable=broad-except
         raise gr.Error(f"Error occurred: {str(e)}")
+
+    finally:
+        # Clean up workspace
+        cleanup_workspace(graph_gen.working_dir)
 
 
 with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
@@ -476,4 +479,5 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         )
 
 if __name__ == "__main__":
+    demo.queue(api_open=False, default_concurrency_limit=10)
     demo.launch(server_name='0.0.0.0')
