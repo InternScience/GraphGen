@@ -34,7 +34,7 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 
 ## 🚀 Quick Start
 
-Experience it on the [OpenXLab Application Center](https://openxlab.org.cn/apps/detail/tpoisonooo/GraphGen) and [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10).
+Experience it on the [OpenXLab Application Center](https://g-app-center-000704-6802-aerppvq.openxlab.space) and [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10).
 
 ### Gradio Demo
 
