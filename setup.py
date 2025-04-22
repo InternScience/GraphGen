@@ -35,7 +35,7 @@ install_packages = read_requirements()
 
 if __name__ == '__main__':
     setup(
-        name='graphgen',
+        name='graphg',
         version=get_version(),
         url='https://github.com/open-sciencelab/GraphGen',
         description=  # noqa E251
