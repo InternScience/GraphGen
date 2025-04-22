@@ -42,7 +42,7 @@ Experience it on the [OpenXLab Application Center](https://openxlab.org.cn/apps/
    python webui/app.py
    ```
 
-![ui](resources/images/interface.jpg)
+![ui](https://github.com/user-attachments/assets/3024e9bc-5d45-45f8-a4e6-b57bd2350d84)
 
 ### Run from PyPI
 
