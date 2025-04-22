@@ -410,7 +410,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                                 examples_per_page=3)
                 with gr.Column(scale=1):
                     output = gr.File(
-                        label="Output",
+                        label="Output(See Github FAQ)",
                         file_count="single",
                         interactive=False,
                     )
