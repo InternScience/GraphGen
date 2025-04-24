@@ -17,11 +17,15 @@ GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthe
 - 📝 [What is GraphGen?](#-what-is-graphgen)
 - 🚀 [Quick Start](#-quick-start)
 - 📌 [Latest Updates](#-latest-updates)
-- 🌟 [Key Features](#-key-features)
 - 🏗️ [System Architecture](#-system-architecture)
-- ⚙️ [Configurations](#-configurations)
-- 📅 [Roadmap](#-roadmap)
-- 💰 [Cost Analysis](#-cost-analysis)
+- 🍀 [Acknowledgements](#-acknowledgements)
+- 📚 [Citation](#-citation)
+- 📜 [License](#-license)
+
+[//]: # (- 🌟 [Key Features]&#40;#-key-features&#41;)
+[//]: # (- 📅 [Roadmap]&#40;#-roadmap&#41;)
+[//]: # (- 💰 [Cost Analysis]&#40;#-cost-analysis&#41;)
+[//]: # (- ⚙️ [Configurations]&#40;#-configurations&#41;)
 
 </details>
 
@@ -101,23 +105,25 @@ Experience it on the [OpenXLab Application Center](https://g-app-center-000704-6
    ls cache/data/graphgen
    ```
 
+## 📌 Latest Updates
+
+- **2025.04.21**: We have released the initial version of GraphGen.
+
 ## 🏗️ System Architecture
 
 ### Directory Structure
 ```text
 ├── baselines/           # baseline methods
-├── cache/               # cache files
-│   ├── data/            # generated data
-│   ├── logs/            # log files
-├── configs/             # configuration files
 ├── graphgen/            # GraphGen implementation
-│   ├── operators/       # operators
-│   ├── graphgen.py      # main file
-├── models/              # base classes
+│   ├── configs/         # configuration files
+│   ├── models/          # base classes
+│   ├── operators/
+│   ├── templates/       # prompt templates
+│   ├── utils/           # utility functions
+│   ├── graphgen.py      # core logic
+│   ├── generate.py      # main script
 ├── resources/           # static files and examples
 ├── scripts/             # scripts for running experiments
-├── templates/           # prompt templates
-├── utils/               # utility functions
 ├── webui/               # web interface
 └── README.md
 ```
@@ -130,3 +136,19 @@ Experience it on the [OpenXLab Application Center](https://g-app-center-000704-6
 - [SiliconCloud](https://siliconflow.cn) Abundant LLM API, some models are free
 - [LightRAG](https://github.com/HKUDS/LightRAG) Simple and efficient graph retrieval solution
 - [ROGRAG](https://github.com/tpoisonooo/ROGRAG) ROGRAG: A Robustly Optimized GraphRAG Framework
+
+
+## 📚 Citation
+If you find this repository useful, please consider citing our work:
+```bibtex
+@software{Chen_GraphGen_2025,
+author = {Chen, Zihong and Jiang, Wanli and Li, Jingzhe and Yuan, Zhonghang and Wang, Chenyang and Kong, Huanjun and Dong, Nanqing},
+month = apr,
+title = {{GraphGen}},
+url = {https://github.com/open-sciencelab/GraphGen},
+year = {2025}
+}
+```
+
+## 📜 License
+This project is licensed under the [Apache License 2.0](LICENSE).
