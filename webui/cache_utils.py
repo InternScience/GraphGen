@@ -9,7 +9,11 @@ def setup_workspace(folder):
     working_dir = os.path.join(folder, request_id)
     os.makedirs(working_dir, exist_ok=True)
 
-    return working_dir
+    log_dir = os.path.join(folder, "logs")
+    os.makedirs(log_dir, exist_ok=True)
+    log_file = os.path.join(log_dir, f"{request_id}.log")
+
+    return log_file, working_dir
 
 
 def cleanup_workspace(folder):

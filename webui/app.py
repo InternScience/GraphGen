@@ -19,6 +19,8 @@ sys.path.append(root_dir)
 from graphgen.graphgen import GraphGen
 from graphgen.models import OpenAIModel, Tokenizer, TraverseStrategy
 from graphgen.models.llm.limitter import RPM, TPM
+from graphgen.utils import set_logger
+
 
 css = """
 .center-row {
@@ -30,8 +32,9 @@ css = """
 
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     # Set up working directory
-    working_dir = setup_workspace(os.path.join(root_dir, "cache"))
+    log_file, working_dir = setup_workspace(os.path.join(root_dir, "cache"))
 
+    set_logger(log_file, if_stream=False)
     graph_gen = GraphGen(
         working_dir=working_dir
     )
@@ -86,7 +89,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
         "tokenizer": arguments[2],
         "qa_form": arguments[3],
         "web_search": False,
-        "quiz_samples": 2,
+        "quiz_samples": arguments[19],
         "traverse_strategy": {
             "bidirectional": arguments[4],
             "expand_method": arguments[5],
@@ -159,7 +162,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
 
         if config['if_trainee_model']:
             # Generate quiz
-            graph_gen.quiz(max_samples=quiz_samples)
+            graph_gen.quiz(max_samples=config['quiz_samples'])
 
             # Judge statements
             graph_gen.judge()
@@ -472,7 +475,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 bidirectional, expand_method, max_extra_edges, max_tokens,
                 max_depth, edge_sampling, isolated_node_strategy,
                 loss_strategy, base_url, synthesizer_model, trainee_model,
-                api_key, chunk_size, rpm, tpm, token_counter
+                api_key, chunk_size, rpm, tpm, quiz_samples, token_counter
             ],
             outputs=[output, token_counter],
         )
