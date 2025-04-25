@@ -1,21 +1,35 @@
 # Adapt from https://github.com/HKUDS/LightRAG
 
-import os
 import asyncio
+import os
 import time
-from typing import List, cast, Union
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List, Union, cast
 
-from tqdm.asyncio import tqdm as tqdm_async
 import gradio as gr
+from tqdm.asyncio import tqdm as tqdm_async
 
-from .models import Chunk, JsonKVStorage, OpenAIModel, NetworkXStorage, WikiSearch, Tokenizer, TraverseStrategy
+from .models import (
+    Chunk,
+    JsonKVStorage,
+    NetworkXStorage,
+    OpenAIModel,
+    Tokenizer,
+    TraverseStrategy,
+    WikiSearch,
+)
 from .models.storage.base_storage import StorageNameSpace
-from .utils import create_event_loop, logger, compute_content_hash
-from .operators import (extract_kg, search_wikipedia, quiz, judge_statement,
-                        skip_judge_statement, traverse_graph_by_edge,
-                        traverse_graph_atomically, traverse_graph_for_multi_hop)
-
+from .operators import (
+    extract_kg,
+    judge_statement,
+    quiz,
+    search_wikipedia,
+    skip_judge_statement,
+    traverse_graph_atomically,
+    traverse_graph_by_edge,
+    traverse_graph_for_multi_hop,
+)
+from .utils import compute_content_hash, create_event_loop, logger
 
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -35,10 +49,10 @@ class GraphGen:
 
     # web search
     if_web_search: bool = False
-    wiki_client: WikiSearch = WikiSearch()
+    wiki_client: WikiSearch = field(default_factory=WikiSearch)
 
     # traverse strategy
-    traverse_strategy: TraverseStrategy = TraverseStrategy()
+    traverse_strategy: TraverseStrategy = field(default_factory=TraverseStrategy)
 
     # webui
     progress_bar: gr.Progress = None
