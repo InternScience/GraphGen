@@ -112,22 +112,8 @@ Experience it on the [OpenXLab Application Center](https://g-app-center-000704-6
 
 ## 🏗️ System Architecture
 
-### Directory Structure
-```text
-├── baselines/           # baseline methods
-├── graphgen/            # GraphGen implementation
-│   ├── configs/         # configuration files
-│   ├── models/          # base classes
-│   ├── operators/
-│   ├── templates/       # prompt templates
-│   ├── utils/           # utility functions
-│   ├── graphgen.py      # core logic
-│   ├── generate.py      # main script
-├── resources/           # static files and examples
-├── scripts/             # scripts for running experiments
-├── webui/               # web interface
-└── README.md
-```
+See [analysis](https://deepwiki.com/open-sciencelab/GraphGen) by deepwiki for a technical overview of the GraphGen system, its architecture, and core functionalities. 
+
 
 ### Workflow
 ![workflow](resources/images/flow.png)
