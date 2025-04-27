@@ -53,7 +53,6 @@ async def _pre_tokenize(graph_storage: NetworkXStorage,
 
 async def _construct_rephrasing_prompt(_process_nodes: list,
                                        _process_edges: list,
-                                       _difficulty: str,
                                        text_chunks_storage: JsonKVStorage,
                                        add_context: bool = False
                                        ) -> str:
@@ -77,7 +76,7 @@ async def _construct_rephrasing_prompt(_process_nodes: list,
         original_text = await text_chunks_storage.get_by_ids(original_ids)
         original_text = "\n".join([f"{index + 1}. {text['content']}" for index, text in enumerate(original_text)])
 
-        prompt = ANSWER_REPHRASING_PROMPT[_difficulty][language]['CONTEXT_TEMPLATE'].format(
+        prompt = ANSWER_REPHRASING_PROMPT[language]['CONTEXT_TEMPLATE'].format(
             language=language,
             original_text=original_text,
             entities=entities_str,
@@ -85,7 +84,7 @@ async def _construct_rephrasing_prompt(_process_nodes: list,
         )
         return prompt
 
-    prompt = ANSWER_REPHRASING_PROMPT[_difficulty][language]['TEMPLATE'].format(
+    prompt = ANSWER_REPHRASING_PROMPT[language]['TEMPLATE'].format(
         language=language,
         entities=entities_str,
         relationships=relations_str
@@ -98,34 +97,6 @@ def get_loss_tercile(losses: list) -> (float, float):
     q2_index = int(len(losses) * (2 / 3))
 
     return losses[q1_index], losses[q2_index]
-
-def assign_difficulty(subgraphs: list, difficulty_order: list, loss_strategy: str) -> list:
-    """
-    Assign difficulty to subgraphs based on the loss.
-
-    :param subgraphs
-    :param difficulty_order
-    :param loss_strategy
-    :return
-    """
-    losses = []
-    for subgraph in subgraphs:
-        loss = get_average_loss(subgraph, loss_strategy)
-        losses.append(loss)
-    q1, q2 = get_loss_tercile(losses)
-
-    for i, subgraph in enumerate(subgraphs):
-        loss = get_average_loss(subgraph, loss_strategy)
-        if loss < q1:
-            # easy
-            subgraphs[i] = (subgraph[0], subgraph[1], difficulty_order[0])
-        elif loss < q2:
-            # medium
-            subgraphs[i] = (subgraph[0], subgraph[1], difficulty_order[1])
-        else:
-            # hard
-            subgraphs[i] = (subgraph[0], subgraph[1], difficulty_order[2])
-    return subgraphs
 
 def get_average_loss(batch: tuple, loss_strategy: str) -> float:
     if loss_strategy == "only_edge":
@@ -189,12 +160,10 @@ async def traverse_graph_by_edge(
     async def _process_nodes_and_edges(
             _process_nodes: list,
             _process_edges: list,
-            _difficulty: str,
     ) -> str:
         prompt = await _construct_rephrasing_prompt(
             _process_nodes,
             _process_edges,
-            _difficulty,
             text_chunks_storage,
             add_context = False
         )
@@ -216,7 +185,6 @@ async def traverse_graph_by_edge(
             context = await _process_nodes_and_edges(
                 _process_batch[0],
                 _process_batch[1],
-                _process_batch[2]
             )
 
             language = "Chinese" if detect_main_language(context) == "zh" else "English"
@@ -243,8 +211,7 @@ async def traverse_graph_by_edge(
                     compute_content_hash(context): {
                         "question": question,
                         "answer": context,
-                        "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy),
-                        "difficulty": _process_batch[2],
+                        "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy)
                     }
                 }
 
@@ -269,8 +236,7 @@ async def traverse_graph_by_edge(
                 final_results[compute_content_hash(qa['question'])] = {
                     "question": qa['question'],
                     "answer": qa['answer'],
-                    "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy),
-                    "difficulty": _process_batch[2],
+                    "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy)
                 }
             return final_results
 
@@ -286,9 +252,6 @@ async def traverse_graph_by_edge(
         graph_storage,
         traverse_strategy
     )
-
-    processing_batches = assign_difficulty(processing_batches, traverse_strategy.difficulty_order,
-                                           traverse_strategy.loss_strategy)
 
     for result in tqdm_async(asyncio.as_completed(
         [_process_single_batch(batch) for batch in processing_batches]
@@ -367,8 +330,7 @@ async def traverse_graph_atomically(
                     compute_content_hash(question): {
                         "question": question,
                         "answer": answer,
-                        "loss": loss,
-                        "difficulty": "medium"
+                        "loss": loss
                     }
                 }
             except Exception as e: # pylint: disable=broad-except
@@ -450,9 +412,6 @@ async def traverse_graph_for_multi_hop(
         traverse_strategy
     )
 
-    processing_batches = assign_difficulty(processing_batches, traverse_strategy.difficulty_order,
-                                           traverse_strategy.loss_strategy)
-
     async def _process_single_batch(
         _process_batch: tuple
     ) -> dict:
@@ -503,7 +462,6 @@ async def traverse_graph_for_multi_hop(
                         "question": question,
                         "answer": answer,
                         "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy),
-                        "difficulty": _process_batch[2],
                     }
                 }
 

@@ -5,10 +5,6 @@ quiz_samples: 2
 traverse_strategy:
   qa_form: open
   bidirectional: true
-  difficulty_order:
-  - medium
-  - medium
-  - medium
   edge_sampling: max_loss
   expand_method: max_width
   isolated_node_strategy: ignore

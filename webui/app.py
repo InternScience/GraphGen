@@ -71,8 +71,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
         max_depth=strategy_config.get("max_depth"),
         edge_sampling=strategy_config.get("edge_sampling"),
         isolated_node_strategy=strategy_config.get("isolated_node_strategy"),
-        loss_strategy=str(strategy_config.get("loss_strategy")),
-        # difficulty_order=strategy_config.get("difficulty_order", ["medium", "medium", "medium"])
+        loss_strategy=str(strategy_config.get("loss_strategy"))
     )
 
     return graph_gen
@@ -98,8 +97,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
             "max_depth": arguments[8],
             "edge_sampling": arguments[9],
             "isolated_node_strategy": arguments[10],
-            "loss_strategy": arguments[11],
-            # "difficulty_order": [arguments[10]] * 3
+            "loss_strategy": arguments[11]
         },
         "chunk_size": arguments[16],
     }
@@ -359,7 +357,6 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                                      label="Loss Strategy",
                                      value="only_edge",
                                      interactive=True)
-            # difficulty_level = gr.Radio(choices=["easy", "medium", "hard"], label="Difficulty Level", value="medium")
 
         with gr.Row(equal_height=True):
             with gr.Column(scale=3):
