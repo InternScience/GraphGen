@@ -116,7 +116,6 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     # Test API connection
     test_api_connection(env["SYNTHESIZER_BASE_URL"],
                         env["SYNTHESIZER_API_KEY"], env["SYNTHESIZER_MODEL"])
-    
     if config['if_trainee_model']:
         test_api_connection(env["TRAINEE_BASE_URL"],
                             env["TRAINEE_API_KEY"], env["TRAINEE_MODEL"])
