@@ -105,10 +105,10 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     env = {
         "SYNTHESIZER_BASE_URL": arguments[12],
         "SYNTHESIZER_MODEL": arguments[13],
-        "TRAINEE_BASE_URL": arguments[12],
+        "TRAINEE_BASE_URL": arguments[20],
         "TRAINEE_MODEL": arguments[14],
         "SYNTHESIZER_API_KEY": arguments[15],
-        "TRAINEE_API_KEY": arguments[15],
+        "TRAINEE_API_KEY": arguments[21],
         "RPM": arguments[17],
         "TPM": arguments[18],
     }
@@ -116,6 +116,9 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     # Test API connection
     test_api_connection(env["SYNTHESIZER_BASE_URL"],
                         env["SYNTHESIZER_API_KEY"], env["SYNTHESIZER_MODEL"])
+    if config['if_trainee_model']:
+        test_api_connection(env["TRAINEE_BASE_URL"],
+                            env["TRAINEE_API_KEY"], env["TRAINEE_MODEL"])
 
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
@@ -278,20 +281,32 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                                        interactive=True)
 
         with gr.Accordion(label=_("Model Config"), open=False):
-            base_url = gr.Textbox(label="Base URL",
+            synthesizer_url = gr.Textbox(label="Synthesizer URL",
                                   value="https://api.siliconflow.cn/v1",
-                                  info=_("Base URL Info"),
+                                  info=_("Synthesizer URL Info"),
                                   interactive=True)
             synthesizer_model = gr.Textbox(label="Synthesizer Model",
                                            value="Qwen/Qwen2.5-7B-Instruct",
                                            info=_("Synthesizer Model Info"),
                                            interactive=True)
+            trainee_url = gr.Textbox(label="Trainee URL",
+                                        value="https://api.siliconflow.cn/v1",
+                                        info=_("Trainee URL Info"),
+                                        interactive=True,
+                                        visible=if_trainee_model.value is True)
             trainee_model = gr.Textbox(
                 label="Trainee Model",
                 value="Qwen/Qwen2.5-7B-Instruct",
                 info=_("Trainee Model Info"),
                 interactive=True,
                 visible=if_trainee_model.value is True)
+            trainee_api_key = gr.Textbox(
+                    label=_("SiliconCloud Token for Trainee Model"),
+                    type="password",
+                    value="",
+                    info="https://cloud.siliconflow.cn/account/ak",
+                    visible=if_trainee_model.value is True)
+
 
         with gr.Accordion(label=_("Generation Config"), open=False):
             chunk_size = gr.Slider(label="Chunk Size",
@@ -428,12 +443,12 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         # Test Connection
         test_connection_btn.click(
             test_api_connection,
-            inputs=[base_url, api_key, synthesizer_model],
+            inputs=[synthesizer_url, api_key, synthesizer_model],
             outputs=[])
 
         if if_trainee_model.value:
             test_connection_btn.click(test_api_connection,
-                                    inputs=[base_url, api_key, trainee_model],
+                                    inputs=[trainee_url, api_key, trainee_model],
                                     outputs=[])
 
         expand_method.change(lambda method:
@@ -443,11 +458,9 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                              outputs=[max_extra_edges, max_tokens])
 
         if_trainee_model.change(
-            lambda use_trainee: (gr.update(visible=use_trainee is True),
-                                 gr.update(visible=use_trainee is True),
-                                 gr.update(visible=use_trainee is True)),
+            lambda use_trainee: [gr.update(visible=use_trainee)] * 5,
             inputs=if_trainee_model,
-            outputs=[trainee_model, quiz_samples, edge_sampling])
+            outputs=[trainee_url, trainee_model, quiz_samples, edge_sampling, trainee_api_key])
 
         # 计算上传文件的token数
         upload_file.change(
@@ -471,8 +484,8 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 if_trainee_model, upload_file, tokenizer, qa_form,
                 bidirectional, expand_method, max_extra_edges, max_tokens,
                 max_depth, edge_sampling, isolated_node_strategy,
-                loss_strategy, base_url, synthesizer_model, trainee_model,
-                api_key, chunk_size, rpm, tpm, quiz_samples, token_counter
+                loss_strategy, synthesizer_url, synthesizer_model, trainee_model,
+                api_key, chunk_size, rpm, tpm, quiz_samples, trainee_url, trainee_api_key, token_counter
             ],
             outputs=[output, token_counter],
         )
