@@ -237,10 +237,12 @@ class GraphGen:
                                                             self.traverse_strategy,
                                                             self.text_chunks_storage,
                                                             self.progress_bar)
-        else:
+        elif self.traverse_strategy.qa_form == "aggregated":
             results = await traverse_graph_by_edge(self.synthesizer_llm_client, self.tokenizer_instance,
                                                    self.graph_storage, self.traverse_strategy, self.text_chunks_storage,
                                                    self.progress_bar)
+        else:
+            raise ValueError(f"Unknown qa_form: {self.traverse_strategy.qa_form}")
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 
