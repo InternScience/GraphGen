@@ -318,9 +318,9 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             tokenizer = gr.Textbox(label="Tokenizer",
                                    value="cl100k_base",
                                    interactive=True)
-            qa_form = gr.Radio(choices=["atomic", "multi_hop", "open"],
+            qa_form = gr.Radio(choices=["atomic", "multi_hop", "aggregated"],
                                label="QA Form",
-                               value="open",
+                               value="aggregated",
                                interactive=True)
             quiz_samples = gr.Number(label="Quiz Samples",
                                      value=2,
