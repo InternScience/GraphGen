@@ -191,7 +191,6 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
 
         data_frame = arguments[-1]
         try:
-            data_frame = arguments[-1]
             _update_data = [
                 [
                     data_frame.iloc[0, 0],
@@ -210,7 +209,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
 
         return output_file, gr.DataFrame(label='Token Stats',
                          headers=["Source Text Token Count", "Expected Token Usage", "Token Used"],
-                         datatype=["str", "str", "str"],
+                         datatype="str",
                          interactive=False,
                          value=data_frame,
                          visible=True,
@@ -222,7 +221,6 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
     finally:
         # Clean up workspace
         cleanup_workspace(graph_gen.working_dir)
-
 
 with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                css=css) as demo):
@@ -433,7 +431,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         with gr.Blocks():
             token_counter = gr.DataFrame(label='Token Stats',
                          headers=["Source Text Token Count", "Estimated Token Usage", "Token Used"],
-                         datatype=["str", "str", "str"],
+                         datatype="str",
                          interactive=False,
                          visible=False,
                          wrap=True)
@@ -491,5 +489,5 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         )
 
 if __name__ == "__main__":
-    demo.queue(api_open=False, default_concurrency_limit=10)
+    demo.queue(api_open=False, default_concurrency_limit=2)
     demo.launch(server_name='0.0.0.0')
