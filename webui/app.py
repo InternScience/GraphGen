@@ -8,6 +8,7 @@ import gradio as gr
 
 from gradio_i18n import Translate, gettext as _
 
+from base import GraphGenParams
 from test_api import test_api_connection
 from cache_utils import setup_workspace, cleanup_workspace
 from count_tokens import count_tokens
@@ -29,6 +30,7 @@ css = """
     align-items: center;
 }
 """
+
 
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     # Set up working directory
@@ -77,40 +79,39 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
     return graph_gen
 
 # pylint: disable=too-many-statements
-def run_graphgen(*arguments: list, progress=gr.Progress()):
+def run_graphgen(params, progress=gr.Progress()):
     def sum_tokens(client):
         return sum(u["total_tokens"] for u in client.token_usage)
 
-    # Unpack arguments
     config = {
-        "if_trainee_model": arguments[0],
-        "input_file": arguments[1],
-        "tokenizer": arguments[2],
-        "qa_form": arguments[3],
+        "if_trainee_model": params.if_trainee_model,
+        "input_file": params.input_file,
+        "tokenizer": params.tokenizer,
+        "qa_form": params.qa_form,
         "web_search": False,
-        "quiz_samples": arguments[19],
+        "quiz_samples": params.quiz_samples,
         "traverse_strategy": {
-            "bidirectional": arguments[4],
-            "expand_method": arguments[5],
-            "max_extra_edges": arguments[6],
-            "max_tokens": arguments[7],
-            "max_depth": arguments[8],
-            "edge_sampling": arguments[9],
-            "isolated_node_strategy": arguments[10],
-            "loss_strategy": arguments[11]
+            "bidirectional": params.bidirectional,
+            "expand_method": params.expand_method,
+            "max_extra_edges": params.max_extra_edges,
+            "max_tokens": params.max_tokens,
+            "max_depth": params.max_depth,
+            "edge_sampling": params.edge_sampling,
+            "isolated_node_strategy": params.isolated_node_strategy,
+            "loss_strategy": params.loss_strategy
         },
-        "chunk_size": arguments[16],
+        "chunk_size": params.chunk_size,
     }
 
     env = {
-        "SYNTHESIZER_BASE_URL": arguments[12],
-        "SYNTHESIZER_MODEL": arguments[13],
-        "TRAINEE_BASE_URL": arguments[20],
-        "TRAINEE_MODEL": arguments[14],
-        "SYNTHESIZER_API_KEY": arguments[15],
-        "TRAINEE_API_KEY": arguments[21],
-        "RPM": arguments[17],
-        "TPM": arguments[18],
+        "SYNTHESIZER_BASE_URL": params.synthesizer_url,
+        "SYNTHESIZER_MODEL": params.synthesizer_model,
+        "TRAINEE_BASE_URL": params.trainee_url,
+        "TRAINEE_MODEL": params.trainee_model,
+        "SYNTHESIZER_API_KEY": params.api_key,
+        "TRAINEE_API_KEY": params.trainee_api_key,
+        "RPM": params.rpm,
+        "TPM": params.tpm,
     }
 
     # Test API connection
@@ -189,7 +190,7 @@ def run_graphgen(*arguments: list, progress=gr.Progress()):
         trainee_tokens = sum_tokens(graph_gen.trainee_llm_client) if config['if_trainee_model'] else 0
         total_tokens = synthesizer_tokens + trainee_tokens
 
-        data_frame = arguments[-1]
+        data_frame = params.token_counter
         try:
             _update_data = [
                 [
@@ -460,7 +461,6 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             inputs=if_trainee_model,
             outputs=[trainee_url, trainee_model, quiz_samples, edge_sampling, trainee_api_key])
 
-        # 计算上传文件的token数
         upload_file.change(
             lambda x: (gr.update(visible=True)),
             inputs=[upload_file],
@@ -476,8 +476,34 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
             lambda x: (gr.update(visible=False)),
             inputs=[token_counter],
             outputs=[token_counter],
-        ).then(
-            run_graphgen,
+        )
+
+        submit_btn.click(
+            lambda *args: run_graphgen(GraphGenParams(
+                if_trainee_model=args[0],
+                input_file=args[1],
+                tokenizer=args[2],
+                qa_form=args[3],
+                bidirectional=args[4],
+                expand_method=args[5],
+                max_extra_edges=args[6],
+                max_tokens=args[7],
+                max_depth=args[8],
+                edge_sampling=args[9],
+                isolated_node_strategy=args[10],
+                loss_strategy=args[11],
+                synthesizer_url=args[12],
+                synthesizer_model=args[13],
+                trainee_model=args[14],
+                api_key=args[15],
+                chunk_size=args[16],
+                rpm=args[17],
+                tpm=args[18],
+                quiz_samples=args[19],
+                trainee_url=args[20],
+                trainee_api_key=args[21],
+                token_counter=args[22],
+            )),
             inputs=[
                 if_trainee_model, upload_file, tokenizer, qa_form,
                 bidirectional, expand_method, max_extra_edges, max_tokens,
