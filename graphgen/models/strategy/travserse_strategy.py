@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, fields
 
 from graphgen.models.strategy.base_strategy import BaseStrategy
 
