@@ -13,3 +13,4 @@ traverse_strategy:
   max_tokens: 256
   loss_strategy: only_edge
 web_search: false
+re_judge: false

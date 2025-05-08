@@ -90,7 +90,7 @@ def main():
 
     graph_gen.quiz(max_samples=config['quiz_samples'])
 
-    graph_gen.judge(re_judge=False)
+    graph_gen.judge(re_judge=config["re_judge"])
 
     graph_gen.traverse()
 

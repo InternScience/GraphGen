@@ -5,7 +5,7 @@ from graphgen.models.strategy.base_strategy import BaseStrategy
 
 @dataclass
 class TraverseStrategy(BaseStrategy):
-    # 生成的QA形式：原子、多跳、开放性
+    # 生成的QA形式：原子、多跳、聚合型
     qa_form: str = "atomic" # "atomic" or "multi_hop" or "aggregated"
     # 最大边数和最大token数方法中选择一个生效
     expand_method: str = "max_tokens" # "max_width" or "max_tokens"
@@ -21,8 +21,6 @@ class TraverseStrategy(BaseStrategy):
     edge_sampling: str = "max_loss" # "max_loss" or "min_loss" or "random"
     # 孤立节点的处理策略
     isolated_node_strategy: str = "add" # "add" or "ignore"
-    # 难度顺序 ["easy", "medium", "hard"], ["hard", "medium", "easy"], ["medium", "medium", "medium"]
-    difficulty_order: list = field(default_factory=lambda: ["medium", "medium", "medium"])
     loss_strategy: str = "only_edge"  # only_edge, both
 
     def to_yaml(self):
