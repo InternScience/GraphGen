@@ -39,5 +39,7 @@ ENV TRAINEE_API_KEY=""
 # Expose the port the app will run on
 EXPOSE 7860
 
+# Switch to the non-root user
+USER appuser
 # Command to run the application
 CMD ["python", "webui/app.py"]
