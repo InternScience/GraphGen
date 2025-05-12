@@ -29,12 +29,12 @@ COPY . .
 RUN mkdir -p cache/data/graphgen cache/logs
 
 # Environment variables for application config
-ENV SYNTHESIZER_MODEL=""
-ENV SYNTHESIZER_BASE_URL=""
-ENV SYNTHESIZER_API_KEY=""
-ENV TRAINEE_MODEL=""
-ENV TRAINEE_BASE_URL=""
-ENV TRAINEE_API_KEY=""
+ENV SYNTHESIZER_MODEL="" # Path to the synthesizer model file. Must be set at runtime.
+ENV SYNTHESIZER_BASE_URL="" # Base URL for the synthesizer service. Must be set at runtime.
+ENV SYNTHESIZER_API_KEY="" # API key for authenticating with the synthesizer service. Must be set at runtime.
+ENV TRAINEE_MODEL="" # Path to the trainee model file. Must be set at runtime.
+ENV TRAINEE_BASE_URL="" # Base URL for the trainee service. Must be set at runtime.
+ENV TRAINEE_API_KEY="" # API key for authenticating with the trainee service. Must be set at runtime.
 
 # Expose the port the app will run on
 EXPOSE 7860
