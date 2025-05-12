@@ -1,7 +1,7 @@
 # Use a slim version of Python 3.10 as the base image
 FROM python:3.10-slim
 
-# Environment variables to prevent Python from writing .pyc files 
+# Set environment variables to prevent Python from writing .pyc files 
 # and to ensure output is logged directly
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -13,9 +13,12 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     git \
-    build-essential && \
-    apt-get clean && \
+    build-essential \
+    && apt-get clean && \
     rm -rf /var/lib/apt/lists/*
+
+# Create a non-root user and switch to that user
+RUN useradd -m appuser
 
 # Copy requirements file and install Python dependencies
 COPY requirements.txt . 
