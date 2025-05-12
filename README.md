@@ -106,6 +106,17 @@ Experience it on the [OpenXLab Application Center](https://g-app-center-000704-6
    ls cache/data/graphgen
    ```
 
+## Run with Docker
+1. Build the Docker image
+   ```bash
+   docker build -t graphgen .
+   ```
+2. Run the Docker container
+   ```bash
+    docker run -p 7860:7860 graphgen
+    ```
+
+
 ## 📌 Latest Updates
 
 - **2025.04.21**: We have released the initial version of GraphGen.
