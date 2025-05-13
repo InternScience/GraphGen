@@ -9,6 +9,8 @@
 [![open issues](https://img.shields.io/github/issues-raw/open-sciencelab/GraphGen)](https://github.com/open-sciencelab/GraphGen/issues)
 [![issue resolution](https://img.shields.io/github/issues-closed-raw/open-sciencelab/GraphGen)](https://github.com/open-sciencelab/GraphGen/issues)
 [![documentation](https://img.shields.io/badge/docs-latest-blue)](https://graphgen-cookbook.readthedocs.io/en/latest/)
+[![wechat](https://img.shields.io/badge/wechat-brightgreen?logo=wechat&logoColor=white)](https://cdn.vansin.top/internlm/dou.jpg)
+[![arXiv](https://img.shields.io/badge/paper-pdf-darkred?logo=arxiv&logoColor=white)](https://github.com/open-sciencelab/GraphGen/tree/main/resources)
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
@@ -35,15 +37,13 @@ GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthe
 GraphGen is a framework for synthetic data generation guided by knowledge graphs. Here is our [**paper**](https://github.com/open-sciencelab/GraphGen/tree/main/resources/GraphGen.pdf) and [best practice](https://github.com/open-sciencelab/GraphGen/issues/17).
 
 It begins by constructing a fine-grained knowledge graph from the source text，then identifies knowledge gaps in LLMs using the expected calibration error metric, prioritizing the generation of QA pairs that target high-value, long-tail knowledge.
-Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture complex relational information and employs style-controlled generation to diversify the resulting QA data. 
+Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture complex relational information and employs style-controlled generation to diversify the resulting QA data.
 
 ## 🚀 Quick Start
 
-Experience GraphGen through the following links:
+Experience GraphGen through [Web](https://g-app-center-000704-6802-aerppvq.openxlab.space) or [Backup Web Entrance](https://openxlab.org.cn/apps/detail/tpoisonooo/GraphGen)
 
-- [Web](https://g-app-center-000704-6802-aerppvq.openxlab.space)
-- [Backup Web Entrance](https://openxlab.org.cn/apps/detail/tpoisonooo/GraphGen)
-- [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10)
+For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10), open new [issue](https://github.com/open-sciencelab/GraphGen/issues) or join our [wechat group](https://cdn.vansin.top/internlm/dou.jpg) and ask.
 
 ### Gradio Demo
 
