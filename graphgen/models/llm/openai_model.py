@@ -45,6 +45,8 @@ class OpenAIModel(TopkTokenModel):
 
     def __post_init__(self):
         assert self.api_key is not None, "Please provide api key to access openai api."
+        if self.api_key == "":
+            self.api_key = "none"
         self.client = AsyncOpenAI(api_key=self.api_key, base_url=self.base_url)
 
     def _pre_generate(self, text: str, history: List[str]) -> Dict:
