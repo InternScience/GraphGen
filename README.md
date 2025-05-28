@@ -10,7 +10,7 @@
 [![issue resolution](https://img.shields.io/github/issues-closed-raw/open-sciencelab/GraphGen)](https://github.com/open-sciencelab/GraphGen/issues)
 [![documentation](https://img.shields.io/badge/docs-latest-blue)](https://graphgen-cookbook.readthedocs.io/en/latest/)
 [![wechat](https://img.shields.io/badge/wechat-brightgreen?logo=wechat&logoColor=white)](https://cdn.vansin.top/internlm/dou.jpg)
-[![arXiv](https://img.shields.io/badge/paper-pdf-darkred?logo=arxiv&logoColor=white)](https://github.com/open-sciencelab/GraphGen/tree/main/resources)
+[![arXiv](https://img.shields.io/badge/Paper-arXiv-white)](https://arxiv.org/abs/2505.20416)
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
@@ -143,12 +143,14 @@ See [analysis](https://deepwiki.com/open-sciencelab/GraphGen) by deepwiki for a 
 ## 📚 Citation
 If you find this repository useful, please consider citing our work:
 ```bibtex
-@software{Chen_GraphGen_2025,
-author = {Chen, Zihong and Jiang, Wanli and Li, Jingzhe and Yuan, Zhonghang and Wang, Chenyang and Kong, Huanjun and Dong, Nanqing},
-month = apr,
-title = {{GraphGen}},
-url = {https://github.com/open-sciencelab/GraphGen},
-year = {2025}
+@misc{chen2025graphgenenhancingsupervisedfinetuning,
+      title={GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation}, 
+      author={Zihong Chen and Wanli Jiang and Jinzhe Li and Zhonghang Yuan and Huanjun Kong and Wanli Ouyang and Nanqing Dong},
+      year={2025},
+      eprint={2505.20416},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL},
+      url={https://arxiv.org/abs/2505.20416}, 
 }
 ```
 
