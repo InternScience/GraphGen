@@ -256,7 +256,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         <a href="https://github.com/open-sciencelab/GraphGen/issues/10">
             <img src="https://img.shields.io/github/stars/open-sciencelab/GraphGen?style=social" alt="GitHub Stars">
         </a>
-        <a href="https://github.com/open-sciencelab/GraphGen/tree/main/resources">
+        <a href="https://arxiv.org/abs/2505.20416">
             <img src="https://img.shields.io/badge/arXiv-pdf-yellow" alt="arXiv">
         </a>
     </div>
