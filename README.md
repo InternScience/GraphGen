@@ -50,10 +50,37 @@ Experience GraphGen through [Web](https://g-app-center-000704-6802-aerppvq.openx
 
 For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10), open new [issue](https://github.com/open-sciencelab/GraphGen/issues) or join our [wechat group](https://cdn.vansin.top/internlm/dou.jpg) and ask.
 
-### Gradio Demo
+### Preparation
+
+1. Install [uv](https://docs.astral.sh/uv/reference/installer/)
+
+    ```bash
+    # You could try pipx or pip to install uv when meet network issues, refer the uv doc for more details
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+2. Clone the repository
+
+    ```bash
+    git clone https://github.com/open-sciencelab/GraphGen
+    cd GraphGen
+    ```
+
+3. Create a new uv environment
+
+    ```bash
+     uv venv --python 3.10
+    ```
+   
+4. Configure the dependencies
+
+    ```bash
+    uv pip install -r requirements.txt
+    ```
+
+### Run Gradio Demo
 
    ```bash
-   python webui/app.py
+   uv run webui/app.py
    ```
 
 ![ui](https://github.com/user-attachments/assets/3024e9bc-5d45-45f8-a4e6-b57bd2350d84)
@@ -62,7 +89,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 
 1. Install GraphGen
    ```bash
-   pip install graphg
+   uv pip install graphg
    ```
 
 2. Run in CLI
@@ -78,11 +105,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 
 ### Run from Source
 
-1. Install dependencies
-    ```bash
-    pip install -r requirements.txt
-    ```
-2. Configure the environment
+1. Configure the environment
    - Create an `.env` file in the root directory
      ```bash
      cp .env.example .env
@@ -98,7 +121,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
      TRAINEE_BASE_URL=your_base_url_for_trainee_model
      TRAINEE_API_KEY=your_api_key_for_trainee_model
      ```
-3. (Optional) If you want to modify the default generated configuration, you can edit the content of the configs/graphgen_config.yaml file.
+2. (Optional) If you want to modify the default generated configuration, you can edit the content of the configs/graphgen_config.yaml file.
     ```yaml
     # configs/graphgen_config.yaml
     # Example configuration
@@ -106,16 +129,16 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
     input_file: "resources/examples/raw_demo.jsonl"
     # more configurations...
     ```
-4. Run the generation script
+3. Run the generation script
    ```bash
    bash scripts/generate.sh
    ```
-5. Get the generated data
+4. Get the generated data
    ```bash
    ls cache/data/graphgen
    ```
 
-## Run with Docker
+### Run with Docker
 1. Build the Docker image
    ```bash
    docker build -t graphgen .
