@@ -163,7 +163,7 @@ See [analysis](https://deepwiki.com/open-sciencelab/GraphGen) by deepwiki for a 
 
 
 ## 🍀 Acknowledgements
-- [SiliconCloud](https://siliconflow.cn) Abundant LLM API, some models are free
+- [SiliconFlow](https://siliconflow.cn) Abundant LLM API, some models are free
 - [LightRAG](https://github.com/HKUDS/LightRAG) Simple and efficient graph retrieval solution
 - [ROGRAG](https://github.com/tpoisonooo/ROGRAG) ROGRAG: A Robustly Optimized GraphRAG Framework
 

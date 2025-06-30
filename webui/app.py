@@ -300,7 +300,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
                 interactive=True,
                 visible=if_trainee_model.value is True)
             trainee_api_key = gr.Textbox(
-                    label=_("SiliconCloud Token for Trainee Model"),
+                    label=_("SiliconFlow Token for Trainee Model"),
                     type="password",
                     value="",
                     info="https://cloud.siliconflow.cn/account/ak",
@@ -375,7 +375,7 @@ with (gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(),
         with gr.Row(equal_height=True):
             with gr.Column(scale=3):
                 api_key = gr.Textbox(
-                    label=_("SiliconCloud Token"),
+                    label=_("SiliconFlow Token"),
                     type="password",
                     value="",
                     info="https://cloud.siliconflow.cn/account/ak")
