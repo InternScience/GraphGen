@@ -19,7 +19,7 @@
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
-<details open>
+<details close>
 <summary><b>📚 Table of Contents</b></summary>
 
 - 📝 [What is GraphGen?](#-what-is-graphgen)
@@ -39,7 +39,17 @@ GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthe
 
 ## 📝 What is GraphGen?
 
-GraphGen is a framework for synthetic data generation guided by knowledge graphs. Here is our [**paper**](https://arxiv.org/abs/2505.20416), [best practice and LLM precision📊](https://github.com/open-sciencelab/GraphGen/issues/17).
+GraphGen is a framework for synthetic data generation guided by knowledge graphs. Please check the [**paper**](https://arxiv.org/abs/2505.20416) and [best practice](https://github.com/open-sciencelab/GraphGen/issues/17).
+
+Here is post-training result which **over 50% SFT data** comes from GraphGen and our data clean pipeline.
+
+| Domain | Dataset | Ours | Qwen2.5-7B-Instruct (baseline)	|
+| :-: | :-: | :-: | :-: |
+| Plant| [SeedBench](https://github.com/open-sciencelab/SeedBench) | **65.9** | 51.5 |
+| Common | CMMLU | 73.6 | **75.8** |
+| Logic | GPQA-Diamond | **40.0** | 33.3 |
+| Math | AIME24 | **20.6** | 16.7 |
+| | AIME25 | **22.7** | 7.2 |
 
 It begins by constructing a fine-grained knowledge graph from the source text，then identifies knowledge gaps in LLMs using the expected calibration error metric, prioritizing the generation of QA pairs that target high-value, long-tail knowledge.
 Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture complex relational information and employs style-controlled generation to diversify the resulting QA data.
