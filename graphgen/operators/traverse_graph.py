@@ -1,6 +1,7 @@
 import asyncio
 
 from tqdm.asyncio import tqdm as tqdm_async
+import gradio as gr
 
 from graphgen.models import OpenAIModel, NetworkXStorage, TraverseStrategy, Tokenizer, JsonKVStorage
 from graphgen.templates import ANSWER_REPHRASING_PROMPT, QUESTION_GENERATION_PROMPT, MULTI_HOP_GENERATION_PROMPT
@@ -167,6 +168,7 @@ async def traverse_graph_by_edge(
     graph_storage: NetworkXStorage,
     traverse_strategy: TraverseStrategy,
     text_chunks_storage: JsonKVStorage,
+    progress_bar: gr.Progress = None,
     max_concurrent: int = 1000
 ) -> dict:
     """
@@ -177,6 +179,7 @@ async def traverse_graph_by_edge(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
+    :param progress_bar: gradio progress bar
     :param max_concurrent
     :return: question and answer
     """
@@ -322,6 +325,7 @@ async def traverse_graph_atomically(
     graph_storage: NetworkXStorage,
     traverse_strategy: TraverseStrategy,
     text_chunks_storage: JsonKVStorage,
+    progress_bar: gr.Progress = None,
     max_concurrent: int = 1000
 ) -> dict:
     """
@@ -332,6 +336,7 @@ async def traverse_graph_atomically(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
+    :param progress_bar: gradio progress bar
     :param max_concurrent
     :return: question and answer
     """
@@ -423,6 +428,7 @@ async def traverse_graph_for_multi_hop(
     graph_storage: NetworkXStorage,
     traverse_strategy: TraverseStrategy,
     text_chunks_storage: JsonKVStorage,
+    progress_bar: gr.Progress = None,
     max_concurrent: int = 1000
 ) -> dict:
     """
@@ -433,6 +439,7 @@ async def traverse_graph_for_multi_hop(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
+    :param progress_bar: gradio progress bar
     :param max_concurrent
     :return: question and answer
     """
