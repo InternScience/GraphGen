@@ -1,7 +1,7 @@
 import asyncio
-import gradio as gr
 
 from tqdm.asyncio import tqdm as tqdm_async
+import gradio as gr
 
 from graphgen.models import OpenAIModel, NetworkXStorage, TraverseStrategy, Tokenizer, JsonKVStorage
 from graphgen.templates import ANSWER_REPHRASING_PROMPT, QUESTION_GENERATION_PROMPT, MULTI_HOP_GENERATION_PROMPT
@@ -53,6 +53,7 @@ async def _pre_tokenize(graph_storage: NetworkXStorage,
 
 async def _construct_rephrasing_prompt(_process_nodes: list,
                                        _process_edges: list,
+                                       _difficulty: str,
                                        text_chunks_storage: JsonKVStorage,
                                        add_context: bool = False
                                        ) -> str:
@@ -76,7 +77,7 @@ async def _construct_rephrasing_prompt(_process_nodes: list,
         original_text = await text_chunks_storage.get_by_ids(original_ids)
         original_text = "\n".join([f"{index + 1}. {text['content']}" for index, text in enumerate(original_text)])
 
-        prompt = ANSWER_REPHRASING_PROMPT[language]['CONTEXT_TEMPLATE'].format(
+        prompt = ANSWER_REPHRASING_PROMPT[_difficulty][language]['CONTEXT_TEMPLATE'].format(
             language=language,
             original_text=original_text,
             entities=entities_str,
@@ -84,7 +85,7 @@ async def _construct_rephrasing_prompt(_process_nodes: list,
         )
         return prompt
 
-    prompt = ANSWER_REPHRASING_PROMPT[language]['TEMPLATE'].format(
+    prompt = ANSWER_REPHRASING_PROMPT[_difficulty][language]['TEMPLATE'].format(
         language=language,
         entities=entities_str,
         relationships=relations_str
@@ -97,6 +98,34 @@ def get_loss_tercile(losses: list) -> (float, float):
     q2_index = int(len(losses) * (2 / 3))
 
     return losses[q1_index], losses[q2_index]
+
+def assign_difficulty(subgraphs: list, difficulty_order: list, loss_strategy: str) -> list:
+    """
+    Assign difficulty to subgraphs based on the loss.
+
+    :param subgraphs
+    :param difficulty_order
+    :param loss_strategy
+    :return
+    """
+    losses = []
+    for subgraph in subgraphs:
+        loss = get_average_loss(subgraph, loss_strategy)
+        losses.append(loss)
+    q1, q2 = get_loss_tercile(losses)
+
+    for i, subgraph in enumerate(subgraphs):
+        loss = get_average_loss(subgraph, loss_strategy)
+        if loss < q1:
+            # easy
+            subgraphs[i] = (subgraph[0], subgraph[1], difficulty_order[0])
+        elif loss < q2:
+            # medium
+            subgraphs[i] = (subgraph[0], subgraph[1], difficulty_order[1])
+        else:
+            # hard
+            subgraphs[i] = (subgraph[0], subgraph[1], difficulty_order[2])
+    return subgraphs
 
 def get_average_loss(batch: tuple, loss_strategy: str) -> float:
     if loss_strategy == "only_edge":
@@ -150,7 +179,7 @@ async def traverse_graph_by_edge(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
-    :param progress_bar
+    :param progress_bar: gradio progress bar
     :param max_concurrent
     :return: question and answer
     """
@@ -160,10 +189,12 @@ async def traverse_graph_by_edge(
     async def _process_nodes_and_edges(
             _process_nodes: list,
             _process_edges: list,
+            _difficulty: str,
     ) -> str:
         prompt = await _construct_rephrasing_prompt(
             _process_nodes,
             _process_edges,
+            _difficulty,
             text_chunks_storage,
             add_context = False
         )
@@ -185,48 +216,68 @@ async def traverse_graph_by_edge(
             context = await _process_nodes_and_edges(
                 _process_batch[0],
                 _process_batch[1],
+                _process_batch[2]
             )
+            # 一般第一行就是Question
+            # 后面的都是Answer
+            question = context.split("\n")[0]
+            for prefix in ["Question:", "问题：", "问题:"]:
+                if question.startswith(prefix):
+                    question = question[len(prefix):].strip()
+                    break
+            answer = "\n".join(context.split("\n")[1:]).strip()
+            for prefix in ["Answer:", "答案：","答案:", "回答:", "回答："]:
+                if answer.startswith(prefix):
+                    answer = answer[len(prefix):].strip()
+                    break
+            qas = [
+                {
+                    "question": question,
+                    "answer": answer
+                }
+            ]
 
             language = "Chinese" if detect_main_language(context) == "zh" else "English"
             pre_length = sum(node['length'] for node in _process_batch[0]) \
                          + sum(edge[2]['length'] for edge in _process_batch[1])
 
-            if question_type == "single":
-                question = await llm_client.generate_answer(
-                    QUESTION_GENERATION_PROMPT[language]['SINGLE_TEMPLATE'].format(
-                        answer=context
-                    )
-                )
-                if question.startswith("Question:"):
-                    question = question[len("Question:"):].strip()
-                elif question.startswith("问题："):
-                    question = question[len("问题："):].strip()
-
-                logger.info("%d nodes and %d edges processed", len(_process_batch[0]), len(_process_batch[1]))
-                logger.info("Pre-length: %s", pre_length)
-                logger.info("Question: %s", question)
-                logger.info("Answer: %s", context)
-
-                return {
-                    compute_content_hash(context): {
-                        "question": question,
-                        "answer": context,
-                        "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy)
-                    }
-                }
-
-            content = await llm_client.generate_answer(
-                QUESTION_GENERATION_PROMPT[language]['MULTI_TEMPLATE'].format(
-                    doc=context
-                )
-            )
-            qas = _post_process_synthetic_data(content)
-
-            if len(qas) == 0:
-                print(content)
-                logger.error("Error occurred while processing batch, question or answer is None")
-                return {}
-
+            # if question_type == "single":
+            #     question = await llm_client.generate_answer(
+            #         QUESTION_GENERATION_PROMPT[language]['SINGLE_TEMPLATE'].format(
+            #             answer=context
+            #         )
+            #     )
+            #     if question.startswith("Question:"):
+            #         question = question[len("Question:"):].strip()
+            #     elif question.startswith("问题："):
+            #         question = question[len("问题："):].strip()
+            #
+            #     logger.info("%d nodes and %d edges processed", len(_process_batch[0]), len(_process_batch[1]))
+            #     logger.info("Pre-length: %s", pre_length)
+            #     logger.info("Question: %s", question)
+            #     logger.info("Answer: %s", context)
+            #
+            #     return {
+            #         compute_content_hash(context): {
+            #             "question": question,
+            #             "answer": context,
+            #             "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy),
+            #             "difficulty": _process_batch[2],
+            #         }
+            #     }
+            #
+            # content = await llm_client.generate_answer(
+            #     QUESTION_GENERATION_PROMPT[language]['MULTI_TEMPLATE'].format(
+            #         doc=context
+            #     )
+            # )
+            # qas = _post_process_synthetic_data(content)
+            #
+            # if len(qas) == 0:
+            #     print(content)
+            #     logger.error("Error occurred while processing batch, question or answer is None")
+            #     return {}
+            #
             final_results = {}
             logger.info("%d nodes and %d edges processed", len(_process_batch[0]), len(_process_batch[1]))
             logger.info("Pre-length: %s", pre_length)
@@ -236,7 +287,8 @@ async def traverse_graph_by_edge(
                 final_results[compute_content_hash(qa['question'])] = {
                     "question": qa['question'],
                     "answer": qa['answer'],
-                    "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy)
+                    "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy),
+                    "difficulty": _process_batch[2],
                 }
             return final_results
 
@@ -253,17 +305,16 @@ async def traverse_graph_by_edge(
         traverse_strategy
     )
 
+    processing_batches = assign_difficulty(processing_batches, traverse_strategy.difficulty_order,
+                                           traverse_strategy.loss_strategy)
+
     for result in tqdm_async(asyncio.as_completed(
         [_process_single_batch(batch) for batch in processing_batches]
-    ), total=len(processing_batches), desc="[4/4]Generating QAs"):
+    ), total=len(processing_batches), desc="Processing batches"):
         try:
-            if progress_bar is not None:
-                progress_bar(len(results) / len(processing_batches), desc="[4/4]Generating QAs")
             results.update(await result)
-            if progress_bar is not None and len(results) == len(processing_batches):
-                progress_bar(1, desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
-            logger.error("Error occurred while generating QA: %s", e)
+            logger.error("Error occurred while processing batches: %s", e)
 
     return results
 
@@ -285,7 +336,7 @@ async def traverse_graph_atomically(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
-    :param progress_bar
+    :param progress_bar: gradio progress bar
     :param max_concurrent
     :return: question and answer
     """
@@ -330,7 +381,8 @@ async def traverse_graph_atomically(
                     compute_content_hash(question): {
                         "question": question,
                         "answer": answer,
-                        "loss": loss
+                        "loss": loss,
+                        "difficulty": "medium"
                     }
                 }
             except Exception as e: # pylint: disable=broad-except
@@ -362,16 +414,12 @@ async def traverse_graph_atomically(
     for result in tqdm_async(
         asyncio.as_completed([_generate_question(task) for task in tasks]),
         total=len(tasks),
-        desc="[4/4]Generating QAs"
+        desc="Generating questions"
     ):
         try:
-            if progress_bar is not None:
-                progress_bar(len(results) / len(tasks), desc="[4/4]Generating QAs")
             results.update(await result)
-            if progress_bar is not None and len(results) == len(tasks):
-                progress_bar(1, desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
-            logger.error("Error occurred while generating QA: %s", e)
+            logger.error("Error occurred while generating questions: %s", e)
     return results
 
 async def traverse_graph_for_multi_hop(
@@ -391,7 +439,7 @@ async def traverse_graph_for_multi_hop(
     :param graph_storage
     :param traverse_strategy
     :param text_chunks_storage
-    :param progress_bar
+    :param progress_bar: gradio progress bar
     :param max_concurrent
     :return: question and answer
     """
@@ -411,6 +459,9 @@ async def traverse_graph_for_multi_hop(
         graph_storage,
         traverse_strategy
     )
+
+    processing_batches = assign_difficulty(processing_batches, traverse_strategy.difficulty_order,
+                                           traverse_strategy.loss_strategy)
 
     async def _process_single_batch(
         _process_batch: tuple
@@ -462,6 +513,7 @@ async def traverse_graph_for_multi_hop(
                         "question": question,
                         "answer": answer,
                         "loss": get_average_loss(_process_batch, traverse_strategy.loss_strategy),
+                        "difficulty": _process_batch[2],
                     }
                 }
 
@@ -469,17 +521,13 @@ async def traverse_graph_for_multi_hop(
                 logger.error("Error occurred while processing batch: %s", e)
                 return {}
 
-    async for result in tqdm_async(
+    for result in tqdm_async(
         asyncio.as_completed([_process_single_batch(batch) for batch in processing_batches]),
         total=len(processing_batches),
-        desc="[4/4]Generating QAs"
+        desc="Processing batches"
     ):
         try:
-            if progress_bar is not None:
-                progress_bar(len(results) / len(processing_batches), desc="[4/4]Generating QAs")
             results.update(await result)
-            if progress_bar is not None and len(results) == len(processing_batches):
-                progress_bar(1, desc="[4/4]Generating QAs")
         except Exception as e: # pylint: disable=broad-except
-            logger.error("Error occurred while generating QA: %s", e)
+            logger.error("Error occurred while processing batches: %s", e)
     return results
