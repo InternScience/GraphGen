@@ -1,5 +1,3 @@
-# Adapt from https://github.com/HKUDS/LightRAG
-
 import asyncio
 import os
 import time
@@ -16,14 +14,13 @@ from .models import (
     OpenAIModel,
     Tokenizer,
     TraverseStrategy,
-    WikiSearch,
 )
 from .models.storage.base_storage import StorageNameSpace
 from .operators import (
     extract_kg,
     judge_statement,
     quiz,
-    search_wikipedia,
+    search_all,
     skip_judge_statement,
     traverse_graph_atomically,
     traverse_graph_by_edge,
@@ -32,6 +29,7 @@ from .operators import (
 from .utils import compute_content_hash, create_event_loop, logger
 
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+
 
 @dataclass
 class GraphGen:
@@ -47,11 +45,12 @@ class GraphGen:
     trainee_llm_client: OpenAIModel = None
     tokenizer_instance: Tokenizer = None
 
-    # web search
-    if_web_search: bool = False
-    wiki_client: WikiSearch = field(default_factory=WikiSearch)
+    # search
+    search: dict = field(
+        default_factory=lambda: {"if_search": False, "search_types": ["wikipedia"]}
+    )
 
-    # traverse strategy
+    # traverse
     traverse_strategy: TraverseStrategy = field(default_factory=TraverseStrategy)
 
     # webui
@@ -64,20 +63,23 @@ class GraphGen:
         self.text_chunks_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="text_chunks"
         )
-        self.wiki_storage: JsonKVStorage = JsonKVStorage(
-            self.working_dir, namespace="wiki"
-        )
         self.graph_storage: NetworkXStorage = NetworkXStorage(
             self.working_dir, namespace="graph"
+        )
+        self.search_storage: JsonKVStorage = JsonKVStorage(
+            self.working_dir, namespace="search"
         )
         self.rephrase_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="rephrase"
         )
         self.qa_storage: JsonKVStorage = JsonKVStorage(
-            os.path.join(self.working_dir, "data", "graphgen", str(self.unique_id)), namespace=f"qa-{self.unique_id}"
+            os.path.join(self.working_dir, "data", "graphgen", str(self.unique_id)),
+            namespace=f"qa-{self.unique_id}",
         )
 
-    async def async_split_chunks(self, data: Union[List[list], List[dict]], data_type: str) -> dict:
+    async def async_split_chunks(
+        self, data: Union[List[list], List[dict]], data_type: str
+    ) -> dict:
         # TODO： 是否进行指代消解
         if len(data) == 0:
             return {}
@@ -88,9 +90,14 @@ class GraphGen:
             assert isinstance(data, list) and isinstance(data[0], dict)
             # compute hash for each document
             new_docs = {
-                compute_content_hash(doc['content'], prefix="doc-"): {'content': doc['content']} for doc in data
+                compute_content_hash(doc["content"], prefix="doc-"): {
+                    "content": doc["content"]
+                }
+                for doc in data
             }
-            _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
+            _add_doc_keys = await self.full_docs_storage.filter_keys(
+                list(new_docs.keys())
+            )
             new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
             if len(new_docs) == 0:
                 logger.warning("All docs are already in the storage")
@@ -100,47 +107,62 @@ class GraphGen:
             cur_index = 1
             doc_number = len(new_docs)
             async for doc_key, doc in tqdm_async(
-                    new_docs.items(), desc="[1/4]Chunking documents", unit="doc"
-                ):
+                new_docs.items(), desc="[1/4]Chunking documents", unit="doc"
+            ):
                 chunks = {
                     compute_content_hash(dp["content"], prefix="chunk-"): {
                         **dp,
-                        'full_doc_id': doc_key
-                    } for dp in self.tokenizer_instance.chunk_by_token_size(doc["content"],
-                                                                            self.chunk_overlap_size, self.chunk_size)
+                        "full_doc_id": doc_key,
+                    }
+                    for dp in self.tokenizer_instance.chunk_by_token_size(
+                        doc["content"], self.chunk_overlap_size, self.chunk_size
+                    )
                 }
                 inserting_chunks.update(chunks)
 
                 if self.progress_bar is not None:
-                    self.progress_bar(
-                        cur_index / doc_number, f"Chunking {doc_key}"
-                    )
+                    self.progress_bar(cur_index / doc_number, f"Chunking {doc_key}")
                     cur_index += 1
 
-            _add_chunk_keys = await self.text_chunks_storage.filter_keys(list(inserting_chunks.keys()))
-            inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
+            _add_chunk_keys = await self.text_chunks_storage.filter_keys(
+                list(inserting_chunks.keys())
+            )
+            inserting_chunks = {
+                k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
+            }
         elif data_type == "chunked":
             assert isinstance(data, list) and isinstance(data[0], list)
             new_docs = {
-                compute_content_hash("".join(chunk['content']), prefix="doc-"): {'content': "".join(chunk['content'])}
-                for doc in data for chunk in doc
+                compute_content_hash("".join(chunk["content"]), prefix="doc-"): {
+                    "content": "".join(chunk["content"])
+                }
+                for doc in data
+                for chunk in doc
             }
-            _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
+            _add_doc_keys = await self.full_docs_storage.filter_keys(
+                list(new_docs.keys())
+            )
             new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
             if len(new_docs) == 0:
                 logger.warning("All docs are already in the storage")
                 return {}
             logger.info("[New Docs] inserting %d docs", len(new_docs))
-            async for doc in tqdm_async(data, desc="[1/4]Chunking documents", unit="doc"):
-                doc_str = "".join([chunk['content'] for chunk in doc])
+            async for doc in tqdm_async(
+                data, desc="[1/4]Chunking documents", unit="doc"
+            ):
+                doc_str = "".join([chunk["content"] for chunk in doc])
                 for chunk in doc:
-                    chunk_key = compute_content_hash(chunk['content'], prefix="chunk-")
+                    chunk_key = compute_content_hash(chunk["content"], prefix="chunk-")
                     inserting_chunks[chunk_key] = {
                         **chunk,
-                        'full_doc_id': compute_content_hash(doc_str, prefix="doc-")
+                        "full_doc_id": compute_content_hash(doc_str, prefix="doc-"),
                     }
-            _add_chunk_keys = await self.text_chunks_storage.filter_keys(list(inserting_chunks.keys()))
-            inserting_chunks = {k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys}
+            _add_chunk_keys = await self.text_chunks_storage.filter_keys(
+                list(inserting_chunks.keys())
+            )
+            inserting_chunks = {
+                k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
+            }
 
         await self.full_docs_storage.upsert(new_docs)
         await self.text_chunks_storage.upsert(inserting_chunks)
@@ -169,29 +191,39 @@ class GraphGen:
             llm_client=self.synthesizer_llm_client,
             kg_instance=self.graph_storage,
             tokenizer_instance=self.tokenizer_instance,
-            chunks=[Chunk(id=k, content=v['content']) for k, v in inserting_chunks.items()],
-            progress_bar = self.progress_bar,
+            chunks=[
+                Chunk(id=k, content=v["content"]) for k, v in inserting_chunks.items()
+            ],
+            progress_bar=self.progress_bar,
         )
         if not _add_entities_and_relations:
             logger.warning("No entities or relations extracted")
             return
 
-        logger.info("[Wiki Search] is %s", 'enabled' if self.if_web_search else 'disabled')
-        if self.if_web_search:
-            logger.info("[Wiki Search]...")
-            _add_wiki_data = await search_wikipedia(
-                llm_client= self.synthesizer_llm_client,
-                wiki_search_client=self.wiki_client,
-                knowledge_graph_instance=_add_entities_and_relations
+        logger.info(
+            "Search is %s", "enabled" if self.search["if_search"] else "disabled"
+        )
+        if self.search["if_search"]:
+            logger.info("[Search] %s ...", ", ".join(self.search["search_types"]))
+            _add_search_data = await search_all(
+                llm_client=self.synthesizer_llm_client,
+                search_types=self.search["search_types"],
+                kg_instance=_add_entities_and_relations,
             )
-            await self.wiki_storage.upsert(_add_wiki_data)
+            if _add_search_data:
+                await self.search_storage.upsert(_add_search_data)
+                logger.info("[Search] %d entities searched", len(_add_search_data))
 
         await self._insert_done()
 
     async def _insert_done(self):
         tasks = []
-        for storage_instance in [self.full_docs_storage, self.text_chunks_storage,
-                                 self.graph_storage, self.wiki_storage]:
+        for storage_instance in [
+            self.full_docs_storage,
+            self.text_chunks_storage,
+            self.graph_storage,
+            self.search_storage,
+        ]:
             if storage_instance is None:
                 continue
             tasks.append(cast(StorageNameSpace, storage_instance).index_done_callback())
@@ -202,7 +234,12 @@ class GraphGen:
         loop.run_until_complete(self.async_quiz(max_samples))
 
     async def async_quiz(self, max_samples=1):
-        await quiz(self.synthesizer_llm_client, self.graph_storage, self.rephrase_storage, max_samples)
+        await quiz(
+            self.synthesizer_llm_client,
+            self.graph_storage,
+            self.rephrase_storage,
+            max_samples,
+        )
         await self.rephrase_storage.index_done_callback()
 
     def judge(self, re_judge=False, skip=False):
@@ -213,8 +250,12 @@ class GraphGen:
         if skip:
             _update_relations = await skip_judge_statement(self.graph_storage)
         else:
-            _update_relations = await judge_statement(self.trainee_llm_client, self.graph_storage,
-                                                      self.rephrase_storage, re_judge)
+            _update_relations = await judge_statement(
+                self.trainee_llm_client,
+                self.graph_storage,
+                self.rephrase_storage,
+                re_judge,
+            )
         await _update_relations.index_done_callback()
 
     def traverse(self):
@@ -223,23 +264,32 @@ class GraphGen:
 
     async def async_traverse(self):
         if self.traverse_strategy.qa_form == "atomic":
-            results = await traverse_graph_atomically(self.synthesizer_llm_client,
-                                                      self.tokenizer_instance,
-                                                      self.graph_storage,
-                                                      self.traverse_strategy,
-                                                      self.text_chunks_storage,
-                                                      self.progress_bar)
+            results = await traverse_graph_atomically(
+                self.synthesizer_llm_client,
+                self.tokenizer_instance,
+                self.graph_storage,
+                self.traverse_strategy,
+                self.text_chunks_storage,
+                self.progress_bar,
+            )
         elif self.traverse_strategy.qa_form == "multi_hop":
-            results = await traverse_graph_for_multi_hop(self.synthesizer_llm_client,
-                                                            self.tokenizer_instance,
-                                                            self.graph_storage,
-                                                            self.traverse_strategy,
-                                                            self.text_chunks_storage,
-                                                            self.progress_bar)
+            results = await traverse_graph_for_multi_hop(
+                self.synthesizer_llm_client,
+                self.tokenizer_instance,
+                self.graph_storage,
+                self.traverse_strategy,
+                self.text_chunks_storage,
+                self.progress_bar,
+            )
         elif self.traverse_strategy.qa_form == "aggregated":
-            results = await traverse_graph_by_edge(self.synthesizer_llm_client, self.tokenizer_instance,
-                                                   self.graph_storage, self.traverse_strategy, self.text_chunks_storage,
-                                                   self.progress_bar)
+            results = await traverse_graph_by_edge(
+                self.synthesizer_llm_client,
+                self.tokenizer_instance,
+                self.graph_storage,
+                self.traverse_strategy,
+                self.text_chunks_storage,
+                self.progress_bar,
+            )
         else:
             raise ValueError(f"Unknown qa_form: {self.traverse_strategy.qa_form}")
         await self.qa_storage.upsert(results)

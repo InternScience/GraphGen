@@ -12,5 +12,7 @@ traverse_strategy:
   max_extra_edges: 2
   max_tokens: 256
   loss_strategy: only_edge
-web_search: false
+search:
+  if_search: true
+  search_types: ["wikipedia", "google"]
 re_judge: false
