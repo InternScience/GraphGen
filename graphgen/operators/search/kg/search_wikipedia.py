@@ -50,7 +50,7 @@ async def search_wikipedia(
         entities, desc="Searching Wikipedia", total=len(entities)
     ):
         try:
-            entity, summary = await _process_single_entity(entity, wiki_search_client)
+            summary = await _process_single_entity(entity, wiki_search_client)
             if summary:
                 wiki_data[entity] = summary
         except Exception as e:  # pylint: disable=broad-except
