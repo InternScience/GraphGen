@@ -5,7 +5,9 @@ from .evaluate.uni_evaluator import UniEvaluator
 from .llm.openai_model import OpenAIModel
 from .llm.tokenizer import Tokenizer
 from .llm.topk_token_model import Token, TopkTokenModel
+from .search.db.uniprot_search import UniProtSearch
 from .search.kg.wiki_search import WikiSearch
+from .search.web.bing_search import BingSearch
 from .search.web.google_search import GoogleSearch
 from .storage.json_storage import JsonKVStorage
 from .storage.networkx_storage import NetworkXStorage
@@ -26,6 +28,8 @@ __all__ = [
     # search models
     "WikiSearch",
     "GoogleSearch",
+    "BingSearch",
+    "UniProtSearch",
     # evaluate models
     "TextPair",
     "LengthEvaluator",

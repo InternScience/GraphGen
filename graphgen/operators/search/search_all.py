@@ -49,10 +49,31 @@ async def search_all(
                 if description:
                     results[entity_name] = results.get(entity_name, {})
                     results[entity_name]["google"] = description
+        elif search_type == "bing":
+            from graphgen.models import BingSearch
+            from graphgen.operators.search.web.search_bing import search_bing
 
-        # elif search_type == "bing":
-        #     from graphgen.operators.search.web.search_bing import search_bing
-        #     return await search_bing(llm_client, kg_instance)
+            bing_search_client = BingSearch(
+                subscription_key=os.environ["BING_SEARCH_API_KEY"]
+            )
+
+            bing_results = await search_bing(bing_search_client, search_entities)
+            for entity_name, description in bing_results.items():
+                if description:
+                    results[entity_name] = results.get(entity_name, {})
+                    results[entity_name]["bing"] = description
+        elif search_type == "uniprot":
+            # from graphgen.models import UniProtSearch
+            # from graphgen.operators.search.db.search_uniprot import search_uniprot
+            #
+            # uniprot_search_client = UniProtSearch()
+            #
+            # uniprot_results = await search_uniprot(
+            #     uniprot_search_client, search_entities
+            # )
+            raise NotImplementedError(
+                "Processing of UniProt search results is not implemented yet."
+            )
 
         else:
             logger.error("Search type %s is not supported yet.", search_type)
