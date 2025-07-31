@@ -14,5 +14,5 @@ traverse_strategy:
   loss_strategy: only_edge
 search:
   enabled: true
-  search_types: ["wikipedia", "google"]
+  search_types: ["google"]
 re_judge: false

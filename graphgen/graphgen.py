@@ -237,9 +237,8 @@ class GraphGen:
                 "[Search] Found %d entities to search", len(new_search_entities)
             )
             _add_search_data = await search_all(
-                llm_client=self.synthesizer_llm_client,
                 search_types=self.search_config["search_types"],
-                kg_instance=self.graph_storage,
+                search_entities=new_search_entities,
             )
             if _add_search_data:
                 await self.search_storage.upsert(_add_search_data)
