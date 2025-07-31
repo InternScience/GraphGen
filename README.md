@@ -23,8 +23,8 @@ GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthe
 <summary><b>📚 Table of Contents</b></summary>
 
 - 📝 [What is GraphGen?](#-what-is-graphgen)
-- 🚀 [Quick Start](#-quick-start)
 - 📌 [Latest Updates](#-latest-updates)
+- 🚀 [Quick Start](#-quick-start)
 - 🏗️ [System Architecture](#-system-architecture)
 - 🍀 [Acknowledgements](#-acknowledgements)
 - 📚 [Citation](#-citation)
@@ -53,6 +53,12 @@ Here is post-training result which **over 50% SFT data** comes from GraphGen and
 
 It begins by constructing a fine-grained knowledge graph from the source text，then identifies knowledge gaps in LLMs using the expected calibration error metric, prioritizing the generation of QA pairs that target high-value, long-tail knowledge.
 Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture complex relational information and employs style-controlled generation to diversify the resulting QA data.
+
+## 📌 Latest Updates
+
+- **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends, perfect for closing data gaps.
+  - Web search using Google, Bing, Wikipedia, and Uniprot for 数据缺乏
+- **2025.04.21**: We have released the initial version of GraphGen.
 
 ## 🚀 Quick Start
 
@@ -158,10 +164,6 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
     docker run -p 7860:7860 graphgen
     ```
 
-
-## 📌 Latest Updates
-
-- **2025.04.21**: We have released the initial version of GraphGen.
 
 ## 🏗️ System Architecture
 
