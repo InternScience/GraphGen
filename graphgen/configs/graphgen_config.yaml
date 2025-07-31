@@ -1,5 +1,5 @@
 data_type: raw
-input_file: resources/examples/raw_demo.jsonl
+input_file: resources/examples/keywords_demo.txt
 tokenizer: cl100k_base
 quiz_samples: 2
 traverse_strategy:
@@ -12,5 +12,7 @@ traverse_strategy:
   max_extra_edges: 2
   max_tokens: 256
   loss_strategy: only_edge
-web_search: false
+search:
+  enabled: true
+  search_types: ["google"]
 re_judge: false
