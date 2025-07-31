@@ -46,8 +46,8 @@ class GraphGen:
     tokenizer_instance: Tokenizer = None
 
     # search
-    search: dict = field(
-        default_factory=lambda: {"if_search": False, "search_types": ["wikipedia"]}
+    search_config: dict = field(
+        default_factory=lambda: {"enabled": False, "search_types": ["wikipedia"]}
     )
 
     # traverse
@@ -84,7 +84,6 @@ class GraphGen:
         if len(data) == 0:
             return {}
 
-        new_docs = {}
         inserting_chunks = {}
         if data_type == "raw":
             assert isinstance(data, list) and isinstance(data[0], dict)
@@ -163,6 +162,8 @@ class GraphGen:
             inserting_chunks = {
                 k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
             }
+        else:
+            raise ValueError(f"Unknown data type: {data_type}")
 
         await self.full_docs_storage.upsert(new_docs)
         await self.text_chunks_storage.upsert(inserting_chunks)
@@ -200,20 +201,6 @@ class GraphGen:
             logger.warning("No entities or relations extracted")
             return
 
-        logger.info(
-            "Search is %s", "enabled" if self.search["if_search"] else "disabled"
-        )
-        if self.search["if_search"]:
-            logger.info("[Search] %s ...", ", ".join(self.search["search_types"]))
-            _add_search_data = await search_all(
-                llm_client=self.synthesizer_llm_client,
-                search_types=self.search["search_types"],
-                kg_instance=_add_entities_and_relations,
-            )
-            if _add_search_data:
-                await self.search_storage.upsert(_add_search_data)
-                logger.info("[Search] %d entities searched", len(_add_search_data))
-
         await self._insert_done()
 
     async def _insert_done(self):
@@ -228,6 +215,46 @@ class GraphGen:
                 continue
             tasks.append(cast(StorageNameSpace, storage_instance).index_done_callback())
         await asyncio.gather(*tasks)
+
+    def search(self):
+        loop = create_event_loop()
+        loop.run_until_complete(self.async_search())
+
+    async def async_search(self):
+        logger.info(
+            "Search is %s", "enabled" if self.search_config["enabled"] else "disabled"
+        )
+        if self.search_config["enabled"]:
+            logger.info(
+                "[Search] %s ...", ", ".join(self.search_config["search_types"])
+            )
+            all_nodes = await self.graph_storage.get_all_nodes()
+            all_nodes_names = [node[0] for node in all_nodes]
+            new_search_entities = await self.full_docs_storage.filter_keys(
+                all_nodes_names
+            )
+            logger.info(
+                "[Search] Found %d entities to search", len(new_search_entities)
+            )
+            _add_search_data = await search_all(
+                llm_client=self.synthesizer_llm_client,
+                search_types=self.search_config["search_types"],
+                kg_instance=self.graph_storage,
+            )
+            if _add_search_data:
+                await self.search_storage.upsert(_add_search_data)
+                logger.info("[Search] %d entities searched", len(_add_search_data))
+
+                # Format search results for inserting
+                search_results = []
+                for _, search_data in _add_search_data.items():
+                    search_results.extend(
+                        [
+                            {"content": search_data[key]}
+                            for key in list(search_data.keys())
+                        ]
+                    )
+                await self.async_insert(search_results, "raw")
 
     def quiz(self, max_samples=1):
         loop = create_event_loop()

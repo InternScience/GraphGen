@@ -68,9 +68,7 @@ async def search_wikipedia(
     nodes = list(nodes)
     wiki_data = {}
 
-    async for node in tqdm_async(
-        (node for node in nodes), desc="Searching Wikipedia", total=len(nodes)
-    ):
+    async for node in tqdm_async(nodes, desc="Searching Wikipedia", total=len(nodes)):
         entity_name = node[0].strip('"')
         description = node[1]["description"]
         try:
@@ -78,7 +76,6 @@ async def search_wikipedia(
                 entity_name, description, llm_client, wiki_search_client
             )
             wiki_data[entity] = summary
-            logger.info("Searched entity: %s, Summary: %s", entity, summary)
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Error processing entity %s: %s", entity_name, str(e))
     return wiki_data

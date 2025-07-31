@@ -4,13 +4,15 @@ from graphgen.utils import logger
 
 async def search_all(
     llm_client: OpenAIModel, search_types: dict, kg_instance: NetworkXStorage
-) -> dict[str, str]:
+) -> dict[str, dict[str, str]]:
     """
     :param llm_client
     :param search_types
     :param kg_instance
     :return: nodes with search results
     """
+
+    # 增量建图时，只需要搜索新增实体
 
     results = {}
 
@@ -21,7 +23,12 @@ async def search_all(
 
             wiki_search_client = WikiSearch()
 
-            await search_wikipedia(llm_client, wiki_search_client, kg_instance)
+            wiki_results = await search_wikipedia(
+                llm_client, wiki_search_client, kg_instance
+            )
+            for entity_name, description in wiki_results.items():
+                if description:
+                    results[entity_name] = {"wikipedia": description}
         # elif search_type == "google":
         #     from graphgen.operators.search.web.search_google import search_google
         #     return await search_google(llm_client, kg_instance)

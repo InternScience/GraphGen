@@ -1,5 +1,4 @@
 import argparse
-import json
 import os
 import time
 from importlib.resources import files
@@ -9,7 +8,7 @@ from dotenv import load_dotenv
 
 from .graphgen import GraphGen
 from .models import OpenAIModel, Tokenizer, TraverseStrategy
-from .utils import set_logger
+from .utils import read_file, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -66,15 +65,7 @@ def main():
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     input_file = config["input_file"]
-
-    if config["data_type"] == "raw":
-        with open(input_file, "r", encoding="utf-8") as f:
-            data = [json.loads(line) for line in f]
-    elif config["data_type"] == "chunked":
-        with open(input_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
-    else:
-        raise ValueError(f"Invalid data type: {config['data_type']}")
+    data = read_file(input_file)
 
     synthesizer_llm_client = OpenAIModel(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
@@ -94,12 +85,15 @@ def main():
         unique_id=unique_id,
         synthesizer_llm_client=synthesizer_llm_client,
         trainee_llm_client=trainee_llm_client,
-        search=config["search"],
+        search_config=config["search"],
         tokenizer_instance=Tokenizer(model_name=config["tokenizer"]),
         traverse_strategy=traverse_strategy,
     )
 
     graph_gen.insert(data, config["data_type"])
+
+    if config["search"]["enabled"]:
+        graph_gen.search()
 
     # graph_gen.quiz(max_samples=config['quiz_samples'])
     #
