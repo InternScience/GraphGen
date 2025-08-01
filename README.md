@@ -57,7 +57,6 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 ## 📌 Latest Updates
 
 - **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends, perfect for closing data gaps.
-  - Web search using Google, Bing, Wikipedia, and Uniprot for 数据缺乏
 - **2025.04.21**: We have released the initial version of GraphGen.
 
 ## 🚀 Quick Start
