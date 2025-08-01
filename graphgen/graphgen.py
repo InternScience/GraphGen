@@ -2,7 +2,7 @@ import asyncio
 import os
 import time
 from dataclasses import dataclass, field
-from typing import List, Union, cast
+from typing import Dict, List, Union, cast
 
 import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
@@ -78,7 +78,7 @@ class GraphGen:
         )
 
     async def async_split_chunks(
-        self, data: Union[List[list], List[dict]], data_type: str
+        self, data: List[Union[List, Dict]], data_type: str
     ) -> dict:
         # TODO： 是否进行指代消解
         if len(data) == 0:
