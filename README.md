@@ -47,7 +47,7 @@ Here is post-training result which **over 50% SFT data** comes from GraphGen and
 | :-: | :-: | :-: | :-: |
 | Plant| [SeedBench](https://github.com/open-sciencelab/SeedBench) | **65.9** | 51.5 |
 | Common | CMMLU | 73.6 | **75.8** |
-| Logic | GPQA-Diamond | **40.0** | 33.3 |
+| Knowledge | GPQA-Diamond | **40.0** | 33.3 |
 | Math | AIME24 | **20.6** | 16.7 |
 | | AIME25 | **22.7** | 7.2 |
 
