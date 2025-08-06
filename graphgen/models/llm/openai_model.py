@@ -125,6 +125,7 @@ class OpenAIModel(TopkTokenModel):
 
         prompt_tokens = 0
         for message in kwargs["messages"]:
+            # TODO: need to use local tokenizer to avoid network call
             prompt_tokens += len(Tokenizer().encode_string(message["content"]))
         estimated_tokens = prompt_tokens + kwargs["max_tokens"]
 

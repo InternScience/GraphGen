@@ -95,14 +95,16 @@ def main():
     if config["search"]["enabled"]:
         graph_gen.search()
 
-    # graph_gen.quiz(max_samples=config['quiz_samples'])
-    #
-    # graph_gen.judge(re_judge=config["re_judge"])
-    #
-    # graph_gen.traverse()
-    #
-    # path = os.path.join(working_dir, "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml")
-    # save_config(path, config)
+    graph_gen.quiz(max_samples=config["quiz_samples"])
+
+    graph_gen.judge(re_judge=config["re_judge"])
+
+    graph_gen.traverse()
+
+    path = os.path.join(
+        working_dir, "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml"
+    )
+    save_config(path, config)
 
 
 if __name__ == "__main__":
