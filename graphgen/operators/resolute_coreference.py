@@ -1,12 +1,13 @@
 from typing import List
-from graphgen.models import Chunk
-from graphgen.models import OpenAIModel
-from graphgen.templates import COREFERENCE_RESOLUTION_TEMPLATE
+
+from graphgen.models import Chunk, OpenAIModel
+from graphgen.templates import COREFERENCE_RESOLUTION_PROMPT
 from graphgen.utils import detect_main_language
 
+
 async def resolute_coreference(
-        llm_client: OpenAIModel,
-        chunks: List[Chunk]) -> List[Chunk]:
+    llm_client: OpenAIModel, chunks: List[Chunk]
+) -> List[Chunk]:
     """
     Resolute conference
 
@@ -23,9 +24,8 @@ async def resolute_coreference(
     for _, chunk in enumerate(chunks[1:]):
         language = detect_main_language(chunk.content)
         result = await llm_client.generate_answer(
-            COREFERENCE_RESOLUTION_TEMPLATE[language].format(
-                reference = results[0].content,
-                input_sentence = chunk.content
+            COREFERENCE_RESOLUTION_PROMPT[language].format(
+                reference=results[0].content, input_sentence=chunk.content
             )
         )
         results.append(Chunk(id=chunk.id, content=result))
