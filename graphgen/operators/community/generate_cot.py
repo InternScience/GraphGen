@@ -1,5 +1,5 @@
 import asyncio
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 from tqdm.asyncio import tqdm as tqdm_async
 
