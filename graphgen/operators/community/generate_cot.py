@@ -31,7 +31,7 @@ async def generate_cot(
 
     async def _generate_from_single_community(
         community_id: int, nodes: List[str]
-    ) -> tuple[int, tuple]:
+    ) -> Tuple[int, Tuple[str, str, str]]:
         """Summarize a single community."""
         async with semaphore:
             entities: List[str] = []
