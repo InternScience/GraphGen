@@ -95,7 +95,7 @@ async def generate_cot(
 
     cid_nodes = list(communities.items())
 
-    templates: Dict[int, (str, str)] = {}
+    templates: Dict[int, Tuple[str, str, str]] = {}
     async for coro in tqdm_async(
         asyncio.as_completed(
             [_generate_from_single_community(cid, nodes) for cid, nodes in cid_nodes]
