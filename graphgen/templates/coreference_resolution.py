@@ -1,4 +1,3 @@
-# pylint: disable=C0301
 TEMPLATE_ZH: str = """请根据参考文本识别并消解文本中的指代词，明确每个代词所指代的具体实体，并直接输出消解后的文本。
 
 -示例-
@@ -16,7 +15,8 @@ TEMPLATE_ZH: str = """请根据参考文本识别并消解文本中的指代词�
 输出：
 """
 
-TEMPLATE_EN: str = """Please identify and resolve the pronouns in the reference text, specify the specific entities referred to by each pronoun, and directly output the resolved text.
+TEMPLATE_EN: str = """Please identify and resolve the pronouns in the reference text, \
+specify the specific entities referred to by each pronoun, and directly output the resolved text.
 
 -Example-
 Input:
@@ -33,7 +33,4 @@ Please directly output the rewritten sentence without any additional information
 Output:
 """
 
-COREFERENCE_RESOLUTION_TEMPLATE = {
-    "en": TEMPLATE_EN,
-    "zh": TEMPLATE_ZH
-}
+COREFERENCE_RESOLUTION_PROMPT = {"en": TEMPLATE_EN, "zh": TEMPLATE_ZH}

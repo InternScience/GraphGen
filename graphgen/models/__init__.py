@@ -1,3 +1,4 @@
+from .community.community_detector import CommunityDetector
 from .evaluate.length_evaluator import LengthEvaluator
 from .evaluate.mtld_evaluator import MTLDEvaluator
 from .evaluate.reward_evaluator import RewardEvaluator
@@ -38,4 +39,6 @@ __all__ = [
     "UniEvaluator",
     # strategy models
     "TraverseStrategy",
+    # community models
+    "CommunityDetector",
 ]
