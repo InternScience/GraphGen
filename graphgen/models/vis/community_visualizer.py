@@ -31,7 +31,6 @@ class Visualizer:
         plt.figure(figsize=(10, 10))
 
         node_colors = [self.communities.get(node, 0) for node in self.graph.nodes()]
-        print(node_colors)
 
         nx.draw_networkx_nodes(
             self.graph,
