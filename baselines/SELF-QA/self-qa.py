@@ -1,18 +1,19 @@
 # https://arxiv.org/abs/2305.11952
 
-import os
-import json
-from dataclasses import dataclass
-from typing import List
 import argparse
 import asyncio
-from tqdm.asyncio import tqdm as tqdm_async
+import json
+import os
+from dataclasses import dataclass
+from typing import List
+
 from dotenv import load_dotenv
+from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.models import OpenAIModel
-from graphgen.utils import create_event_loop, compute_content_hash
+from graphgen.utils import compute_content_hash, create_event_loop
 
-INSTRUCTION_GENERATION_PROMPT = '''The background knowledge is:
+INSTRUCTION_GENERATION_PROMPT = """The background knowledge is:
 {doc}
 
 Please generate ten instruction questions as diverse as possible based on the content of the above article.
@@ -22,9 +23,9 @@ Please assume that there is no corresponding article to refer to when asking que
 Please generate questions in the following format:
 1. Question: ...
 2. Question: ...
-'''
+"""
 
-READING_COMPREHENSION_PROMPT = '''The background knowledge is:
+READING_COMPREHENSION_PROMPT = """The background knowledge is:
 {doc}
 Please answer the following question based on the content of the article above:
 {question}
@@ -34,23 +35,26 @@ Please answer this question as thoroughly as possible, but do not change the key
 Please generate the corresponding answer in the following format:
 Question: ...
 Answer: ...
-'''
+"""
+
 
 def _post_process_instructions(content: str) -> list:
-    lines = content.split('\n')
+    lines = content.split("\n")
     questions = []
     for line in lines:
         if "Question:" in line:
-            question = line.split('Question:')[1].strip()
+            question = line.split("Question:")[1].strip()
             questions.append(question)
     return questions
 
+
 def _post_process_answers(content: str) -> tuple:
     if "Question:" in content and "Answer:" in content:
-        question = content.split('Question:')[1].split('Answer:')[0].strip()
-        answer = content.split('Answer:')[1].strip()
+        question = content.split("Question:")[1].split("Answer:")[0].strip()
+        answer = content.split("Answer:")[1].strip()
         return question, answer
     return None, None
+
 
 @dataclass
 class SelfQA:
@@ -73,58 +77,79 @@ class SelfQA:
                     instruction_questions = _post_process_instructions(response)
 
                     qas = []
-                    for qa in tqdm_async(asyncio.as_completed([
-                        self.llm_client.generate_answer(READING_COMPREHENSION_PROMPT.format(
-                            doc=content,
-                            question=question
-                        )) for question in instruction_questions]),
-                            total=len(instruction_questions), desc="Generating QAs"):
+                    for qa in tqdm_async(
+                        asyncio.as_completed(
+                            [
+                                self.llm_client.generate_answer(
+                                    READING_COMPREHENSION_PROMPT.format(
+                                        doc=content, question=question
+                                    )
+                                )
+                                for question in instruction_questions
+                            ]
+                        ),
+                        total=len(instruction_questions),
+                        desc="Generating QAs",
+                    ):
                         try:
                             question, answer = _post_process_answers(await qa)
                             if question and answer:
-                                qas.append({
-                                    compute_content_hash(question): {
-                                        'question': question,
-                                        'answer': answer
+                                qas.append(
+                                    {
+                                        compute_content_hash(question): {
+                                            "question": question,
+                                            "answer": answer,
+                                        }
                                     }
-                                })
-                        except Exception as e: # pylint: disable=broad-except
+                                )
+                        except Exception as e:  # pylint: disable=broad-except
                             print(f"Error: {e}")
                             continue
                     return qas
-                except Exception as e: # pylint: disable=broad-except
+                except Exception as e:  # pylint: disable=broad-except
                     print(f"Error: {e}")
                     return []
 
         tasks = []
         for doc in docs:
             for chunk in doc:
-                tasks.append(process_chunk(chunk['content']))
+                tasks.append(process_chunk(chunk["content"]))
 
-        for result in tqdm_async(asyncio.as_completed(tasks), total=len(tasks), desc="Generating using SelfQA"):
+        for result in tqdm_async(
+            asyncio.as_completed(tasks),
+            total=len(tasks),
+            desc="Generating using SelfQA",
+        ):
             try:
                 qas = await result
                 for qa in qas:
                     final_results.update(qa)
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 print(f"Error: {e}")
         return final_results
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_file',
-                        help='Raw context jsonl path.',
-                        default='resources/examples/chunked_demo.json',
-                        type=str)
-    parser.add_argument('--data_type',
-                        help='Data type of input file. (Raw context or chunked context)',
-                        choices=['raw', 'chunked'],
-                        default='raw',
-                        type=str)
-    parser.add_argument('--output_file',
-                        help='Output file path.',
-                        default='cache/data/self-qa.json',
-                        type=str)
+    parser.add_argument(
+        "--input_file",
+        help="Raw context jsonl path.",
+        default="resources/input_examples/chunked_demo.json",
+        type=str,
+    )
+    parser.add_argument(
+        "--data_type",
+        help="Data type of input file. (Raw context or chunked context)",
+        choices=["raw", "chunked"],
+        default="raw",
+        type=str,
+    )
+    parser.add_argument(
+        "--output_file",
+        help="Output file path.",
+        default="cache/data/self-qa.json",
+        type=str,
+    )
 
     args = parser.parse_args()
 
@@ -133,21 +158,21 @@ if __name__ == "__main__":
     llm_client = OpenAIModel(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
-        base_url=os.getenv("SYNTHESIZER_BASE_URL")
+        base_url=os.getenv("SYNTHESIZER_BASE_URL"),
     )
 
     self_qa = SelfQA(llm_client=llm_client)
 
-    if args.data_type == 'raw':
-        with open(args.input_file, "r", encoding='utf-8') as f:
+    if args.data_type == "raw":
+        with open(args.input_file, "r", encoding="utf-8") as f:
             data = [json.loads(line) for line in f]
             data = [[chunk] for chunk in data]
-    elif args.data_type == 'chunked':
-        with open(args.input_file, "r", encoding='utf-8') as f:
+    elif args.data_type == "chunked":
+        with open(args.input_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
     results = self_qa.generate(data)
 
     # Save results
-    with open(args.output_file, "w", encoding='utf-8') as f:
+    with open(args.output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)

@@ -5,15 +5,18 @@ from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.models import CommunityDetector, NetworkXStorage, OpenAIModel
 from graphgen.templates import COT_GENERATION_PROMPT, COT_TEMPLATE_DESIGN_PROMPT
-from graphgen.utils import detect_main_language
+from graphgen.utils import compute_content_hash, detect_main_language
 
 
 async def generate_cot(
     graph_storage: NetworkXStorage,
     synthesizer_llm_client: OpenAIModel,
-    method: str = "leiden",
+    method_params: Dict = None,
 ):
-    detector = CommunityDetector(graph_storage=graph_storage, method=method)
+    method = method_params.get("method", "leiden")
+    detector = CommunityDetector(
+        graph_storage=graph_storage, method=method, method_params=method_params
+    )
 
     results = await detector.detect_communities()
 
@@ -30,25 +33,25 @@ async def generate_cot(
     semaphore = asyncio.Semaphore(value=1000)
 
     async def _generate_from_single_community(
-        community_id: int, nodes: List[str]
+        c_id: int, nodes: List[str]
     ) -> Tuple[int, Tuple[str, str, str]]:
         """Summarize a single community."""
         async with semaphore:
             entities: List[str] = []
             relationships: List[str] = []
 
-            for node in nodes:
-                node_data = await graph_storage.get_node(node)
+            for n in nodes:
+                node_data = await graph_storage.get_node(n)
                 if node_data is not None:
-                    entities.append(f"({node}: {node_data.get('description')})")
+                    entities.append(f"({n}: {node_data.get('description')})")
 
-                edges = await graph_storage.get_node_edges(node)
+                edges = await graph_storage.get_node_edges(n)
                 for edge in edges:
                     target = edge[1]
                     if target in nodes:
-                        edge_data = await graph_storage.get_edge(node, target)
+                        edge_data = await graph_storage.get_edge(n, target)
                         relationships.append(
-                            f"({node}) - [{edge_data['description']}] -> ({target})"
+                            f"({n}) - [{edge_data['description']}] -> ({target})"
                         )
 
             entities_str = "\n".join(entities)
@@ -91,20 +94,24 @@ async def generate_cot(
 
             cot_answer = await synthesizer_llm_client.generate_answer(prompt)
 
-            return community_id, (question, reasoning_path, cot_answer)
+            return c_id, (question, reasoning_path, cot_answer)
 
     cid_nodes = list(communities.items())
 
-    templates: Dict[int, Tuple[str, str, str]] = {}
+    results: Dict = {}
     async for coro in tqdm_async(
         asyncio.as_completed(
             [_generate_from_single_community(cid, nodes) for cid, nodes in cid_nodes]
         ),
         total=len(cid_nodes),
-        desc="[Generate COT] Generating COT templates for communities",
+        desc="[Generating COT] Generating CoT data from communities",
         unit="community",
     ):
         cid, (q, r, a) = await coro
-        templates[cid] = (q, r, a)
+        results[compute_content_hash(q)] = {
+            "question": q,
+            "reasoning_path": r,
+            "answer": a,
+        }
 
-    return templates
+    return results

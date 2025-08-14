@@ -17,7 +17,7 @@ Steps:
 ################
 -Examples-
 ################
-{examples}
+{input_examples}
 
 ################
 -Real Data-

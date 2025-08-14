@@ -1,9 +1,9 @@
-data_type: raw
-input_file: resources/examples/raw_demo.jsonl
+input_data_type: raw
+input_file: resources/input_examples/raw_demo.jsonl
+output_data_type: multi_hop
 tokenizer: cl100k_base
 quiz_samples: 2
 traverse_strategy:
-  qa_form: aggregated
   bidirectional: true
   edge_sampling: max_loss
   expand_method: max_width

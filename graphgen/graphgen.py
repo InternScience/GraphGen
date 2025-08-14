@@ -18,6 +18,7 @@ from .models import (
 from .models.storage.base_storage import StorageNameSpace
 from .operators import (
     extract_kg,
+    generate_cot,
     judge_statement,
     quiz,
     search_all,
@@ -49,9 +50,6 @@ class GraphGen:
     search_config: dict = field(
         default_factory=lambda: {"enabled": False, "search_types": ["wikipedia"]}
     )
-
-    # traverse
-    traverse_strategy: TraverseStrategy = field(default_factory=TraverseStrategy)
 
     # webui
     progress_bar: gr.Progress = None
@@ -284,40 +282,53 @@ class GraphGen:
             )
         await _update_relations.index_done_callback()
 
-    def traverse(self):
+    def traverse(self, traverse_strategy: TraverseStrategy):
         loop = create_event_loop()
-        loop.run_until_complete(self.async_traverse())
+        loop.run_until_complete(self.async_traverse(traverse_strategy))
 
-    async def async_traverse(self):
-        if self.traverse_strategy.qa_form == "atomic":
+    async def async_traverse(self, traverse_strategy: TraverseStrategy):
+        if traverse_strategy.qa_form == "atomic":
             results = await traverse_graph_atomically(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                self.traverse_strategy,
+                traverse_strategy,
                 self.text_chunks_storage,
                 self.progress_bar,
             )
-        elif self.traverse_strategy.qa_form == "multi_hop":
+        elif traverse_strategy.qa_form == "multi_hop":
             results = await traverse_graph_for_multi_hop(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                self.traverse_strategy,
+                traverse_strategy,
                 self.text_chunks_storage,
                 self.progress_bar,
             )
-        elif self.traverse_strategy.qa_form == "aggregated":
+        elif traverse_strategy.qa_form == "aggregated":
             results = await traverse_graph_by_edge(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                self.traverse_strategy,
+                traverse_strategy,
                 self.text_chunks_storage,
                 self.progress_bar,
             )
         else:
-            raise ValueError(f"Unknown qa_form: {self.traverse_strategy.qa_form}")
+            raise ValueError(f"Unknown qa_form: {traverse_strategy.qa_form}")
+        await self.qa_storage.upsert(results)
+        await self.qa_storage.index_done_callback()
+
+    def generate_reasoning(self, method_params):
+        loop = create_event_loop()
+        loop.run_until_complete(self.async_generate_reasoning(method_params))
+
+    async def async_generate_reasoning(self, method_params):
+        results = await generate_cot(
+            self.graph_storage,
+            self.synthesizer_llm_client,
+            method_params=method_params,
+        )
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 

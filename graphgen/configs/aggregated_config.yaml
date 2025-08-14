@@ -1,0 +1,18 @@
+input_data_type: raw
+input_file: resources/input_examples/raw_demo.jsonl
+output_data_type: aggregated
+tokenizer: cl100k_base
+quiz_samples: 2
+traverse_strategy:
+  bidirectional: true
+  edge_sampling: max_loss
+  expand_method: max_width
+  isolated_node_strategy: ignore
+  max_depth: 5
+  max_extra_edges: 20
+  max_tokens: 256
+  loss_strategy: only_edge
+search:
+  enabled: false
+  search_types: ["google"]
+re_judge: false

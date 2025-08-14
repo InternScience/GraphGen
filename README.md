@@ -56,7 +56,7 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 
 ## 📌 Latest Updates
 
-- **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends, perfect for closing data gaps.
+- **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends.
 - **2025.04.21**: We have released the initial version of GraphGen.
 
 ## 🚀 Quick Start
@@ -138,15 +138,15 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
      ```
 2. (Optional) If you want to modify the default generated configuration, you can edit the content of the configs/graphgen_config.yaml file.
     ```yaml
-    # configs/graphgen_config.yaml
+    # configs/aggregated_config.yaml
     # Example configuration
-    data_type: "raw"
-    input_file: "resources/examples/raw_demo.jsonl"
+    input_data_type: "raw"
+    input_file: "resources/input_examples/raw_demo.jsonl"
     # more configurations...
     ```
 3. Run the generation script
    ```bash
-   bash scripts/generate.sh
+   bash scripts/generate/generate_aggregated.sh
    ```
 4. Get the generated data
    ```bash

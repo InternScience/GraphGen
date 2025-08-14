@@ -1,0 +1,47 @@
+{
+    "b917f19103fb6184aae1b37f903ce112": {
+        "question": "云粳26号在西南稻区的推广情况如何？",
+        "answer": "在2012年，云粳26号被农业部正式列为西南稻区的农业推广主导品种。这一决定标志着云粳26号在该区域的重要性，进一步推动了西南稻区的农业发展。",
+        "loss": 0.7650802039228166
+    },
+    "62cc58c678ae70ed9a03684efede4d8b": {
+        "question": "What is the classification and phenotype of the Bg1-D mutant in terms of its grain size compared to normal varieties?",
+        "answer": "The Bg1-D mutant is classified as a dominant mutant, which means it expresses its traits more prominently than recessive variants. This particular mutant is characterized by an extra-large grain phenotype, showcasing grains that are significantly larger than those of normal varieties.",
+        "loss": 0.31326545774936676
+    },
+    "7afdff9aa72d418f706fff5353fd69e7": {
+        "question": "What is the role of the Tiller Angle Control 4 (TAC4) gene in rice plants, and how does its loss of function affect the plant's architecture and grain yield?",
+        "answer": "The loss of function of the Tiller Angle Control 4 (TAC4) gene leads to a significant increase in the tiller angle of rice plants, which in turn affects their overall architecture. The tiller angle is a crucial aspect of plant structure that has a direct impact on the grain yield of rice. TAC4 has been identified as a key regulator of this trait, as it influences the tiller angle in rice plants. Furthermore, TAC4 encodes a highly conserved nuclear protein, which is essential for the regulation of the tiller angle and, consequently, the plant's yield potential.",
+        "loss": 0.3675571912313429
+    },
+    "50fb8fdad05d10217da553bade12ca15": {
+        "question": "How does auxin influence grain size and crop yield in plants, particularly in rice?",
+        "answer": "Grain size is a critical factor that significantly impacts crop yield, especially in rice. This aspect of plant development is heavily influenced by auxin, a class of plant hormones essential for regulating growth and development. Specifically, auxin affects grain size through its role in various developmental signals that guide plant growth.\n\nOne important type of auxin is indole acetic acid, which not only contributes to overall plant growth and development but also plays a vital role in regulating gravitropism—the plant's growth response to gravity. This gravitropic response is modulated by auxin, which determines how plants orient themselves in relation to gravitational forces.\n\nHowever, the transport of auxin can be inhibited by substances such as N-1-naphthylphthalamic acid. This auxin transport inhibitor can affect the sensitivity of plants to auxin, thereby influencing their growth and development. Overall, the interplay between grain size, auxin, and various developmental signals is crucial for understanding how plants adapt and thrive in their environments.",
+        "loss": 1.9266283028019138e-07
+    },
+    "5ae7a76b5ecb56fb5c0be5b7f0c6cc4b": {
+        "question": "云粳26号是什么品种的稻米，它的培育背景和市场潜力如何？",
+        "answer": "稻米是水稻的种子，作为一种主要的粮食作物，其重要性不言而喻。在众多稻米品种中，云粳26号以其良好的食用价值和市场潜力而受到关注。云粳26号是由云南省农业科学院粮食作物研究所于2005年培育出的早熟稻品种，具有优良的外观和食味品质。\n\n为了确保云粳26号的高产和优质，种植过程中需要采用相应的种植技术。这些技术旨在提高作物的产量和质量，从而满足市场的需求。市场需求反映了消费者对稻米等农产品的偏好，因此，云粳26号的推广与市场需求密切相关。通过有效的种植技术和对市场需求的把握，云粳26号有望在稻米市场中占据一席之地。",
+        "loss": 4.89174685946466e-07
+    },
+    "a3b291ba0fe28ca48e9447944bb9581c": {
+        "question": "云粳26号是什么品种，它的主要特征和推广情况如何？",
+        "answer": "云粳26号是一种早熟稻品种，由云南省农业科学院粮食作物研究所于2005年育成。该品种具有良好的外观和食味品质，其中米粒大、颖尖无色、无芒以及谷壳黄色等特征，使其在市场上更具吸引力。此外，云粳26号还具备高抗稻瘟病的特性，增强了其在种植过程中的可行性。\n\n在2012年，农业部将云粳26号列为西南稻区的农业推广主导品种，标志着其在该地区的重要性。云粳26号特别适合在中海拔稻区种植，尤其是在海拔1500至1800米的云南中海拔稻区。其落粒性适中和有香味的特性进一步提升了其食用价值，满足了消费者的需求。\n\n通过科学的品种育成方法，云粳26号的推广旨在提高农业生产效率，促进农业生产的发展。因此，云粳26号不仅是一个优质的稻米品种，也是推动当地农业发展的重要力量。",
+        "loss": 0.8043609434100357
+    },
+    "eb671e24d1721884126bd70a6b0a654d": {
+        "question": "What is the role of the Big Grain1 (BG1) gene in rice, and how does it affect grain size and auxin transport?",
+        "answer": "The gene known as Big Grain1 (BG1) plays a significant role in regulating grain size and is preferentially expressed in vascular tissue, which is essential for nutrient transport. This gene is also involved in the transport mechanisms of auxin, a class of plant hormones crucial for growth and development. Specifically, BG1 is induced by auxin treatment, highlighting its importance in auxin response and transport.\n\nIn the context of rice, the Bg1-D mutant, which is associated with the BG1 gene, exhibits an extra-large grain phenotype. This mutant demonstrates increased auxin basipetal transport, suggesting that BG1 is integral to the movement of auxin within the plant. Furthermore, the expression of BG1 is observed in young panicles, indicating its role in the reproductive development of rice.\n\nManipulating BG1 through techniques such as knockdown results in reduced sensitivity to auxin and smaller grain sizes, thereby affecting overall seed weight and plant biomass. The protein encoded by BG1 is membrane-localized, which implies its involvement in cellular transport mechanisms. Additionally, the expression of BG1 in culms further supports its contribution to the growth and development of the rice plant.\n\nResearch involving both rice and Arabidopsis has provided insights into the regulatory functions of BG1, particularly in enhancing crop yield. The Bg1-D mutant's altered gravitropism also suggests a connection between grain size and the plant's growth responses to gravity. Overall, the manipulation of BG1 is crucial for improving traits such as biomass and yield in crop plants, emphasizing its significance in agricultural advancements.",
+        "loss": 0.4372811872636896
+    },
+    "c88ce9480857feee561cbb1facb64dea": {
+        "question": "隆两优1212是什么水稻品种，它的引入和推广过程是怎样的？",
+        "answer": "隆两优1212是一种水稻品种，于2017年首次引入福建省龙岩市长汀县进行试种。这一品种表现出分蘖力强、抗性好、抽穗整齐、后期转色好、生育期适中、产量高和适应性好的优良特性，显示出其在该地区的适应性。隆两优1212的种植过程始于2017年6月15日，当天进行了机播，随后在7月5日进行了机插，标志着其生长周期的推进。\n\n在经过一段时间的生长后，隆两优1212于2017年10月21日成熟，标志着其生长周期的结束。由于其优良的表现，隆两优1212在2018年得以进一步扩大示范种植，长汀润丰优质稻专业合作社成为该品种在这一年示范种植的合作社之一。\n\n随着推广的成功，隆两优1212在2019年继续在长汀县进行示范种植，长汀县绿丰优质稻专业合作社也参与了这一过程。此外，隆两优1212还被用于作烟后稻的种植方式，进一步展示了其适应性。值得一提的是，圣丰家庭农场也是隆两优1212试种的具体地点之一，表明该农场积极参与了该品种的推广。",
+        "loss": 0.8527936783199727
+    },
+    "8c098daa808c8eed3304ebe951b89ba8": {
+        "question": "What role does the TAC4 gene play in the domestication and improvement of Indica rice cultivars, particularly in relation to tiller angle and grain yield?",
+        "answer": "Indica cultivars, which are varieties of rice that have undergone domestication and improvement, exhibit a fixed bottleneck in the function of the TAC4 gene. This bottleneck has significantly impacted the regulation of tiller angle in these cultivars. TAC4 plays a crucial role in influencing the gravitropic response of rice shoots by regulating the levels of indole acetic acid, a plant hormone essential for growth and development. \n\nThe domestication process of rice, scientifically known as Oryza sativa, has shaped the regulatory role of TAC4, which is classified as a plant-specific protein. This protein is vital for determining the overall architecture of rice plants, particularly through its effect on tiller angle. Consequently, TAC4's regulation of tiller angle is directly linked to the grain yield of rice, as the angle significantly affects the amount of rice produced per unit area.\n\nFurthermore, the improvement of rice varieties involves a comprehensive understanding of TAC4's role in plant architecture. The distribution of auxin, which is crucial for proper plant growth, is also influenced by TAC4. This relationship highlights the importance of TAC4 in regulating gravitropism, which is the plant's growth response to gravity, and is affected by the spatial distribution of auxin.\n\nIn severe lines of rice, genetic mutations can lead to altered gravitropism, demonstrating the connection between genetic factors and growth responses. Additionally, grain size is a critical determinant of overall grain yield, further emphasizing the intricate relationships between TAC4, tiller angle, and the various factors that influence rice yield.",
+        "loss": 0.22054819647759094
+    }
+}

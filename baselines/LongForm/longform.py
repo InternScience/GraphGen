@@ -1,24 +1,25 @@
 # https://arxiv.org/pdf/2304.08460
 # https://github.com/akoksal/LongForm/tree/main
 
-import os
-import json
-from dataclasses import dataclass
 import argparse
 import asyncio
+import json
+import os
+from dataclasses import dataclass
 from typing import List
-from tqdm.asyncio import tqdm as tqdm_async
+
 from dotenv import load_dotenv
+from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.models import OpenAIModel
-from graphgen.utils import create_event_loop, compute_content_hash
+from graphgen.utils import compute_content_hash, create_event_loop
 
-
-PROMPT_TEMPLATE = '''Instruction: X
+PROMPT_TEMPLATE = """Instruction: X
 Output:{doc}
 
 What kind of instruction could this be the answer to?
-X:'''
+X:"""
+
 
 @dataclass
 class LongForm:
@@ -38,39 +39,50 @@ class LongForm:
                 question = await self.llm_client.generate_answer(content)
                 return {
                     compute_content_hash(question): {
-                        'question': question,
-                        'answer': content
+                        "question": question,
+                        "answer": content,
                     }
                 }
 
         tasks = []
         for doc in docs:
             for chunk in doc:
-                tasks.append(process_chunk(chunk['content']))
+                tasks.append(process_chunk(chunk["content"]))
 
-        for result in tqdm_async(asyncio.as_completed(tasks), total=len(tasks), desc="Generating using LongForm"):
+        for result in tqdm_async(
+            asyncio.as_completed(tasks),
+            total=len(tasks),
+            desc="Generating using LongForm",
+        ):
             try:
                 qa = await result
                 final_results.update(qa)
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 print(f"Error: {e}")
         return final_results
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_file',
-                        help='Raw context jsonl path.',
-                        default='resources/examples/chunked_demo.json',
-                        type=str)
-    parser.add_argument('--data_type',
-                        help='Data type of input file. (Raw context or chunked context)',
-                        choices=['raw', 'chunked'],
-                        default='raw',
-                        type=str)
-    parser.add_argument('--output_file',
-                        help='Output file path.',
-                        default='cache/data/longform.json',
-                        type=str)
+    parser.add_argument(
+        "--input_file",
+        help="Raw context jsonl path.",
+        default="resources/input_examples/chunked_demo.json",
+        type=str,
+    )
+    parser.add_argument(
+        "--data_type",
+        help="Data type of input file. (Raw context or chunked context)",
+        choices=["raw", "chunked"],
+        default="raw",
+        type=str,
+    )
+    parser.add_argument(
+        "--output_file",
+        help="Output file path.",
+        default="cache/data/longform.json",
+        type=str,
+    )
 
     args = parser.parse_args()
 
@@ -79,21 +91,21 @@ if __name__ == "__main__":
     llm_client = OpenAIModel(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
-        base_url=os.getenv("SYNTHESIZER_BASE_URL")
+        base_url=os.getenv("SYNTHESIZER_BASE_URL"),
     )
 
     longform = LongForm(llm_client=llm_client)
 
-    if args.data_type == 'raw':
-        with open(args.input_file, "r", encoding='utf-8') as f:
+    if args.data_type == "raw":
+        with open(args.input_file, "r", encoding="utf-8") as f:
             data = [json.loads(line) for line in f]
             data = [[chunk] for chunk in data]
-    elif args.data_type == 'chunked':
-        with open(args.input_file, "r", encoding='utf-8') as f:
+    elif args.data_type == "chunked":
+        with open(args.input_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
     results = longform.generate(data)
 
     # Save results
-    with open(args.output_file, "w", encoding='utf-8') as f:
+    with open(args.output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
