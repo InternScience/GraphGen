@@ -210,7 +210,7 @@ uv run webui/app.py
 ## 📜 许可证
 本项目采用 [Apache License 2.0](LICENSE) 许可证。
 
-## 📅 Star History
+## 📅 星标历史
 
 [![Star History Chart](https://api.star-history.com/svg?repos=open-sciencelab/GraphGen&type=Date)](https://www.star-history.com/#open-sciencelab/GraphGen&Date)
 
