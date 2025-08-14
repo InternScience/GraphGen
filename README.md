@@ -58,6 +58,7 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 
 ## 📌 Latest Updates
 
+- **2025.08.14**: We have added support for community detection in knowledge graphs using the Leiden algorithm, enabling the synthesis of Chain-of-Thought (CoT) data.
 - **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends.
 - **2025.04.21**: We have released the initial version of GraphGen.
 
