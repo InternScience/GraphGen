@@ -20,8 +20,6 @@ class Visualizer:
 
     def visualize(self, save_path: str = None):
         n = self.graph.number_of_nodes()
-        print(f"Loaded graph: {n} nodes, {self.graph.number_of_edges()} edges")
-
         if self.layout == "spring":
             k = max(0.1, 1.0 / (n**0.5))
             pos = nx.spring_layout(self.graph, k=k, seed=42)
@@ -37,7 +35,7 @@ class Visualizer:
             pos,
             node_size=self.node_size,
             node_color=node_colors,
-            cmap="viridis",
+            cmap=plt.cm.tab20,
             alpha=self.alpha,
         )
         nx.draw_networkx_edges(self.graph, pos, alpha=0.3, width=0.2)
