@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from .graphgen import GraphGen
 from .models import OpenAIModel, Tokenizer, TraverseStrategy
-from .utils import read_file, set_logger
+from .utils import logger, read_file, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -35,7 +35,7 @@ def main():
     parser.add_argument(
         "--config_file",
         help="Config parameters for GraphGen.",
-        default=files("graphgen").joinpath("configs", "graphgen_config.yaml"),
+        default=files("graphgen").joinpath("configs", "aggregated_config.yaml"),
         type=str,
     )
     parser.add_argument(
@@ -50,22 +50,27 @@ def main():
 
     working_dir = args.output_dir
     set_working_dir(working_dir)
-    unique_id = int(time.time())
-    set_logger(
-        os.path.join(working_dir, "logs", f"graphgen_{unique_id}.log"), if_stream=False
-    )
-    print(
-        "GraphGen with unique ID",
-        unique_id,
-        "logging to",
-        os.path.join(working_dir, "logs", f"graphgen_{unique_id}.log"),
-    )
 
     with open(args.config_file, "r", encoding="utf-8") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-
     input_file = config["input_file"]
     data = read_file(input_file)
+    output_data_type = config["output_data_type"]
+
+    unique_id = int(time.time())
+    set_logger(
+        os.path.join(
+            working_dir, "logs", f"graphgen_{output_data_type}_{unique_id}.log"
+        ),
+        if_stream=True,
+    )
+    logger.info(
+        "GraphGen with unique ID %s logging to %s",
+        unique_id,
+        os.path.join(
+            working_dir, "logs", f"graphgen_{output_data_type}_{unique_id}.log"
+        ),
+    )
 
     synthesizer_llm_client = OpenAIModel(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
@@ -78,8 +83,6 @@ def main():
         base_url=os.getenv("TRAINEE_BASE_URL"),
     )
 
-    traverse_strategy = TraverseStrategy(**config["traverse_strategy"])
-
     graph_gen = GraphGen(
         working_dir=working_dir,
         unique_id=unique_id,
@@ -87,19 +90,24 @@ def main():
         trainee_llm_client=trainee_llm_client,
         search_config=config["search"],
         tokenizer_instance=Tokenizer(model_name=config["tokenizer"]),
-        traverse_strategy=traverse_strategy,
     )
 
-    graph_gen.insert(data, config["data_type"])
+    graph_gen.insert(data, config["input_data_type"])
 
     if config["search"]["enabled"]:
         graph_gen.search()
 
-    graph_gen.quiz(max_samples=config["quiz_samples"])
-
-    graph_gen.judge(re_judge=config["re_judge"])
-
-    graph_gen.traverse()
+    # Use pipeline according to the output data type
+    if output_data_type in ["atomic", "aggregated", "multi_hop"]:
+        graph_gen.quiz(max_samples=config["quiz_samples"])
+        graph_gen.judge(re_judge=config["re_judge"])
+        traverse_strategy = TraverseStrategy(**config["traverse_strategy"])
+        traverse_strategy.qa_form = output_data_type
+        graph_gen.traverse(traverse_strategy=traverse_strategy)
+    elif output_data_type == "cot":
+        graph_gen.generate_reasoning(method_params=config["method_params"])
+    else:
+        raise ValueError(f"Unsupported output data type: {output_data_type}")
 
     path = os.path.join(
         working_dir, "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml"

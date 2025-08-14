@@ -1,18 +1,19 @@
 # https://arxiv.org/pdf/2401.14367
 
-import os
-import json
 import argparse
 import asyncio
-from typing import List
+import json
+import os
 from dataclasses import dataclass
-from tqdm.asyncio import tqdm as tqdm_async
+from typing import List
+
 from dotenv import load_dotenv
+from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.models import OpenAIModel
-from graphgen.utils import create_event_loop, compute_content_hash
+from graphgen.utils import compute_content_hash, create_event_loop
 
-PROMPT_TEMPLATE = '''Instruction: Given the next [document], create a [question] and [answer] pair that are grounded \
+PROMPT_TEMPLATE = """Instruction: Given the next [document], create a [question] and [answer] pair that are grounded \
 in the main point of the document, don't add any additional information that is not in the document. The [question] is \
 by an information-seeking user and the [answer] is provided by a helping AI Agent.
 
@@ -45,13 +46,13 @@ an electronic dance music producer topped the countdown.
 
 [document]: {doc}
 
-### Response:'''
+### Response:"""
 
 
 def _post_process(content: str) -> tuple:
     if "[question]:" in content and "[answer]:" in content:
-        question = content.split('[question]: ')[1].split('[answer]: ')[0]
-        answer = content.split('[answer]: ')[1]
+        question = content.split("[question]: ")[1].split("[answer]: ")[0]
+        answer = content.split("[answer]: ")[1]
         return question, answer
     return None, None
 
@@ -77,35 +78,44 @@ class Genie:
         tasks = []
         for doc in docs:
             for chunk in doc:
-                tasks.append(process_chunk(chunk['content']))
+                tasks.append(process_chunk(chunk["content"]))
 
-        for result in tqdm_async(asyncio.as_completed(tasks), total=len(tasks), desc="Generating using Genie"):
+        for result in tqdm_async(
+            asyncio.as_completed(tasks), total=len(tasks), desc="Generating using Genie"
+        ):
             try:
                 question, answer = _post_process(await result)
                 if question and answer:
                     final_results[compute_content_hash(question)] = {
-                        'question': question,
-                        'answer': answer
+                        "question": question,
+                        "answer": answer,
                     }
-            except Exception as e: # pylint: disable=broad-except
+            except Exception as e:  # pylint: disable=broad-except
                 print(f"Error: {e}")
         return final_results
 
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument('--input_file',
-                        help='Raw context jsonl path.',
-                        default='resources/examples/chunked_demo.json',
-                        type=str)
-    parser.add_argument('--data_type',
-                        help='Data type of input file. (Raw context or chunked context)',
-                        choices=['raw', 'chunked'],
-                        default='raw',
-                        type=str)
-    parser.add_argument('--output_file',
-                        help='Output file path.',
-                        default='cache/data/genie.json',
-                        type=str)
+    parser.add_argument(
+        "--input_file",
+        help="Raw context jsonl path.",
+        default="resources/input_examples/chunked_demo.json",
+        type=str,
+    )
+    parser.add_argument(
+        "--data_type",
+        help="Data type of input file. (Raw context or chunked context)",
+        choices=["raw", "chunked"],
+        default="raw",
+        type=str,
+    )
+    parser.add_argument(
+        "--output_file",
+        help="Output file path.",
+        default="cache/data/genie.json",
+        type=str,
+    )
 
     args = parser.parse_args()
 
@@ -114,21 +124,21 @@ if __name__ == "__main__":
     llm_client = OpenAIModel(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
-        base_url=os.getenv("SYNTHESIZER_BASE_URL")
+        base_url=os.getenv("SYNTHESIZER_BASE_URL"),
     )
 
     genie = Genie(llm_client=llm_client)
 
-    if args.data_type == 'raw':
-        with open(args.input_file, "r", encoding='utf-8') as f:
+    if args.data_type == "raw":
+        with open(args.input_file, "r", encoding="utf-8") as f:
             data = [json.loads(line) for line in f]
             data = [[chunk] for chunk in data]
-    elif args.data_type == 'chunked':
-        with open(args.input_file, "r", encoding='utf-8') as f:
+    elif args.data_type == "chunked":
+        with open(args.input_file, "r", encoding="utf-8") as f:
             data = json.load(f)
 
     results = genie.generate(data)
 
     # Save results
-    with open(args.output_file, "w", encoding='utf-8') as f:
+    with open(args.output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)

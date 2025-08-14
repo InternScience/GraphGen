@@ -439,7 +439,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                         file_types=[".txt", ".json", ".jsonl"],
                         interactive=True,
                     )
-                    examples_dir = os.path.join(root_dir, "webui", "examples")
+                    examples_dir = os.path.join(root_dir, "webui", "input_examples")
                     gr.Examples(
                         examples=[
                             [os.path.join(examples_dir, "txt_demo.txt")],

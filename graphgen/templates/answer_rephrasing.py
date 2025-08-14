@@ -1,5 +1,4 @@
 TEMPLATE_CONTEXT_EN: str = """---Role---
-
 You are an NLP expert responsible for generating a logically structured and coherent rephrased version of the TEXT based on ENTITIES and RELATIONSHIPS provided below. You may refer to the original text to assist in generating the rephrased version, but ensure that the final output text meets the requirements.
 Use {language} as output language.
 
@@ -51,12 +50,10 @@ To generate a version of the text that is rephrased and conveys the same meaning
 """
 
 TEMPLATE_CONTEXT_ZH: str = """---角色---
-
 你是一位NLP专家，负责根据下面提供的实体和关系生成逻辑结构清晰且连贯的文本重述版本。你可以参考原始文本辅助生成，但需要确保最终输出的文本符合要求。
 使用{language}作为输出语言。
 
 ---目标---
-
 生成文本的重述版本，使其传达与原始实体和关系描述相同的含义，同时：
 1. 遵循清晰的逻辑流和结构
 2. 建立适当的因果关系
@@ -101,7 +98,6 @@ TEMPLATE_CONTEXT_ZH: str = """---角色---
 """
 
 TEMPLATE_EN: str = """---Role---
-
 You are an NLP expert responsible for generating a logically structured and coherent rephrased version of the TEXT based on ENTITIES and RELATIONSHIPS provided below.
 Use {language} as output language.
 
@@ -148,12 +144,10 @@ To generate a version of the text that is rephrased and conveys the same meaning
 """
 
 TEMPLATE_ZH: str = """---角色---
-
 你是一位NLP专家，负责根据下面提供的实体和关系生成逻辑结构清晰且连贯的文本重述版本。
 使用{language}作为输出语言。
 
 ---目标---
-
 生成文本的重述版本，使其传达与原始实体和关系描述相同的含义，同时：
 1. 遵循清晰的逻辑流和结构
 2. 建立适当的因果关系
@@ -207,13 +201,13 @@ Rephrased Text:
 """
 
 
-ANSWER_REPHRASING_PROMPT= {
+ANSWER_REPHRASING_PROMPT = {
     "English": {
         "TEMPLATE": TEMPLATE_EN + REQUIREMENT_EN,
-        "CONTEXT_TEMPLATE": TEMPLATE_CONTEXT_EN + REQUIREMENT_EN
+        "CONTEXT_TEMPLATE": TEMPLATE_CONTEXT_EN + REQUIREMENT_EN,
     },
     "Chinese": {
         "TEMPLATE": TEMPLATE_ZH + REQUIREMENT_ZH,
-        "CONTEXT_TEMPLATE": TEMPLATE_CONTEXT_ZH + REQUIREMENT_ZH
-    }
+        "CONTEXT_TEMPLATE": TEMPLATE_CONTEXT_ZH + REQUIREMENT_ZH,
+    },
 }

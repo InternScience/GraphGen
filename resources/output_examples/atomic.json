@@ -1,0 +1,882 @@
+{
+    "8fc4b703d23bc7c3ef8f20044ac1f5a1": {
+        "question": "What does TAC4 regulate in rice plants?",
+        "answer": "TAC4 regulates rice shoot gravitropism, which is the plant's growth response to gravity.",
+        "loss": 0.00020721811449675394
+    },
+    "558806cbd9b43cf1755282f61bfd4ae4": {
+        "question": "隆两优1212何时在福建省龙岩市长汀县进行试种？",
+        "answer": "隆两优1212在2017年引入福建省龙岩市长汀县进行试种。",
+        "loss": 0.1943468487790341
+    },
+    "38fb101a957dff2d347f3795e9d498de": {
+        "question": "What type of protein is TAC4 and what does it regulate in rice plants?",
+        "answer": "TAC4 is classified as a plant-specific protein that regulates key traits in rice plants.",
+        "loss": 0.04473321555027118
+    },
+    "dca7567b4ff830415e4d7939ccbed49b": {
+        "question": "What role does auxin play in the gravitropic response of plants?",
+        "answer": "Auxin is involved in the gravitropic response of plants, affecting how they grow in relation to gravity.",
+        "loss": 1.2660724378656726e-07
+    },
+    "59d256fd67fbe38726c9f4c16e17e713": {
+        "question": "云粳26号的落粒性如何？",
+        "answer": "云粳26号的落粒性适中，影响其在收割时的表现。",
+        "loss": 0.1650506654987112
+    },
+    "401e01ab2f43f0fdd1ef6128af1e3086": {
+        "question": "How does TAC4 affect the gravitropic response of rice shoots?",
+        "answer": "TAC4 influences the gravitropic response of rice shoots by regulating the levels of indole acetic acid.",
+        "loss": 0.00020721811449675394
+    },
+    "0fbd0aae3a0c8507e447530e8e735f09": {
+        "question": "How does N-1-naphthylphthalamic acid affect plant growth and development?",
+        "answer": "N-1-naphthylphthalamic acid inhibits auxin transport, which affects plant growth and development.",
+        "loss": 6.453754981617878e-08
+    },
+    "ec67d3230420a5ff9da6bfbe53f40ddf": {
+        "question": "What is ARABIDOPSIS commonly used for in plant biology?",
+        "answer": "ARABIDOPSIS is used as a model organism for studying genetic functions and plant development.",
+        "loss": 6.034219097644969e-07
+    },
+    "41b0254a9dec4f30baf425e742935a2d": {
+        "question": "云粳26号在西南稻区的地位是什么？",
+        "answer": "云粳26号被列为西南稻区的农业推广主导品种。",
+        "loss": 0.912369919935317
+    },
+    "a8071628666cfc7cd059987a04dd5e1d": {
+        "question": "隆两优1212在长汀县的试种结果如何？",
+        "answer": "隆两优1212在长汀县进行试种，显示出该地区对该品种的适应性。",
+        "loss": 0.07428048545261845
+    },
+    "9a1319119fa5344cad2ffae84a4d94f5": {
+        "question": "隆两优1212在2019年有什么表现？",
+        "answer": "隆两优1212在2019年继续示范种植，表明其在长汀县的持续推广。",
+        "loss": 0.036480231750829255
+    },
+    "ed974c970e399ecbe818e6eba46e369e": {
+        "question": "隆两优1212在什么地方进行试种？",
+        "answer": "隆两优1212在圣丰家庭农场进行试种。",
+        "loss": 0.006842017582584937
+    },
+    "c5879d941d81109d33dcc25733cc97fd": {
+        "question": "What is the effect of losing TAC4 function on the tiller angle of rice plants?",
+        "answer": "Loss of TAC4 function leads to a significant increase in the tiller angle of rice plants.",
+        "loss": 8.998404945691856
+    },
+    "5786fba44124297bb4056b905ab13909": {
+        "question": "What is the function of the TILLER ANGLE CONTROL 4 (TAC4) gene in rice?",
+        "answer": "TAC4 is a novel regulator that controls tiller angle in rice and encodes a highly conserved nuclear protein.",
+        "loss": 3.363024097783987e-05
+    },
+    "40e8e0fcad7ec55ec0fa14b91ea536f0": {
+        "question": "What are \"severe lines\" in the context of genetic research?",
+        "answer": "Severe lines\" refer to genetic lines that exhibit extreme phenotypes, such as those with significantly altered gravitropism due to BG1 manipulation.",
+        "loss": 0.0677631951402873
+    },
+    "3ec6a0860b0cc52278a0972a9849ed96": {
+        "question": "农业推广的目的是什么？",
+        "answer": "农业推广的目的是将优质农作物品种推广到农民中，以提高农业生产效率和质量。",
+        "loss": 0.0005425948230547652
+    },
+    "919fcd2678b5419e889fd4582820b86c": {
+        "question": "云粳26号适宜在哪个海拔范围的稻区种植？",
+        "answer": "云粳26号适宜在云南中海拔 1 500∼1 800 m 稻区种植。",
+        "loss": 0.17507959033052126
+    },
+    "8900f870f0c30d148c7640466d00ef5d": {
+        "question": "What does the Bg1-D mutant indicate about the relationship between grain size and growth responses?",
+        "answer": "The Bg1-D mutant exhibits altered gravitropism, indicating a link between grain size and growth responses.",
+        "loss": 0.003970473083124177
+    },
+    "b8aaca034f9d35e09ae508c09de641f4": {
+        "question": "How does TAC4 influence plant growth and development?",
+        "answer": "TAC4 affects the distribution of auxin, which is crucial for the regulation of plant growth and development.",
+        "loss": 3.2774787920447374e-07
+    },
+    "2860bb26879cf4faa38e1b7b8051b69c": {
+        "question": "What is a dominant mutant in genetics?",
+        "answer": "A dominant mutant is a genetic variant that expresses a trait more strongly than its recessive counterparts, such as the Bg1-D mutant.",
+        "loss": 0.7038410826333497
+    },
+    "ef1dea66ec062e4ebb67b7deb4c5e686": {
+        "question": "What effect does manipulating BG1 have on plant biomass?",
+        "answer": "Manipulating BG1 can enhance plant biomass, indicating its importance in growth.",
+        "loss": 3.3525097293767964e-06
+    },
+    "6de16594543122315aeab7d988705ef6": {
+        "question": "什么是作烟后稻？",
+        "answer": "作烟后稻是指在烟草收获后种植的水稻，隆两优1212被用于这种种植方式。",
+        "loss": 0.16025123000144953
+    },
+    "df74a578fffcdbb405891d5e66e4aae0": {
+        "question": "What do the \"sensitivities\" of plants refer to in the context of hormones and inhibitors?",
+        "answer": "The \"sensitivities\" of plants refer to their responsiveness to various hormones and inhibitors, such as auxin and N-1-naphthylphthalamic acid.",
+        "loss": 0.00029019961948506084
+    },
+    "d53ecf39048949e747c8efd49c821e89": {
+        "question": "隆两优1212在长汀县的机插日期是什么时候？",
+        "answer": "隆两优1212在长汀县进行机插的日期是7月5日。",
+        "loss": 5.835247260401488
+    },
+    "20347b4952b32b0119a10a1f9c4379bf": {
+        "question": "云粳26号在云南省的情况如何？",
+        "answer": "云粳26号在云南省进行种植和推广。",
+        "loss": 5.512236427143802e-07
+    },
+    "4db933005bd2cd0836930b4fc0b39710": {
+        "question": "What is a characteristic feature of indica cultivars of rice regarding TAC4 function?",
+        "answer": "Indica cultivars show a fixed bottleneck in TAC4 function.",
+        "loss": 4.560647790112646
+    },
+    "6a9519091e81ba54e2bdbb7eefc7e2f4": {
+        "question": "云粳26号稻米品种有什么特点？",
+        "answer": "云粳26号作为稻米品种具有良好的食用价值。",
+        "loss": 2.4827877114415276e-07
+    },
+    "03ff1e419a72174ad92373bed5b90833": {
+        "question": "隆两优1212的生长周期何时结束？",
+        "answer": "隆两优1212在10月21日成熟，标志着其生长周期的结束。",
+        "loss": 5.004641309711946
+    },
+    "4716b2e661dd13d3c6a8d6acc68babd4": {
+        "question": "隆两优1212的种植过程何时开始？",
+        "answer": "隆两优1212在6月15日进行机播，标志着其种植过程的开始。",
+        "loss": 2.008934394148294
+    },
+    "5d648964f09ec4ee58a5a14af16e0148": {
+        "question": "长汀县在哪个市？",
+        "answer": "长汀县是龙岩市的一个县。",
+        "loss": 0.5276962733190051
+    },
+    "8c92d2e36b86a17076bf6f24540f89dd": {
+        "question": "What is the role of the TILLER ANGLE CONTROL 4 gene in rice plants?",
+        "answer": "The TILLER ANGLE CONTROL 4 gene is a novel regulator of rice tiller angle, influencing plant architecture and grain yield.",
+        "loss": 0.0001787313643338491
+    },
+    "8c631862cb197af687f26b795bb7619e": {
+        "question": "What does the term \"phenotype\" refer to in the context of the Bg1-D mutant?",
+        "answer": "The term \"phenotype\" refers to the observable characteristics or traits of an organism, such as grain size in the Bg1-D mutant.",
+        "loss": 1.2606540320739281
+    },
+    "c9895a29281ab6a3b3ffc2c38949613e": {
+        "question": "云粳26号的食味品质中有哪些特点？",
+        "answer": "有香味是云粳26号的食味品质之一，增加了其市场吸引力。",
+        "loss": 0.19347324164300522
+    },
+    "dbcb3bef6cafdbd272af09186db55b62": {
+        "question": "What does the sensitivity of the Bg1-D mutant to N-1-naphthylphthalamic acid indicate?",
+        "answer": "It indicates the involvement of the Bg1-D mutant in auxin transport mechanisms.",
+        "loss": 1.4213754904512588
+    },
+    "99654153cbc972f6310f8caee0250000": {
+        "question": "隆两优1212在2019年示范种植的平均产量是多少？",
+        "answer": "隆两优1212在2019年示范种植的平均产量是8.74 t/hm^2。",
+        "loss": 2.503329696521127
+    },
+    "1d7b28291f633da994851af128aabb11": {
+        "question": "农业部在中国政府中负责什么？",
+        "answer": "农业部负责农业政策和品种推广的管理。",
+        "loss": 0.002764938996165263
+    },
+    "fc5a9717d96f500ff63d26a60c794cec": {
+        "question": "What is the function of the nuclear protein encoded by TAC4?",
+        "answer": "The nuclear protein encoded by TAC4 is involved in regulating plant traits.",
+        "loss": 1.9638977341952133
+    },
+    "a9f5a373014289148b47ecb9472f37a1": {
+        "question": "云粳26号在2012年被农业部列为哪个地区的农业推广主导品种？",
+        "answer": "云粳26号在2012年被农业部列为西南稻区农业推广主导品种。",
+        "loss": 1.148128436397871
+    },
+    "096051c952bc98c64a1a75493399c09c": {
+        "question": "What is the primary purpose of cultivating crop plants like rice?",
+        "answer": "The primary purpose of cultivating crop plants like rice is for agricultural purposes, specifically to study and improve yield.",
+        "loss": 7.457303081540263e-05
+    },
+    "576c5f30a90f6fa61b74d0f5595e85bf": {
+        "question": "云粳26号的特性之一是什么？",
+        "answer": "落粒性适中是云粳26号的特性之一。",
+        "loss": 0.12270220625214279
+    },
+    "09ead68a9248b556db67abc58113dfcb": {
+        "question": "隆两优1212在种植方式上有什么应用？",
+        "answer": "隆两优1212被用于作烟后稻的种植方式，显示其适应性。",
+        "loss": 0.012229025208701708
+    },
+    "c02ce02d80931b7ca6215fb4f0e0f83a": {
+        "question": "云粳26号在什么区域被列为主导品种？",
+        "answer": "云粳26号被列为西南稻区的主导品种。",
+        "loss": 2.1393262670705567e-05
+    },
+    "6a40541aeac4ff01ff27ee9e1220f998": {
+        "question": "云粳26号是由哪个机构育成的？",
+        "answer": "云粳26号是由云南省农业科学院粮食作物研究所育成的。",
+        "loss": 0.12513624576483076
+    },
+    "8ff2922303daa9a9a72f052c5a9c1af5": {
+        "question": "云粳26号的一个重要特性是什么？",
+        "answer": "食味品质好是云粳26号的一个重要特性。",
+        "loss": 0.00032564003083735554
+    },
+    "a88e828680780c2373470e547ffde183": {
+        "question": "米粒大的特征对云粳26号有什么影响？",
+        "answer": "米粒大是云粳26号的一个重要特征，影响其食用价值。",
+        "loss": 0.9131141534554827
+    },
+    "16a1c3442b09a541ea1183ff2f9f4a88": {
+        "question": "市场需求在云粳26号的推广中扮演什么角色？",
+        "answer": "市场需求与云粳26号的推广密切相关。",
+        "loss": 3.352136559578442e-07
+    },
+    "c2b1f263f244832716f1f7b8868f6afa": {
+        "question": "What does the term \"CULMS\" refer to in the context of rice plants?",
+        "answer": "CULMS\" refers to the stem of the rice plant, where BG1 expression is observed.",
+        "loss": 1.6983356725699963
+    },
+    "99f926a61c70c5b5a57923bd2701a6ef": {
+        "question": "云粳26号是什么时候育成的？",
+        "answer": "云粳26号是在2005年育成的早熟稻品种。",
+        "loss": 3.296899015603895
+    },
+    "1ac36a6756745d61a2e6635617d87b3e": {
+        "question": "How does domestication affect the function of TAC4?",
+        "answer": "Domestication impacts the function of TAC4 by cultivating and improving wild species for agricultural purposes.",
+        "loss": 4.745760155323239
+    },
+    "16578072c3065d3bc299260c0eebdcc1": {
+        "question": "How does the expression of BG1 affect seed weight and yield?",
+        "answer": "The expression of BG1 influences seed weight, contributing to overall yield.",
+        "loss": 2.49821685354467e-06
+    },
+    "2293cd15c685b5fa198ba10962fd9da3": {
+        "question": "What role do developmental signals play in plants regarding grain size?",
+        "answer": "Developmental signals play a crucial role in regulating grain size in plants.",
+        "loss": 2.7561182491159133e-07
+    },
+    "d5a42ae23a09de3c130d2fc071b88634": {
+        "question": "Why is grain size important in agriculture?",
+        "answer": "Grain size is a critical determinant of overall grain yield in crops.",
+        "loss": 1.0876401574818144e-06
+    },
+    "e5962fad358edcd184373ef55d710e64": {
+        "question": "What do severe lines indicate about the relationship between genetic mutations and growth responses?",
+        "answer": "Severe lines exhibit altered gravitropism, indicating a relationship between genetic mutations and growth responses.",
+        "loss": 0.0002387586577014825
+    },
+    "1f01190302db474acb8abbc763f0750f": {
+        "question": "What factors can influence seed weight in plants?",
+        "answer": "Seed weight can be influenced by genetic factors such as BG1.",
+        "loss": 0.0021608307427776244
+    },
+    "06472540d42042a800dec83c298fccb5": {
+        "question": "What is observed in the Bg1-D mutant regarding auxin transport?",
+        "answer": "The Bg1-D mutant shows enhanced movement of auxin towards the base of the plant.",
+        "loss": 0.61003755970295
+    },
+    "de114086a8bd588f1eede9b30bd8475b": {
+        "question": "What methods are used for the improvement of rice varieties mentioned in the text?",
+        "answer": "The improvement of rice varieties is achieved through selective breeding and genetic modification.",
+        "loss": 0.004592334122062172
+    },
+    "1ece7403e3d929e2d533240a3f438ce2": {
+        "question": "How has the TAC4 gene bottleneck impacted indica cultivars?",
+        "answer": "The bottleneck in the TAC4 gene has affected the tiller angle regulation in indica cultivars.",
+        "loss": 0.042615559037509854
+    },
+    "f253c7d4fb2bd4d569134b2fa6316ce1": {
+        "question": "云粳26号的外观特点是什么？",
+        "answer": "云粳26号的外观特点之一是颖尖无色、无芒。",
+        "loss": 1.448043743927099
+    },
+    "91438e810834eebb3214fc9b956705ab": {
+        "question": "圣丰家庭农场位于哪个县？",
+        "answer": "圣丰家庭农场位于长汀县。",
+        "loss": 3.338190455054042
+    },
+    "6507645acf35a3f01c4fbd717a4a9345": {
+        "question": "What factors influence the total amount of grain produced from a crop?",
+        "answer": "The total amount of grain produced from a crop is influenced by various factors, including grain size.",
+        "loss": 1.5854104661895019
+    },
+    "8a312b9cd3dc5a58a3f0ee2a84aca766": {
+        "question": "云粳26号的外观特征之一是什么？",
+        "answer": "谷壳黄色是云粳26号的外观特征之一。",
+        "loss": 1.4384042079781831
+    },
+    "7eb9dfccb3b36c53823fcc1e330aaf26": {
+        "question": "云粳26号是什么类型的品种？",
+        "answer": "云粳26号是一种早熟品种，生长周期较短。",
+        "loss": 0.05963051443298655
+    },
+    "18555f3352ef57d00c2f30a15d098f35": {
+        "question": "什么是早熟品种？",
+        "answer": "早熟品种是指生长周期较短的作物品种，云粳26号属于此类。",
+        "loss": 0.024306114763021497
+    },
+    "c13cef8ac76334ebdfa80b218fb6f919": {
+        "question": "2019年在长汀县发生了什么事件？",
+        "answer": "2019年是隆两优1212在长汀县继续示范种植的年份。",
+        "loss": 1.571420667330729
+    },
+    "9361662357bfe22246e14dcb06abd40c": {
+        "question": "How can plant biomass be enhanced according to the text?",
+        "answer": "Plant biomass can be enhanced by manipulating genes like BG1.",
+        "loss": 0.2813629664603256
+    },
+    "3e0264f61f77973584e020c9701d250a": {
+        "question": "What is the distinct phenotype of the Bg1-D mutant?",
+        "answer": "The Bg1-D mutant displays a distinct phenotype characterized by extra-large grains.",
+        "loss": 0.3556477129091149
+    },
+    "de65c9dd060fa58887a3e6bc7b27bb4c": {
+        "question": "How does altered auxin distribution impact plant growth and development?",
+        "answer": "Altered auxin distribution affects growth and development by changing the spatial distribution of auxin within the plant.",
+        "loss": 7.896309739486327e-07
+    },
+    "3e955c5841ac3a90f3da4eccd8a426c9": {
+        "question": "How has the domestication of rice impacted the TAC4 gene?",
+        "answer": "The domestication of rice has caused a bottleneck in the TAC4 gene, affecting its function in indica cultivars.",
+        "loss": 0.7150320114210279
+    },
+    "f2a50f83b1cd7c921693daf2b66610cd": {
+        "question": "What does BG1 expression in culms indicate about its role in rice plants?",
+        "answer": "BG1 expression in culms suggests its involvement in the growth and development of the rice plant.",
+        "loss": 1.5640816284886636e-07
+    },
+    "336dfcf835de87bc229f046e6964827f": {
+        "question": "云粳26号在西南稻区的地位如何？",
+        "answer": "云粳26号被列为西南稻区的主导品种，表明其在该地区的重要性。",
+        "loss": 0.0008515005374647119
+    },
+    "ceb4da988a0541b944acf36431fd76cb": {
+        "question": "What is the role of TAC4 in rice plant architecture?",
+        "answer": "TAC4 is crucial for determining the plant architecture of rice by regulating the tiller angle.",
+        "loss": 7.177022780518039e-06
+    },
+    "8ba052e897dccbbf68f44205a2b13d6c": {
+        "question": "How does tiller angle affect rice grain yield?",
+        "answer": "The tiller angle significantly influences the amount of rice produced per unit area, thereby affecting grain yield.",
+        "loss": 1.5854104661895019
+    },
+    "1e7847bb6784c626f939beb5b6f5952b": {
+        "question": "What is the role of AUXIN in plants?",
+        "answer": "AUXIN is a class of plant hormones that play a crucial role in regulating plant growth and development.",
+        "loss": 2.0090522023619024
+    },
+    "08e14e5b8e5fab928dac963eead1ddab": {
+        "question": "种植技术的定义是什么？",
+        "answer": "种植技术是指为提高作物产量和质量而采用的农业技术。",
+        "loss": 2.458109094033553e-07
+    },
+    "244cb50818224e7fd2b29d207c69e03c": {
+        "question": "What is the role of auxin in plants?",
+        "answer": "Auxin is a plant hormone that plays a crucial role in regulating growth and development, including grain size.",
+        "loss": 2.0090522023619024
+    },
+    "043d7930d2325dcaedf4878293041a59": {
+        "question": "How does TAC4 influence the architecture of rice plants?",
+        "answer": "TAC4 influences the overall architecture of rice plants by affecting the tiller angle.",
+        "loss": 7.177022780518039e-06
+    },
+    "b75f7fe791e0be7db8c39d033ca2663a": {
+        "question": "河田镇南塘村在哪个县内进行隆两优1212的试种？",
+        "answer": "河田镇南塘村是长汀县内隆两优1212试种的具体村庄。",
+        "loss": 3.3123129141253984
+    },
+    "44101c560c53e95f3a21933a3cd4dcd4": {
+        "question": "What does \"plant architecture\" refer to in the context of botany?",
+        "answer": "Plant architecture\" refers to the structural design and arrangement of various parts of a plant, including its tiller angle.",
+        "loss": 2.333420687403566
+    },
+    "dc4ab28cc3040ea4bc13421055172e5d": {
+        "question": "What is gravitropism and what factors influence it in plants?",
+        "answer": "Gravitropism is the growth response of plants to gravity, which is regulated by hormones like indole acetic acid and influenced by TAC4.",
+        "loss": 0.8259349847750537
+    },
+    "4c468c49040e86bc49be604e8ac43ae6": {
+        "question": "云粳26号的推广有什么目的？",
+        "answer": "云粳26号的推广旨在提高农业生产效率，满足市场需求。",
+        "loss": 1.169639290293123e-06
+    },
+    "ab66b52ddff55b31c798473eaf9b8329": {
+        "question": "What does the sensitivity of the Bg1-D mutant to auxin suggest about its function?",
+        "answer": "The sensitivity of the Bg1-D mutant to auxin indicates its role in growth regulation.",
+        "loss": 2.238042513150685e-05
+    },
+    "883ac11bb60cd8f0fe2f764eee03e140": {
+        "question": "What is the effect of losing TAC4 function on tiller angle in plants?",
+        "answer": "The loss of TAC4 function results in an increased tiller angle, affecting plant architecture.",
+        "loss": 1.0634637919853458
+    },
+    "890f0a5481300b38d26e79b557a0399f": {
+        "question": "What are proteins and what is their relationship with genes like BG1?",
+        "answer": "Proteins are molecules that perform various functions in living organisms, and they are encoded by genes such as BG1.",
+        "loss": 1.4121341062231416
+    },
+    "604d203823749d2e336dd4beb3995e86": {
+        "question": "What role does BG1 play in crop plants, specifically in rice?",
+        "answer": "BG1 is identified as a positive regulator for improving yield in crop plants, particularly in rice.",
+        "loss": 0.021197290586618064
+    },
+    "b358c59097b3640abd20ac8c1a578314": {
+        "question": "What does the localization of the protein encoded by BG1 suggest about its function?",
+        "answer": "The membrane localization of the protein encoded by BG1 suggests its role in cellular transport mechanisms.",
+        "loss": 0.4468337439779575
+    },
+    "0ef97d9a8479608769f793f62b9e4566": {
+        "question": "隆两优1212在2018年的推广情况如何？",
+        "answer": "隆两优1212在2018年进一步扩大示范种植，显示其推广的成功。",
+        "loss": 0.2437448643440381
+    },
+    "da1a042a73763ff90604980747c8ca89": {
+        "question": "What is a bottleneck in the context of genetic diversity in populations?",
+        "answer": "A bottleneck is a genetic phenomenon where a population experiences a significant reduction in genetic diversity, which can affect traits like TAC4 in indica cultivars.",
+        "loss": 0.03912297745894949
+    },
+    "90704274b79cecd12d2d5ea7f51ad004": {
+        "question": "How do genetic factors like BG1 affect rice grain yield?",
+        "answer": "Genetic factors like BG1 significantly influence the grain yield of rice.",
+        "loss": 0.3467021710806151
+    },
+    "31d5f888b6d6e7ec333dff2ac6a54b06": {
+        "question": "濯田镇永巫村与长汀润丰优质稻专业合作社有什么关系？",
+        "answer": "濯田镇永巫村是长汀润丰优质稻专业合作社的具体位置。",
+        "loss": 5.690190202714729
+    },
+    "42203838d5c245e37c0ad45caaec78c1": {
+        "question": "云粳26号的主要目标是什么？",
+        "answer": "云粳26号被列为主导品种，旨在通过农业推广提高其种植面积和产量。",
+        "loss": 0.0012081633904017803
+    },
+    "eea823c502b6dc35793e0a94a4a7cd17": {
+        "question": "What defines a membrane-localized protein?",
+        "answer": "A membrane-localized protein is defined as a protein that is located within or associated with cellular membranes.",
+        "loss": 0.09087045925116397
+    },
+    "21856b095ca30838d0b893a866bdec63": {
+        "question": "What is a plant-specific protein and can you give an example?",
+        "answer": "A plant-specific protein is a type of protein that is unique to plants, such as the TAC4 protein, which plays a role in regulating plant traits.",
+        "loss": 2.5723295018461854
+    },
+    "1cdc8e988342502fcbeb4736a11d50a1": {
+        "question": "How does the manipulation of BG1 influence plant development?",
+        "answer": "Manipulation of BG1 affects auxin distribution, which is crucial for proper plant development.",
+        "loss": 2.8801332519304187e-07
+    },
+    "811f16be3cf374455c54e528b24a55f8": {
+        "question": "What does the study of BG1 in rice and Arabidopsis reveal about its function?",
+        "answer": "The study of BG1 in both rice and Arabidopsis provides insights into its role in regulating grain size and plant productivity.",
+        "loss": 4.186935257127697e-06
+    },
+    "dab00a112752a927b7ab25aac7a36769": {
+        "question": "龙岩市在哪个省份？",
+        "answer": "龙岩市是福建省的一个城市。",
+        "loss": 3.2501133071586494
+    },
+    "d60e24d8188fdcf7430734f6cc7fc32d": {
+        "question": "隆两优1212水稻品种试种在哪个省份进行？",
+        "answer": "隆两优1212水稻品种试种在福建省进行。",
+        "loss": 3.1677237672614025
+    },
+    "d33ff6ff06752745ed97904f94e96d87": {
+        "question": "云粳26号是什么的结果？",
+        "answer": "云粳26号是通过科学方法培育出的新的作物品种的结果。",
+        "loss": 5.140191774269691e-07
+    },
+    "aea7c92c1bf912a3c54c2969589c6a5a": {
+        "question": "What is the purpose of the rice T-DNA insertion population?",
+        "answer": "The rice T-DNA insertion population is used for genetic studies, particularly for identifying mutants like Bg1-D.",
+        "loss": 0.40683872975935675
+    },
+    "925298aabd4ce05f193d8f4499c4ad12": {
+        "question": "How does TAC4 influence rice grain yield?",
+        "answer": "TAC4's regulation of tiller angle ultimately impacts the grain yield of rice.",
+        "loss": 0.5317985935423521
+    },
+    "e1a8111e472dd766a08b76a715998633": {
+        "question": "云粳26号的一个重要特征是什么？",
+        "answer": "米粒大是云粳26号的一个重要特征。",
+        "loss": 2.2840864064429938
+    },
+    "d1c90ce25ecf7efdcd3a3354f055a1ba": {
+        "question": "云粳26号是什么时候育成的，属于什么类型的稻品种？",
+        "answer": "云粳26号是于2005年育成的早熟稻品种。",
+        "loss": 0.2890754962572828
+    },
+    "3d922cfc2368752a79c884b971d1bfb3": {
+        "question": "How does TAC4 influence gravitropism in plants?",
+        "answer": "TAC4 regulates the distribution of auxin, which influences gravitropism in plants.",
+        "loss": 0.00011275943037008666
+    },
+    "c7a04dba6c03a4b086f903d22ba7927b": {
+        "question": "What does the BG1 gene encode and what is its role in plants?",
+        "answer": "The BG1 gene encodes a protein that is involved in regulating auxin transport and grain size.",
+        "loss": 0.0025066489567203954
+    },
+    "9e502f734ed87a35e39d40cdc1489afa": {
+        "question": "What does the Bg1-D mutant indicate about the role of the BG1 gene in auxin transport?",
+        "answer": "The Bg1-D mutant shows increased auxin basipetal transport, suggesting that BG1 plays a role in auxin movement.",
+        "loss": 0.7033061152256165
+    },
+    "13e374cccee0c3f9f3e5066d9941f5c1": {
+        "question": "What is the scientific name of rice and what factors influence its growth and yield?",
+        "answer": "The scientific name of rice is Oryza sativa, and its growth and yield are influenced by various genetic factors including TAC4.",
+        "loss": 4.617459285327665e-05
+    },
+    "866d573f2f297061002de628a2d41a9e": {
+        "question": "What does the expression of BG1 in young panicles indicate about its function in rice?",
+        "answer": "The expression of BG1 in young panicles indicates its role in the reproductive development of rice.",
+        "loss": 0.3803147644199621
+    },
+    "baafb35d76a2e4e72754ee2e02837e97": {
+        "question": "What is the purpose of the knockdown technique in genetics?",
+        "answer": "The knockdown technique is used to reduce the expression of a specific gene, such as BG1, resulting in smaller grains.",
+        "loss": 1.1819866932528378
+    },
+    "c9892bf81db62710652aa1a4df6d4b28": {
+        "question": "中海拔稻区的海拔范围是多少米？",
+        "answer": "中海拔稻区是指海拔在1500至1800米之间的稻米种植区域。",
+        "loss": 8.109651826946951
+    },
+    "b3d116c8baf1e3c1c24faae3045b7eeb": {
+        "question": "How has the function of TAC4 changed during the domestication of indica cultivars?",
+        "answer": "The function of TAC4 has become fixed in indica cultivars during the domestication process.",
+        "loss": 1.7112298922019014
+    },
+    "411393e23fb7be3b93440c83cf623b70": {
+        "question": "What does the induction of BG1 by auxin treatment indicate about its function?",
+        "answer": "The induction of BG1 by auxin treatment indicates its role in auxin response and transport.",
+        "loss": 1.3951637372738468
+    },
+    "c662270fb0855a401f06b78ec7614805": {
+        "question": "What is the primary function of vascular tissue in plants?",
+        "answer": "The primary function of vascular tissue in plants is to transport nutrients and water.",
+        "loss": 1.4059810507194868
+    },
+    "65391b2acbd48738bd74607c18df8b67": {
+        "question": "How does TAC4 influence rice shoot gravitropism?",
+        "answer": "TAC4 influences rice shoot gravitropism by increasing the content of indole acetic acid.",
+        "loss": 0.5071944590623009
+    },
+    "6c8afa1bbed42737a90a6327d055708a": {
+        "question": "云粳26号适宜在哪个海拔范围内种植？",
+        "answer": "云粳26号适宜在1500至1800米的海拔范围内种植。",
+        "loss": 0.46691513806581497
+    },
+    "debb6bbeb1012c754fcb00a572302d44": {
+        "question": "What is the effect of knocking down the BG1 gene on grain size and auxin sensitivity?",
+        "answer": "Knockdown of BG1 results in decreased sensitivities to auxin and smaller grain size.",
+        "loss": 1.175097647990172
+    },
+    "8596971cc73665376243a606dec81932": {
+        "question": "2018年在隆两优1212的种植中有什么重要事件？",
+        "answer": "2018年是隆两优1212在长汀县进一步扩大示范种植的年份。",
+        "loss": 1.1295489961280851
+    },
+    "79240f6ab5887ba097cc6c3659838b41": {
+        "question": "云粳26号在何时被列为西南稻区的农业推广主导品种？",
+        "answer": "云粳26号在2012年被列为西南稻区农业推广主导品种。",
+        "loss": 0.7650802039228166
+    },
+    "12d55d7631d787a33b4716cfca81b3cd": {
+        "question": "云南省农业科学院的主要职责是什么？",
+        "answer": "云南省农业科学院负责农业相关的研究和品种育成。",
+        "loss": 1.5640816284886636e-07
+    },
+    "d91eae23ea5e22d671024ae897104681": {
+        "question": "Where is BG1 preferentially expressed, and what does this indicate about its function?",
+        "answer": "BG1 is preferentially expressed in the vascular tissue, indicating its role in nutrient transport.",
+        "loss": 2.6113451392768074
+    },
+    "01e2d60dad5ac03b1fdade163ae70e1f": {
+        "question": "Why is the tiller angle important in rice cultivation?",
+        "answer": "The tiller angle is a critical factor that affects the grain yield of rice.",
+        "loss": 5.736209800751819e-07
+    },
+    "9745c183eac605943269ad4245c6aa86": {
+        "question": "云粳26号的推广旨在实现什么目标？",
+        "answer": "云粳26号的推广旨在提高农业生产效率。",
+        "loss": 3.6748243321680464e-07
+    },
+    "a6d71ebd98510437b234b78d7182134f": {
+        "question": "云粳26号在何时被农业部列为西南稻区农业推广主导品种？",
+        "answer": "云粳26号在2012年被农业部列为西南稻区农业推广主导品种。",
+        "loss": 0.5534002898677657
+    },
+    "ada64ad160c44a4433de00a08c02594d": {
+        "question": "河田镇中街村与哪个合作社有关联？",
+        "answer": "河田镇中街村是长汀县绿丰优质稻专业合作社的具体位置。",
+        "loss": 3.517918152359073
+    },
+    "cc4880aa16a927bf6ca9d166557e19fb": {
+        "question": "云粳26号的抗病特性是什么？",
+        "answer": "云粳26号具有高抗稻瘟病的特性，增强了其种植的可行性。",
+        "loss": 0.437758534580301
+    },
+    "415f6fedeeded46ae3c79164ad5d0f48": {
+        "question": "Why is rice considered a significant crop in agricultural research?",
+        "answer": "Rice is considered a significant crop in agricultural research because it is a staple crop and a model organism, particularly in studies of grain size and yield.",
+        "loss": 4.617459285327665e-05
+    },
+    "2fac96ce4fd81203d8d499e11ed89f39": {
+        "question": "What is the role of TAC4 in rice plants?",
+        "answer": "TAC4 is identified as a regulator that influences the tiller angle in rice plants.",
+        "loss": 0.024331670298124643
+    },
+    "0ea45e4ae02367a0b6d1c753f7462548": {
+        "question": "What does TAC4 encode and what is its role in rice plants?",
+        "answer": "TAC4 encodes a nuclear protein that plays a role in the regulation of rice tiller angle.",
+        "loss": 0.014876111410558224
+    },
+    "8aaa2e4913b155bc148b2e617387c1c0": {
+        "question": "How does auxin influence grain size in plants?",
+        "answer": "Auxin regulates grain size by affecting growth and development.",
+        "loss": 3.674824332542619e-07
+    },
+    "5b28c9eb45130f4b2a8e82596729f221": {
+        "question": "What is the function of the TAC4 gene in rice plants?",
+        "answer": "The TAC4 gene regulates the architecture of rice by specifically affecting its tiller angle.",
+        "loss": 0.13206698219679916
+    },
+    "21ad04b6f115dd1a70ebacc1882cca7d": {
+        "question": "What is the relationship between the Bg1-D mutant and the BG1 gene in rice?",
+        "answer": "The Bg1-D mutant is associated with the BG1 gene, which regulates grain size in rice.",
+        "loss": 0.005603051259337632
+    },
+    "0ce4a17582ae236c253cd7cbf54209db": {
+        "question": "What is the function of N-1-Naphthylphthalamic acid in plants?",
+        "answer": "N-1-Naphthylphthalamic acid is an auxin transport inhibitor that affects the sensitivity of plants to auxin.",
+        "loss": 0.012305542981872948
+    },
+    "92c16b7125ea8b5d7dd51ee8383774b9": {
+        "question": "What is the function of the BG1 gene in relation to grain size and auxin transport?",
+        "answer": "The BG1 gene, when overexpressed, leads to increased grain size and is involved in the regulation of auxin transport.",
+        "loss": 0.38225379123502873
+    },
+    "88c7f31116c93a825901faf664843abc": {
+        "question": "How has the domestication of rice affected TAC4's role in tiller angle regulation?",
+        "answer": "The domestication of rice has influenced the regulatory role of TAC4 in controlling tiller angle.",
+        "loss": 0.10460714693084584
+    },
+    "ae137b7e8295e038c4fbdfa984a51517": {
+        "question": "How does TAC4 influence auxin distribution in plants?",
+        "answer": "TAC4 affects the spatial distribution of auxin hormones within a plant, which is crucial for plant growth.",
+        "loss": 4.1819995810189575e-06
+    },
+    "7850dde8a721228f1565056215b208d6": {
+        "question": "What was identified from the rice T-DNA insertion population in relation to its genetic basis?",
+        "answer": "Bg1-D was identified from the rice T-DNA insertion population, highlighting its genetic basis.",
+        "loss": 0.22322877934147434
+    },
+    "a8c6f560f4329fef58b134e60eb2f043": {
+        "question": "What is indole acetic acid and what role does it play in plants?",
+        "answer": "Indole acetic acid is a type of auxin that plays a role in plant growth and development.",
+        "loss": 1.2907509963235755e-07
+    },
+    "ae8be48e67d8c2add117d17464d91eb1": {
+        "question": "云粳26号是什么类型的稻品种，在哪里育成的？",
+        "answer": "云粳26号是早熟稻品种，在云南省育成。",
+        "loss": 2.9819501947351417
+    },
+    "79b7e7fba7722ab8029be1bbd07a3539": {
+        "question": "How is TAC4 related to the grain yield of rice plants?",
+        "answer": "TAC4's regulation of tiller angle is directly linked to the grain yield of rice plants.",
+        "loss": 0.5317985935423521
+    },
+    "aa08e87d4b534d3910a84eec103d6c42": {
+        "question": "What is the specific trait exhibited by the Bg1-D mutant in terms of grain size?",
+        "answer": "The Bg1-D mutant exhibits an \"extra-large grain phenotype,\" characterized by significantly larger grains compared to normal.",
+        "loss": 4.747928125914951
+    },
+    "d33b082fea393b2f82878506633200e0": {
+        "question": "隆两优1212有哪些特征？",
+        "answer": "隆两优1212的特征包括分蘖力强、抗性好、抽穗整齐、后期转色好、生育期适中、产量高、适应性好。",
+        "loss": 0.0379364202963188
+    },
+    "5f9003d9cdb4d6cb4e5d4f401b4842b6": {
+        "question": "隆两优1212在长汀县的机播日期是什么时候？",
+        "answer": "隆两优1212在长汀县进行机播的日期是6月15日。",
+        "loss": 3.9376944857096556
+    },
+    "96d45879686436690a445eba766e1775": {
+        "question": "What phenotype is exhibited by the dominant mutant BIG GRAIN1 (BG1-D) in rice?",
+        "answer": "The dominant mutant BIG GRAIN1 (BG1-D) exhibits an extra-large grain phenotype, affecting grain size regulation.",
+        "loss": 0.08021527799428438
+    },
+    "6067737f1d47489e15279e37c39c5bef": {
+        "question": "隆两优1212在2019年示范种植的面积是多少？",
+        "answer": "隆两优1212在2019年示范种植的面积是13.50 hm^2。",
+        "loss": 3.0636376298296395
+    },
+    "9b762fe480055ddef0917289a512c4d5": {
+        "question": "Where is BG1 preferentially expressed in the rice plant?",
+        "answer": "BG1 is preferentially expressed in the young panicles, which are the flowering part of the rice plant.",
+        "loss": 0.9476254495473939
+    },
+    "a1669112bb9f021a37bdf1a5dcf21db3": {
+        "question": "长汀润丰优质稻专业合作社是什么时候示范种植隆两优1212的？",
+        "answer": "长汀润丰优质稻专业合作社在2018年示范种植隆两优1212。",
+        "loss": 1.7738511032028708
+    },
+    "98cab38ea668ee6861f3315a04046f00": {
+        "question": "云粳26号对稻瘟病的抗性如何？",
+        "answer": "云粳26号具有高抗性。",
+        "loss": 0.19220860377117788
+    },
+    "c4666a40186f02854aeeb47e3d6e50b0": {
+        "question": "What is the significance of TAC4 in the improvement of rice varieties?",
+        "answer": "TAC4 plays a significant role in understanding plant architecture, which is important for the improvement of rice varieties.",
+        "loss": 0.05359335437443253
+    },
+    "12f867eff5c8a1d8cef09816d9da6abd": {
+        "question": "What phenotype is exhibited by the Bg1-D dominant mutant?",
+        "answer": "The Bg1-D dominant mutant exhibits an extra-large grain phenotype.",
+        "loss": 0.31326545774936676
+    },
+    "5aa3f6cf208530ccaaff6c9d78714873": {
+        "question": "隆两优1212在长汀县的产量是多少？",
+        "answer": "隆两优1212在长汀县的产量是8.78 t/hm^2。",
+        "loss": 2.8553758704349064
+    },
+    "8afa4992b308aeefbbd20b190f261b3b": {
+        "question": "隆两优1212在哪里进行示范种植？",
+        "answer": "隆两优1212在长汀润丰优质稻专业合作社进行示范种植。",
+        "loss": 0.04478021708549916
+    },
+    "89be36de1561ebf2d4d9be888c8724f9": {
+        "question": "Why is grain size considered important in crop production, especially in rice?",
+        "answer": "Grain size is a key factor that influences grain yield in crops, particularly in rice.",
+        "loss": 0.06938895229298701
+    },
+    "4d320e65556f22d27f9258c6c4dc69de": {
+        "question": "What is the role of indole acetic acid in plants?",
+        "answer": "Indole acetic acid is a plant hormone that influences growth and development, including the regulation of gravitropism in rice.",
+        "loss": 0.36837029734096155
+    },
+    "5ccfac83d3a9e7cd8b9a756d9f7a0eeb": {
+        "question": "隆两优1212在长汀县的成熟日期是什么时候？",
+        "answer": "隆两优1212在长汀县的成熟日期是10月21日。",
+        "loss": 3.889435500154262
+    },
+    "3a393c1d40121007f634742d9c3b3c04": {
+        "question": "How does tiller angle influence rice production?",
+        "answer": "Tiller angle significantly affects the grain yield of rice, making it an important aspect of plant architecture.",
+        "loss": 0.00038276082659649714
+    },
+    "1f3bb8f8f683d4dcb4b379d9e7e6788b": {
+        "question": "云粳26号有哪些特性？",
+        "answer": "云粳26号具有高抗稻瘟病的特性，适合种植。",
+        "loss": 0.0004952482704538482
+    },
+    "bafcaf510c615078854418a9809806a2": {
+        "question": "云粳26号的食味品质之一是什么？",
+        "answer": "有香味是云粳26号的食味品质之一。",
+        "loss": 0.07535676845873245
+    },
+    "7b58d98a18f753fe6c12d45fe3108703": {
+        "question": "隆两优1212在2018年示范种植的平均产量是多少？",
+        "answer": "隆两优1212在2018年示范种植的平均产量是8.72 t/hm^2。",
+        "loss": 5.291381644470648
+    },
+    "fa48f84fd40533b2ca7a214722ad1e0f": {
+        "question": "What is gravitropism in plants?",
+        "answer": "Gravitropism is the growth response of plants to gravity, which is affected in the severe lines of the Bg1-D mutant.",
+        "loss": 0.8259349847750537
+    },
+    "d1b2c30ec8be68fde163061cef0d259b": {
+        "question": "云粳26号是什么时候被育成的？",
+        "answer": "云粳26号是在2005年被育成的。",
+        "loss": 1.2757854678825942
+    },
+    "ca0bc071dad7cc7cdfe1e4a9c329c70d": {
+        "question": "What is the role of the TAC4 gene in rice cultivation?",
+        "answer": "The TAC4 gene plays a significant role in the growth and yield of rice by regulating the tiller angle.",
+        "loss": 0.00041262686485408725
+    },
+    "892efc63c9cfe98da3b9494122143143": {
+        "question": "隆两优1212适合在哪个地区推广种植？",
+        "answer": "隆两优1212适合在长汀县推广种植。",
+        "loss": 0.11312617113192873
+    },
+    "5a8a85bed2bc5f4f7212180271267b06": {
+        "question": "隆两优1212在2018年示范种植的面积是多少？",
+        "answer": "隆两优1212在2018年示范种植的面积是4.00 hm^2。",
+        "loss": 4.626307918465909
+    },
+    "de1fa70aa2b47b46c5f7dac395fbe33a": {
+        "question": "云粳26号适宜种植在哪个地理区域？",
+        "answer": "云粳26号适宜种植在云南中海拔 1 500∼1 800 m 稻区。",
+        "loss": 0.10301619147260987
+    },
+    "8f679a45d1a431d078c6912887c1e5e4": {
+        "question": "What are developmental signals in the context of plant growth?",
+        "answer": "Developmental signals are factors that influence the growth and development of plants, including grain size regulation.",
+        "loss": 0.6492638748206391
+    },
+    "95b7a1b205e4858e0dfd7ec90c695a60": {
+        "question": "长汀县绿丰优质稻专业合作社在何时示范种植隆两优1212？",
+        "answer": "长汀县绿丰优质稻专业合作社在2019年示范种植隆两优1212。",
+        "loss": 2.9061057158497205
+    },
+    "dc156ef4ade6d6c5a92142d808440dd3": {
+        "question": "隆两优1212的机插时间是什么时候？",
+        "answer": "隆两优1212在7月5日进行机插。",
+        "loss": 2.4750936400954147
+    },
+    "a32f3e889baec282ae58a993663d12c5": {
+        "question": "隆两优1212是什么品种，何时引入福建省进行试种？",
+        "answer": "隆两优1212是一种水稻品种，于2017年引入福建省龙岩市长汀县进行试种。",
+        "loss": 0.3354722399381748
+    },
+    "5ca116ec91a2c12ed734654c8c06cb0f": {
+        "question": "种植云粳26号需要注意什么？",
+        "answer": "种植云粳26号需要采用适当的种植技术，以确保其高产和优质。",
+        "loss": 4.320199830704407e-07
+    },
+    "91105a125573ed42f2bae39b8e8c302f": {
+        "question": "云粳26号在何时被农业部列为主导品种？",
+        "answer": "云粳26号在2012年被农业部列为主导品种。",
+        "loss": 2.114203438647301
+    },
+    "f6e7dfd65f03ad8a3c36d2eb2953597d": {
+        "question": "云粳26号的推广与什么因素密切相关？",
+        "answer": "云粳26号的推广与市场需求密切相关，反映了消费者对优质稻米的偏好。",
+        "loss": 1.0427210856591091e-07
+    },
+    "656d5230809aeae83b025aff88994177": {
+        "question": "云南省农业科学院粮食作物研究所负责育成哪种早熟品种？",
+        "answer": "云南省农业科学院粮食作物研究所负责育成早熟品种云粳26号。",
+        "loss": 0.4100542664527893
+    },
+    "9d97b79cd0a097abe894c1fe0b2c0b23": {
+        "question": "What is the scientific name for rice and what aspect of its architecture is influenced by tiller angle?",
+        "answer": "The scientific name for rice is \"Oryza sativa L.\" and its architecture is influenced by tiller angle.",
+        "loss": 1.063461342675712
+    },
+    "fcd7886b3252416cf81d00db42564c3e": {
+        "question": "How does the manipulation of BG1 in rice affect crop traits?",
+        "answer": "Manipulation of BG1 in rice can enhance traits such as biomass and yield, demonstrating its significance in crop improvement.",
+        "loss": 2.8801332519304187e-07
+    },
+    "5b5f79dd7fb573c24343440090d22cf9": {
+        "question": "隆两优1212在何时引入试种于福建省龙岩市长汀县？",
+        "answer": "隆两优1212在2017年引入试种于福建省龙岩市长汀县。",
+        "loss": 1.5090347017819814
+    },
+    "bec5b1527c24113026bbf872d0073417": {
+        "question": "谷壳黄色对云粳26号的市场接受度有什么影响？",
+        "answer": "谷壳黄色是云粳26号的外观特征之一，影响其市场接受度。",
+        "loss": 0.16414476682742438
+    },
+    "f8572a27d49bad7beba1c28a2fc8731f": {
+        "question": "云粳26号是什么类型的品种，谁育成的？",
+        "answer": "云粳26号是由云南省农业科学院育成的早熟品种。",
+        "loss": 0.7699170204937471
+    },
+    "0b9613c1c35a277045d3540ea95ab0b3": {
+        "question": "云粳26号是什么类型的稻品种？",
+        "answer": "云粳26号是通过品种育成过程而获得的早熟稻品种。",
+        "loss": 0.0595000738285307
+    }
+}

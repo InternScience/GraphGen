@@ -20,3 +20,10 @@ langcodes
 requests
 fastapi
 trafilatura
+
+leidenalg
+igraph
+python-louvain
+
+# For visualization
+matplotlib
