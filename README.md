@@ -136,18 +136,31 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
      TRAINEE_BASE_URL=your_base_url_for_trainee_model
      TRAINEE_API_KEY=your_api_key_for_trainee_model
      ```
-2. (Optional) If you want to modify the default generated configuration, you can edit the content of the configs/graphgen_config.yaml file.
+2. (Optional) Customize generation parameters in `graphgen/configs/` folder.
+
+   Edit the corresponding YAML file, e.g.:
+
     ```yaml
-    # configs/aggregated_config.yaml
-    # Example configuration
-    input_data_type: "raw"
-    input_file: "resources/input_examples/raw_demo.jsonl"
-    # more configurations...
+      # configs/cot_config.yaml
+      input_data_type: raw
+      input_file: resources/input_examples/raw_demo.jsonl
+      output_data_type: cot
+      tokenizer: cl100k_base
+      # additional settings...
     ```
-3. Run the generation script
-   ```bash
-   bash scripts/generate/generate_aggregated.sh
-   ```
+
+3. Generate data
+
+   Pick the desired format and run the matching script:
+   
+   | Format       | Script to run                                  | Notes                                                             |
+   | ------------ | ---------------------------------------------- |-------------------------------------------------------------------|
+   | `cot`        | `bash scripts/generate/generate_cot.sh`        | Chain-of-Thought Q\&A pairs                                       |
+   | `atomic`     | `bash scripts/generate/generate_atomic.sh`     | Atomic Q\&A pairs covering basic knowledge                        |
+   | `aggregated` | `bash scripts/generate/generate_aggregated.sh` | Aggregated Q\&A pairs incorporating complex, integrated knowledge |
+   | `multi-hop`  | `bash scripts/generate/generate_multihop.sh`   | Multi-hop reasoning Q\&A pairs                                    |
+
+
 4. Get the generated data
    ```bash
    ls cache/data/graphgen
