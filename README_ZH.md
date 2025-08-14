@@ -30,9 +30,10 @@ GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthe
 - 🍀 [致谢](#致谢)
 - 📚 [引用](#引用)
 - 📜 [许可证](#许可证)
+- 📅 [星标历史](#星标历史)
+
 
 [//]: # (- 🌟 [主要特性](#主要特性))
-[//]: # (- 📅 [路线图](#路线图))
 [//]: # (- 💰 [成本分析](#成本分析))
 [//]: # (- ⚙️ [配置说明](#配置说明))
 
@@ -208,3 +209,8 @@ uv run webui/app.py
 
 ## 📜 许可证
 本项目采用 [Apache License 2.0](LICENSE) 许可证。
+
+## 📅 Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=open-sciencelab/GraphGen&type=Date)](https://www.star-history.com/#open-sciencelab/GraphGen&Date)
+
