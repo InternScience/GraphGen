@@ -109,10 +109,9 @@ def main():
     else:
         raise ValueError(f"Unsupported output data type: {output_data_type}")
 
-    path = os.path.join(
-        working_dir, "data", "graphgen", str(unique_id), f"config-{unique_id}.yaml"
-    )
-    save_config(path, config)
+    output_path = os.path.join(working_dir, "data", "graphgen", str(unique_id))
+    save_config(os.path.join(output_path, f"config-{unique_id}.yaml"), config)
+    logger.info("GraphGen completed successfully. Data saved to %s", output_path)
 
 
 if __name__ == "__main__":
