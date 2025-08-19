@@ -1,10 +1,8 @@
 {
   "en": {
     "Title": "✨Easy-to-use LLM Training Data Generation Framework✨",
-    "\n\n": "\n\n",
     "### [GraphGen](https://github.com/open-sciencelab/GraphGen) ": "### [GraphGen](https://github.com/open-sciencelab/GraphGen) ",
     "Intro": "is a framework for synthetic data generation guided by knowledge graphs, designed to tackle challenges for knowledge-intensive QA generation. \n\nBy uploading your text chunks (such as knowledge in agriculture, healthcare, or marine science) and filling in the LLM API key, you can generate the training data required by **[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)** and **[xtuner](https://github.com/InternLM/xtuner)** online. We will automatically delete user information after completion.",
-    "# ": "# ",
     "Use Trainee Model": "Use Trainee Model to identify knowledge blind spots, please keep disable for SiliconCloud",
     "Synthesizer URL Info": "Base URL for the Synthesizer Model API, use SiliconFlow as default",
     "Synthesizer Model Info": "Model for constructing KGs and generating QAs",
@@ -21,10 +19,8 @@
   },
   "zh": {
     "Title": "✨开箱即用的LLM训练数据生成框架✨",
-    "\n\n": "\n\n",
     "### [GraphGen](https://github.com/open-sciencelab/GraphGen) ": "### [GraphGen](https://github.com/open-sciencelab/GraphGen) ",
     "Intro": "是一个基于知识图谱的数据合成框架，旨在知识密集型任务中生成问答。\n\n 上传你的文本块（如农业、医疗、海洋知识），填写 LLM api key，即可在线生成 **[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)**、**[xtuner](https://github.com/InternLM/xtuner)** 所需训练数据。结束后我们将自动删除用户信息。",
-    "# ": "# ",
     "Use Trainee Model": "使用Trainee Model来识别知识盲区，使用硅基流动时请保持禁用",
     "Synthesizer URL Info": "调用合成模型API的URL，默认使用硅基流动",
     "Synthesizer Model Info": "用于构建知识图谱和生成问答的模型",
