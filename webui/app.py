@@ -60,7 +60,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
 
     strategy_config = config.get("traverse_strategy", {})
     graph_gen.traverse_strategy = TraverseStrategy(
-        qa_form=config.get("qa_form"),
+        qa_form=strategy_config.get("qa_form"),
         expand_method=strategy_config.get("expand_method"),
         bidirectional=strategy_config.get("bidirectional"),
         max_extra_edges=strategy_config.get("max_extra_edges"),
@@ -83,9 +83,9 @@ def run_graphgen(params, progress=gr.Progress()):
         "if_trainee_model": params.if_trainee_model,
         "input_file": params.input_file,
         "tokenizer": params.tokenizer,
-        "qa_form": params.qa_form,
         "quiz_samples": params.quiz_samples,
         "traverse_strategy": {
+            "qa_form": params.qa_form,
             "bidirectional": params.bidirectional,
             "expand_method": params.expand_method,
             "max_extra_edges": params.max_extra_edges,
@@ -171,7 +171,7 @@ def run_graphgen(params, progress=gr.Progress()):
             graph_gen.judge(skip=True)
 
         # Traverse graph
-        graph_gen.traverse()
+        graph_gen.traverse(traverse_strategy=graph_gen.traverse_strategy)
 
         # Save output
         output_data = graph_gen.qa_storage.data
@@ -439,7 +439,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                         file_types=[".txt", ".json", ".jsonl"],
                         interactive=True,
                     )
-                    examples_dir = os.path.join(root_dir, "webui", "input_examples")
+                    examples_dir = os.path.join(root_dir, "webui", "examples")
                     gr.Examples(
                         examples=[
                             [os.path.join(examples_dir, "txt_demo.txt")],
