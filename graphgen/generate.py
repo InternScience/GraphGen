@@ -72,15 +72,18 @@ def main():
         ),
     )
 
+    tokenizer_instance = Tokenizer(model_name=config["tokenizer"])
     synthesizer_llm_client = OpenAIModel(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
         base_url=os.getenv("SYNTHESIZER_BASE_URL"),
+        tokenizer_instance=tokenizer_instance,
     )
     trainee_llm_client = OpenAIModel(
         model_name=os.getenv("TRAINEE_MODEL"),
         api_key=os.getenv("TRAINEE_API_KEY"),
         base_url=os.getenv("TRAINEE_BASE_URL"),
+        tokenizer_instance=tokenizer_instance,
     )
 
     graph_gen = GraphGen(
@@ -89,7 +92,7 @@ def main():
         synthesizer_llm_client=synthesizer_llm_client,
         trainee_llm_client=trainee_llm_client,
         search_config=config["search"],
-        tokenizer_instance=Tokenizer(model_name=config["tokenizer"]),
+        tokenizer_instance=tokenizer_instance,
     )
 
     graph_gen.insert(data, config["input_data_type"])

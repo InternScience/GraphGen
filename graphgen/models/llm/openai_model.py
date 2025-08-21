@@ -55,6 +55,8 @@ class OpenAIModel(TopkTokenModel):
     rpm: RPM = field(default_factory=lambda: RPM(rpm=1000))
     tpm: TPM = field(default_factory=lambda: TPM(tpm=50000))
 
+    tokenizer_instance: Tokenizer = field(default_factory=Tokenizer)
+
     def __post_init__(self):
         assert self.api_key is not None, "Please provide api key to access openai api."
         self.client = AsyncOpenAI(
@@ -125,8 +127,9 @@ class OpenAIModel(TopkTokenModel):
 
         prompt_tokens = 0
         for message in kwargs["messages"]:
-            # TODO: need to use local tokenizer to avoid network call
-            prompt_tokens += len(Tokenizer().encode_string(message["content"]))
+            prompt_tokens += len(
+                self.tokenizer_instance.encode_string(message["content"])
+            )
         estimated_tokens = prompt_tokens + kwargs["max_tokens"]
 
         if self.request_limit:
