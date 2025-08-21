@@ -80,7 +80,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 2. 克隆仓库
 
     ```bash
-    git clone https://github.com/open-sciencelab/GraphGen
+    git clone --depth=1 https://github.com/open-sciencelab/GraphGen
     cd GraphGen
     ```
 3. 创建新的 uv 环境

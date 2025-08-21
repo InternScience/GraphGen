@@ -79,7 +79,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 2. Clone the repository
 
     ```bash
-    git clone https://github.com/open-sciencelab/GraphGen
+    git clone --depth=1 https://github.com/open-sciencelab/GraphGen
     cd GraphGen
     ```
 
