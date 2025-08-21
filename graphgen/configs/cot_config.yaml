@@ -7,7 +7,6 @@ search:
   search_types: []
 method_params:
   method: leiden
-  method_params:
-    max_size: 20 # Maximum size of communities
-    use_lcc: false
-    random_seed: 42
+  max_size: 20 # Maximum size of communities
+  use_lcc: false
+  random_seed: 42
