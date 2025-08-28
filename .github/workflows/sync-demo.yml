@@ -37,7 +37,6 @@ jobs:
     - name: Clean demo directory
       run: |
         cd demo
-        # 删除所有文件/文件夹，但保留 .git
         find . -mindepth 1 -path './.git' -prune -o -exec rm -rf {} + 2>/dev/null || true
 
     - name: Copy files using config
@@ -51,10 +50,12 @@ jobs:
           if [ -e "$src" ]; then
             target_path="demo/$dst"
 
+            # 处理目录（以/结尾或本身是目录）
             if [[ "$dst" == */ ]] || [ -d "$src" ]; then
               mkdir -p "$target_path"
-              cp -r "$src" "$target_path"
-              echo "Copied $src → $target_path"
+              # 复制目录里的内容，而不是目录本身
+              cp -r "$src"/* "$target_path"
+              echo "Copied $src/* → $target_path"
             else
               mkdir -p "$(dirname "$target_path")"
               cp "$src" "$target_path"
