@@ -29,12 +29,15 @@ jobs:
     - name: Push to Hugging Face
       env:
         HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        HF_REPO_TYPE: space
+        HF_REPO_TYPE: spaces
         HF_REPO_ID: chenzihong/GraphGen
       run: |
-        huggingface-cli login --token "$HF_TOKEN" --add-to-git-credential
-        git clone https://huggingface.co/$HF_REPO_TYPE/$HF_REPO_ID hf-repo
+        git config --global credential.helper store
+        echo "https://user:${HF_TOKEN}@huggingface.co" > ~/.git-credentials
+
+        git clone https://huggingface.co/${HF_REPO_TYPE}/${HF_REPO_ID} hf-repo
         rsync -a --delete --exclude='.git' ./ hf-repo/
         cd hf-repo
         git add .
-        git diff-index --quiet HEAD || (git commit -m "Auto-sync from ${{ inputs.ref }} at $(date -u)" && git push)
+        git diff-index --quiet HEAD || \
+          (git commit -m "Auto-sync from ${{ inputs.ref }} at $(date -u)" && git push)
