@@ -1,0 +1,11 @@
+sync:
+  - source: graphgen
+    dest: graphgen
+  - source: resources
+    dest: resources
+  - source: webui
+    dest: webui
+  - source: webui/app.py
+    dest: app.py
+  - source: requirements.txt
+    dest: requirements.txt
