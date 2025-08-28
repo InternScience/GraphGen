@@ -9,3 +9,9 @@ sync:
     dest: app.py
   - source: requirements.txt
     dest: requirements.txt
+  - source: README.md
+    dest: README.md
+  - source: README_ZH.md
+    dest: README_ZH.md
+  - source: LICENSE
+    dest: LICENSE

@@ -1,0 +1,40 @@
+name: Push demo branch to Hugging Face
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        default: demo
+        type: string
+    secrets:
+      HF_TOKEN:
+        required: true
+
+jobs:
+  push-hf:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        ref: ${{ inputs.ref }}
+        token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install huggingface_hub
+
+    - name: Push to Hugging Face
+      env:
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        HF_REPO_TYPE: space
+        HF_REPO_ID: chenzihong/GraphGen
+      run: |
+        huggingface-cli login --token "$HF_TOKEN" --add-to-git-credential
+        git clone https://huggingface.co/$HF_REPO_TYPE/$HF_REPO_ID hf-repo
+        rsync -a --delete --exclude='.git' ./ hf-repo/
+        cd hf-repo
+        git add .
+        git diff-index --quiet HEAD || (git commit -m "Auto-sync from ${{ inputs.ref }} at $(date -u)" && git push)

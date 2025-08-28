@@ -68,3 +68,9 @@ jobs:
         else
           echo "No changes to sync"
         fi
+
+  push-hf:
+    needs: sync-demo
+    uses: ./.github/workflows/push-to-hf.yml
+    secrets:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
