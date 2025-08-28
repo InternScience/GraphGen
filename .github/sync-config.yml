@@ -1,17 +1,15 @@
 sync:
   - source: graphgen
     dest: graphgen
-  - source: resources
-    dest: resources
+  - source: resources/nltk_data
+    dest: resources/nltk_data
+  - source: resources/examples
+    dest: resources/examples
   - source: webui
     dest: webui
   - source: webui/app.py
     dest: app.py
   - source: requirements.txt
     dest: requirements.txt
-  - source: README.md
-    dest: README.md
-  - source: README_ZH.md
-    dest: README_ZH.md
   - source: LICENSE
     dest: LICENSE
