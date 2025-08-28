@@ -32,20 +32,13 @@ jobs:
         HF_REPO_TYPE: spaces
         HF_REPO_ID: chenzihong/GraphGen
       run: |
-        set -x          # 打开调试，让每一步路径都打印出来
         git config --global credential.helper store
         echo "https://user:${HF_TOKEN}@huggingface.co" > ~/.git-credentials
 
         [[ -d hf-repo ]] && rm -rf hf-repo
         git clone https://huggingface.co/${HF_REPO_TYPE}/${HF_REPO_ID} hf-repo
 
-        # 打印当前目录和 hf-repo 目录
-        pwd
-        ls -la
-        ls -la hf-repo
-
-        # 关键：确保“源”是当前仓库，“目标”是 hf-repo
-        rsync -a --delete --exclude='.git' ./ hf-repo/
+        rsync -a --delete --exclude='.git' ./ hf-repo/ || true
 
         cd hf-repo
         git add .
