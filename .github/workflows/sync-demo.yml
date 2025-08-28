@@ -34,6 +34,12 @@ jobs:
         token: ${{ secrets.GITHUB_TOKEN }}
         path: demo
 
+    - name: Clean demo directory
+      run: |
+        cd demo
+        # 删除所有文件/文件夹，但保留 .git
+        find . -mindepth 1 -path './.git' -prune -o -exec rm -rf {} + 2>/dev/null || true
+
     - name: Copy files using config
       run: |
         while IFS= read -r line; do
