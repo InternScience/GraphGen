@@ -57,6 +57,8 @@ GraphGen 是一个基于知识图谱引导的合成数据生成框架。请查�
 GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期望校准误差指标识别大语言模型中的知识缺口，优先生成针对高价值长尾知识的问答对。  
 此外，GraphGen 采用多跳邻域采样捕获复杂关系信息，并使用风格控制生成来丰富问答数据的多样性。
 
+在数据生成后，您可以使用[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) 和 [xtuner](https://github.com/InternLM/xtuner)对大语言模型进行微调。
+
 ## 📌 最新更新
 
 - **2025.08.14**：支持利用 Leiden 社区发现算法对知识图谱进行社区划分，合成 CoT 数据。

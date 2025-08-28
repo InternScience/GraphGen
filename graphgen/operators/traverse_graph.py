@@ -125,22 +125,18 @@ async def _construct_rephrasing_prompt(
     return prompt
 
 
-def get_loss_tercile(losses: list) -> (float, float):
-    losses = sorted(losses)
-    q1_index = int(len(losses) * (1 / 3))
-    q2_index = int(len(losses) * (2 / 3))
-
-    return losses[q1_index], losses[q2_index]
-
-
 def get_average_loss(batch: tuple, loss_strategy: str) -> float:
-    if loss_strategy == "only_edge":
-        return sum(edge[2]["loss"] for edge in batch[1]) / len(batch[1])
-    if loss_strategy == "both":
-        return sum(edge[2]["loss"] for edge in batch[1]) + sum(
-            node["loss"] for node in batch[0]
-        ) / (len(batch[0]) + len(batch[1]))
-    raise ValueError("Invalid loss strategy")
+    try:
+        if loss_strategy == "only_edge":
+            return sum(edge[2]["loss"] for edge in batch[1]) / len(batch[1])
+        if loss_strategy == "both":
+            return sum(edge[2]["loss"] for edge in batch[1]) + sum(
+                node["loss"] for node in batch[0]
+            ) / (len(batch[0]) + len(batch[1]))
+        raise ValueError("Invalid loss strategy")
+    except Exception as e:  # pylint: disable=broad-except
+        logger.error("Error calculating average loss: %s", e)
+        return -1.0
 
 
 def _post_process_synthetic_data(data):
@@ -440,8 +436,6 @@ async def traverse_graph_for_multi_hop(
     :param max_concurrent
     :return: question and answer
     """
-    assert traverse_strategy.qa_form == "multi_hop"
-
     semaphore = asyncio.Semaphore(max_concurrent)
 
     results = {}

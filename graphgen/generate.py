@@ -7,8 +7,7 @@ import yaml
 from dotenv import load_dotenv
 
 from .graphgen import GraphGen
-from .models import OpenAIModel, Tokenizer, TraverseStrategy
-from .utils import logger, read_file, set_logger
+from .utils import logger, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -53,10 +52,8 @@ def main():
 
     with open(args.config_file, "r", encoding="utf-8") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
-    input_file = config["input_file"]
-    data = read_file(input_file)
-    output_data_type = config["output_data_type"]
 
+    output_data_type = config["output_data_type"]
     unique_id = int(time.time())
     set_logger(
         os.path.join(
@@ -72,41 +69,26 @@ def main():
         ),
     )
 
-    tokenizer_instance = Tokenizer(model_name=config["tokenizer"])
-    synthesizer_llm_client = OpenAIModel(
-        model_name=os.getenv("SYNTHESIZER_MODEL"),
-        api_key=os.getenv("SYNTHESIZER_API_KEY"),
-        base_url=os.getenv("SYNTHESIZER_BASE_URL"),
-        tokenizer_instance=tokenizer_instance,
-    )
-    trainee_llm_client = OpenAIModel(
-        model_name=os.getenv("TRAINEE_MODEL"),
-        api_key=os.getenv("TRAINEE_API_KEY"),
-        base_url=os.getenv("TRAINEE_BASE_URL"),
-        tokenizer_instance=tokenizer_instance,
-    )
+    graph_gen = GraphGen(working_dir=working_dir, unique_id=unique_id, config=config)
 
-    graph_gen = GraphGen(
-        working_dir=working_dir,
-        unique_id=unique_id,
-        synthesizer_llm_client=synthesizer_llm_client,
-        trainee_llm_client=trainee_llm_client,
-        search_config=config["search"],
-        tokenizer_instance=tokenizer_instance,
-    )
-
-    graph_gen.insert(data, config["input_data_type"])
+    graph_gen.insert()
 
     if config["search"]["enabled"]:
         graph_gen.search()
 
     # Use pipeline according to the output data type
     if output_data_type in ["atomic", "aggregated", "multi_hop"]:
-        graph_gen.quiz(max_samples=config["quiz_samples"])
-        graph_gen.judge(re_judge=config["re_judge"])
-        traverse_strategy = TraverseStrategy(**config["traverse_strategy"])
-        traverse_strategy.qa_form = output_data_type
-        graph_gen.traverse(traverse_strategy=traverse_strategy)
+        if "quiz_and_judge_strategy" in config and config[
+            "quiz_and_judge_strategy"
+        ].get("enabled", False):
+            graph_gen.quiz()
+            graph_gen.judge()
+        else:
+            logger.warning(
+                "Quiz and Judge strategy is disabled. Edge sampling falls back to random."
+            )
+            graph_gen.traverse_strategy.edge_sampling = "random"
+        graph_gen.traverse()
     elif output_data_type == "cot":
         graph_gen.generate_reasoning(method_params=config["method_params"])
     else:

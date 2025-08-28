@@ -1,18 +1,21 @@
-input_data_type: raw
-input_file: resources/input_examples/raw_demo.jsonl
-output_data_type: multi_hop
-tokenizer: cl100k_base
-quiz_samples: 2
-traverse_strategy:
-  bidirectional: true
-  edge_sampling: max_loss
-  expand_method: max_width
-  isolated_node_strategy: ignore
-  max_depth: 1
-  max_extra_edges: 2
-  max_tokens: 256
-  loss_strategy: only_edge
-search:
-  enabled: false
-  search_types: ["google"]
-re_judge: false
+input_data_type: raw # raw, chunked
+input_file: resources/input_examples/raw_demo.jsonl # input file path, support json, jsonl, txt. See resources/input_examples for examples
+output_data_type: multi_hop # atomic, aggregated, multi_hop, cot
+output_data_format: ChatML # Alpaca, Sharegpt, ChatML
+tokenizer: cl100k_base # tokenizer for counting tokens, support tiktoken tokenizer names and local tokenizer path
+search: # web search configuration
+  enabled: false # whether to enable web search
+  search_types: ["google"] # search engine types, support: google, bing, uniprot, wikipedia
+quiz_and_judge_strategy: # quiz and test whether the LLM masters the knowledge points
+  enabled: true
+  quiz_samples: 2 # number of quiz samples to generate
+  re_judge: false # whether to re-judge the existing quiz samples
+traverse_strategy: # strategy for clustering sub-graphs using comprehension loss
+  bidirectional: true # whether to traverse the graph in both directions
+  edge_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
+  expand_method: max_width # expand method, support: max_width, max_depth
+  isolated_node_strategy: ignore # strategy for isolated nodes, support: ignore, add
+  max_depth: 1 # maximum depth for graph traversal
+  max_extra_edges: 2 # max edges per direction (if expand_method="max_width")
+  max_tokens: 256 # restricts input length (if expand_method="max_tokens")
+  loss_strategy: only_edge # defines loss computation focus, support: only_edge, both

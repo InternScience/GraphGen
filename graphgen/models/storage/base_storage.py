@@ -1,8 +1,10 @@
 from dataclasses import dataclass
-from typing import Union, Generic, TypeVar
+from typing import Generic, TypeVar, Union
+
 from graphgen.models.embed.embedding import EmbeddingFunc
 
 T = TypeVar("T")
+
 
 @dataclass
 class StorageNameSpace:
@@ -17,9 +19,25 @@ class StorageNameSpace:
 
 
 @dataclass
-class BaseKVStorage(Generic[T], StorageNameSpace):
-    embedding_func: EmbeddingFunc = None
+class BaseListStorage(Generic[T], StorageNameSpace):
+    async def all_items(self) -> list[T]:
+        raise NotImplementedError
 
+    async def get_by_index(self, index: int) -> Union[T, None]:
+        raise NotImplementedError
+
+    async def append(self, data: T):
+        raise NotImplementedError
+
+    async def upsert(self, data: list[T]):
+        raise NotImplementedError
+
+    async def drop(self):
+        raise NotImplementedError
+
+
+@dataclass
+class BaseKVStorage(Generic[T], StorageNameSpace):
     async def all_keys(self) -> list[str]:
         raise NotImplementedError
 
@@ -40,6 +58,7 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
 
     async def drop(self):
         raise NotImplementedError
+
 
 @dataclass
 class BaseGraphStorage(StorageNameSpace):
@@ -71,7 +90,9 @@ class BaseGraphStorage(StorageNameSpace):
     ) -> Union[dict, None]:
         raise NotImplementedError
 
-    async def update_edge(self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]):
+    async def update_edge(
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+    ):
         raise NotImplementedError
 
     async def get_all_edges(self) -> Union[list[dict], None]:

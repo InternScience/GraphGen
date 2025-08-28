@@ -10,7 +10,7 @@ from .search.db.uniprot_search import UniProtSearch
 from .search.kg.wiki_search import WikiSearch
 from .search.web.bing_search import BingSearch
 from .search.web.google_search import GoogleSearch
-from .storage.json_storage import JsonKVStorage
+from .storage.json_storage import JsonKVStorage, JsonListStorage
 from .storage.networkx_storage import NetworkXStorage
 from .strategy.travserse_strategy import TraverseStrategy
 from .text.chunk import Chunk
@@ -26,6 +26,7 @@ __all__ = [
     "Chunk",
     "NetworkXStorage",
     "JsonKVStorage",
+    "JsonListStorage",
     # search models
     "WikiSearch",
     "GoogleSearch",

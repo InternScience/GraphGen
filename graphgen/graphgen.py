@@ -10,6 +10,7 @@ from tqdm.asyncio import tqdm as tqdm_async
 from .models import (
     Chunk,
     JsonKVStorage,
+    JsonListStorage,
     NetworkXStorage,
     OpenAIModel,
     Tokenizer,
@@ -22,12 +23,17 @@ from .operators import (
     judge_statement,
     quiz,
     search_all,
-    skip_judge_statement,
     traverse_graph_atomically,
     traverse_graph_by_edge,
     traverse_graph_for_multi_hop,
 )
-from .utils import compute_content_hash, create_event_loop, logger
+from .utils import (
+    compute_content_hash,
+    create_event_loop,
+    format_generation_results,
+    logger,
+    read_file,
+)
 
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -36,25 +42,52 @@ sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 class GraphGen:
     unique_id: int = int(time.time())
     working_dir: str = os.path.join(sys_path, "cache")
-
-    # text chunking
-    chunk_size: int = 1024
-    chunk_overlap_size: int = 100
+    config: Dict = field(default_factory=dict)
 
     # llm
+    tokenizer_instance: Tokenizer = None
     synthesizer_llm_client: OpenAIModel = None
     trainee_llm_client: OpenAIModel = None
-    tokenizer_instance: Tokenizer = None
+
+    # text chunking
+    # TODO: make it configurable
+    chunk_size: int = 1024
+    chunk_overlap_size: int = 100
 
     # search
     search_config: dict = field(
         default_factory=lambda: {"enabled": False, "search_types": ["wikipedia"]}
     )
 
+    # traversal
+    traverse_strategy: TraverseStrategy = None
+
     # webui
     progress_bar: gr.Progress = None
 
     def __post_init__(self):
+        self.tokenizer_instance: Tokenizer = Tokenizer(
+            model_name=self.config["tokenizer"]
+        )
+        self.synthesizer_llm_client: OpenAIModel = OpenAIModel(
+            model_name=os.getenv("SYNTHESIZER_MODEL"),
+            api_key=os.getenv("SYNTHESIZER_API_KEY"),
+            base_url=os.getenv("SYNTHESIZER_BASE_URL"),
+            tokenizer_instance=self.tokenizer_instance,
+        )
+        self.trainee_llm_client: OpenAIModel = OpenAIModel(
+            model_name=os.getenv("TRAINEE_MODEL"),
+            api_key=os.getenv("TRAINEE_API_KEY"),
+            base_url=os.getenv("TRAINEE_BASE_URL"),
+            tokenizer_instance=self.tokenizer_instance,
+        )
+        self.search_config = self.config["search"]
+
+        if "traverse_strategy" in self.config:
+            self.traverse_strategy = TraverseStrategy(
+                **self.config["traverse_strategy"]
+            )
+
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="full_docs"
         )
@@ -70,7 +103,7 @@ class GraphGen:
         self.rephrase_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="rephrase"
         )
-        self.qa_storage: JsonKVStorage = JsonKVStorage(
+        self.qa_storage: JsonListStorage = JsonListStorage(
             os.path.join(self.working_dir, "data", "graphgen", str(self.unique_id)),
             namespace=f"qa-{self.unique_id}",
         )
@@ -78,7 +111,7 @@ class GraphGen:
     async def async_split_chunks(
         self, data: List[Union[List, Dict]], data_type: str
     ) -> dict:
-        # TODO： 是否进行指代消解
+        # TODO: configurable whether to use coreference resolution
         if len(data) == 0:
             return {}
 
@@ -168,15 +201,18 @@ class GraphGen:
 
         return inserting_chunks
 
-    def insert(self, data: Union[List[list], List[dict]], data_type: str):
+    def insert(self):
         loop = create_event_loop()
-        loop.run_until_complete(self.async_insert(data, data_type))
+        loop.run_until_complete(self.async_insert())
 
-    async def async_insert(self, data: Union[List[list], List[dict]], data_type: str):
+    async def async_insert(self):
         """
-
         insert chunks into the graph
         """
+
+        input_file = self.config["input_file"]
+        data_type = self.config["input_data_type"]
+        data = read_file(input_file)
 
         inserting_chunks = await self.async_split_chunks(data, data_type)
 
@@ -251,13 +287,15 @@ class GraphGen:
                             for key in list(search_data.keys())
                         ]
                     )
-                await self.async_insert(search_results, "raw")
+                # TODO: fix insert after search
+                await self.async_insert()
 
-    def quiz(self, max_samples=1):
+    def quiz(self):
         loop = create_event_loop()
-        loop.run_until_complete(self.async_quiz(max_samples))
+        loop.run_until_complete(self.async_quiz())
 
-    async def async_quiz(self, max_samples=1):
+    async def async_quiz(self):
+        max_samples = self.config["quiz_and_judge_strategy"]["quiz_samples"]
         await quiz(
             self.synthesizer_llm_client,
             self.graph_storage,
@@ -266,56 +304,61 @@ class GraphGen:
         )
         await self.rephrase_storage.index_done_callback()
 
-    def judge(self, re_judge=False, skip=False):
+    def judge(self):
         loop = create_event_loop()
-        loop.run_until_complete(self.async_judge(re_judge, skip))
+        loop.run_until_complete(self.async_judge())
 
-    async def async_judge(self, re_judge=False, skip=False):
-        if skip:
-            _update_relations = await skip_judge_statement(self.graph_storage)
-        else:
-            _update_relations = await judge_statement(
-                self.trainee_llm_client,
-                self.graph_storage,
-                self.rephrase_storage,
-                re_judge,
-            )
+    async def async_judge(self):
+        re_judge = self.config["quiz_and_judge_strategy"]["re_judge"]
+        _update_relations = await judge_statement(
+            self.trainee_llm_client,
+            self.graph_storage,
+            self.rephrase_storage,
+            re_judge,
+        )
         await _update_relations.index_done_callback()
 
-    def traverse(self, traverse_strategy: TraverseStrategy):
+    def traverse(self):
         loop = create_event_loop()
-        loop.run_until_complete(self.async_traverse(traverse_strategy))
+        loop.run_until_complete(self.async_traverse())
 
-    async def async_traverse(self, traverse_strategy: TraverseStrategy):
-        if traverse_strategy.qa_form == "atomic":
+    async def async_traverse(self):
+        output_data_type = self.config["output_data_type"]
+
+        if output_data_type == "atomic":
             results = await traverse_graph_atomically(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                traverse_strategy,
+                self.traverse_strategy,
                 self.text_chunks_storage,
                 self.progress_bar,
             )
-        elif traverse_strategy.qa_form == "multi_hop":
+        elif output_data_type == "multi_hop":
             results = await traverse_graph_for_multi_hop(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                traverse_strategy,
+                self.traverse_strategy,
                 self.text_chunks_storage,
                 self.progress_bar,
             )
-        elif traverse_strategy.qa_form == "aggregated":
+        elif output_data_type == "aggregated":
             results = await traverse_graph_by_edge(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                traverse_strategy,
+                self.traverse_strategy,
                 self.text_chunks_storage,
                 self.progress_bar,
             )
         else:
-            raise ValueError(f"Unknown qa_form: {traverse_strategy.qa_form}")
+            raise ValueError(f"Unknown qa_form: {output_data_type}")
+
+        results = format_generation_results(
+            results, output_data_format=self.config["output_data_format"]
+        )
+
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 
@@ -329,6 +372,11 @@ class GraphGen:
             self.synthesizer_llm_client,
             method_params=method_params,
         )
+
+        results = format_generation_results(
+            results, output_data_format=self.config["output_data_format"]
+        )
+
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 
