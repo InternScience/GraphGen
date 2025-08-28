@@ -56,8 +56,8 @@ jobs:
     - name: Commit and push changes
       run: |
         cd demo
-        git config user.name "github-actions[bot]"
-        git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+        git config --global user.email "actions@github.com"
+        git config --global user.name  "github-actions[bot]"
         
         # 检查是否有变化
         if [[ -n $(git status --porcelain) ]]; then
