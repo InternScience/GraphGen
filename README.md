@@ -100,7 +100,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 ### Run Gradio Demo
 
    ```bash
-   uv run webui/app.py
+   python -m webui.app.py
    ```
 
 ![ui](https://github.com/user-attachments/assets/3024e9bc-5d45-45f8-a4e6-b57bd2350d84)

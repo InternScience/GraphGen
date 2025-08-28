@@ -42,16 +42,28 @@ jobs:
 
     - name: Copy files using config
       run: |
-        while IFS= read -r line; do
-          source=$(echo $line | cut -d: -f1 | xargs)
-          dest=$(echo $line | cut -d: -f2 | xargs)
-          
-          if [ -e "$source" ]; then
-            mkdir -p "demo/$(dirname $dest)"
-            cp -r "$source" "demo/$dest"
-            echo "Copied $source to $dest"
+        yq eval '.sync[] | .source + ":" + .dest' .github/sync-config.yml | while IFS=: read -r src dst; do
+          src=$(echo "$src" | xargs)
+          dst=$(echo "$dst" | xargs)
+
+          [ -z "$src" ] && continue
+
+          if [ -e "$src" ]; then
+            target_path="demo/$dst"
+
+            if [[ "$dst" == */ ]] || [ -d "$src" ]; then
+              mkdir -p "$target_path"
+              cp -r "$src" "$target_path"
+              echo "Copied $src → $target_path"
+            else
+              mkdir -p "$(dirname "$target_path")"
+              cp "$src" "$target_path"
+              echo "Copied $src → $target_path"
+            fi
+          else
+            echo "Source not found: $src"
           fi
-        done < <(grep -E '^\s*-\s+source:' .github/sync-config.yml | sed 's/.*source: //' | paste -d: - <(grep -E '^\s*-\s+dest:' .github/sync-config.yml | sed 's/.*dest: //'))
+        done
 
     - name: Commit and push changes
       run: |
