@@ -6,7 +6,7 @@ colorTo: green
 sdk: gradio
 sdk_version: "5.44.0"
 python_version: "3.10"
-app_file: webui/app.py
+app_file: app.py
 suggested_hardware: cpu-basic
 pinned: false
 short_description: "Knowledge-driven synthetic data generation demo"
