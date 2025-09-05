@@ -1,3 +1,4 @@
+# pylint: skip-file
 import json
 import os
 import sys
@@ -5,12 +6,12 @@ import tempfile
 
 import gradio as gr
 import pandas as pd
-from gradio_i18n import Translate
-from gradio_i18n import gettext as _
 
 from webui.base import GraphGenParams
 from webui.cache_utils import cleanup_workspace, setup_workspace
 from webui.count_tokens import count_tokens
+from webui.i18n import Translate
+from webui.i18n import gettext as _
 from webui.test_api import test_api_connection
 
 # pylint: disable=wrong-import-position
@@ -581,6 +582,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
             ],
             outputs=[output, token_counter],
         )
+
 
 if __name__ == "__main__":
     demo.queue(api_open=False, default_concurrency_limit=2)
