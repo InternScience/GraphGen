@@ -23,8 +23,8 @@ from .operators import (
     judge_statement,
     quiz,
     search_all,
-    traverse_graph_atomically,
-    traverse_graph_by_edge,
+    traverse_graph_for_aggregated,
+    traverse_graph_for_atomic,
     traverse_graph_for_multi_hop,
 )
 from .utils import (
@@ -69,6 +69,7 @@ class GraphGen:
         self.tokenizer_instance: Tokenizer = Tokenizer(
             model_name=self.config["tokenizer"]
         )
+        print(os.getenv("SYNTHESIZER_MODEL"), os.getenv("SYNTHESIZER_API_KEY"))
         self.synthesizer_llm_client: OpenAIModel = OpenAIModel(
             model_name=os.getenv("SYNTHESIZER_MODEL"),
             api_key=os.getenv("SYNTHESIZER_API_KEY"),
@@ -326,7 +327,7 @@ class GraphGen:
         output_data_type = self.config["output_data_type"]
 
         if output_data_type == "atomic":
-            results = await traverse_graph_atomically(
+            results = await traverse_graph_for_atomic(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
@@ -344,7 +345,7 @@ class GraphGen:
                 self.progress_bar,
             )
         elif output_data_type == "aggregated":
-            results = await traverse_graph_by_edge(
+            results = await traverse_graph_for_aggregated(
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
