@@ -158,7 +158,7 @@ def _post_process_synthetic_data(data):
     return qas
 
 
-async def traverse_graph_by_edge(
+async def traverse_graph_for_aggregated(
     llm_client: OpenAIModel,
     tokenizer: Tokenizer,
     graph_storage: NetworkXStorage,
@@ -251,7 +251,6 @@ async def traverse_graph_by_edge(
             qas = _post_process_synthetic_data(content)
 
             if len(qas) == 0:
-                print(content)
                 logger.error(
                     "Error occurred while processing batch, question or answer is None"
                 )
@@ -307,7 +306,8 @@ async def traverse_graph_by_edge(
     return results
 
 
-async def traverse_graph_atomically(
+# pylint: disable=too-many-branches, too-many-statements
+async def traverse_graph_for_atomic(
     llm_client: OpenAIModel,
     tokenizer: Tokenizer,
     graph_storage: NetworkXStorage,
@@ -328,17 +328,28 @@ async def traverse_graph_atomically(
     :param max_concurrent
     :return: question and answer
     """
-    assert traverse_strategy.qa_form == "atomic"
 
+    assert traverse_strategy.qa_form == "atomic"
     semaphore = asyncio.Semaphore(max_concurrent)
+
+    def _parse_qa(qa: str) -> tuple:
+        if "Question:" in qa and "Answer:" in qa:
+            question = qa.split("Question:")[1].split("Answer:")[0].strip()
+            answer = qa.split("Answer:")[1].strip()
+        elif "问题：" in qa and "答案：" in qa:
+            question = qa.split("问题：")[1].split("答案：")[0].strip()
+            answer = qa.split("答案：")[1].strip()
+        else:
+            return None, None
+        return question.strip('"'), answer.strip('"')
 
     async def _generate_question(node_or_edge: tuple):
         if len(node_or_edge) == 2:
             des = node_or_edge[0] + ": " + node_or_edge[1]["description"]
-            loss = node_or_edge[1]["loss"]
+            loss = node_or_edge[1]["loss"] if "loss" in node_or_edge[1] else -1.0
         else:
             des = node_or_edge[2]["description"]
-            loss = node_or_edge[2]["loss"]
+            loss = node_or_edge[2]["loss"] if "loss" in node_or_edge[2] else -1.0
 
         async with semaphore:
             try:
@@ -350,13 +361,8 @@ async def traverse_graph_atomically(
                     )
                 )
 
-                if "Question:" in qa and "Answer:" in qa:
-                    question = qa.split("Question:")[1].split("Answer:")[0].strip()
-                    answer = qa.split("Answer:")[1].strip()
-                elif "问题：" in qa and "答案：" in qa:
-                    question = qa.split("问题：")[1].split("答案：")[0].strip()
-                    answer = qa.split("答案：")[1].strip()
-                else:
+                question, answer = _parse_qa(qa)
+                if question is None or answer is None:
                     return {}
 
                 question = question.strip('"')
@@ -386,16 +392,18 @@ async def traverse_graph_atomically(
         if "<SEP>" in node[1]["description"]:
             description_list = node[1]["description"].split("<SEP>")
             for item in description_list:
-                tasks.append((node[0], {"description": item, "loss": node[1]["loss"]}))
+                tasks.append((node[0], {"description": item}))
+                if "loss" in node[1]:
+                    tasks[-1][1]["loss"] = node[1]["loss"]
         else:
             tasks.append((node[0], node[1]))
     for edge in edges:
         if "<SEP>" in edge[2]["description"]:
             description_list = edge[2]["description"].split("<SEP>")
             for item in description_list:
-                tasks.append(
-                    (edge[0], edge[1], {"description": item, "loss": edge[2]["loss"]})
-                )
+                tasks.append((edge[0], edge[1], {"description": item}))
+                if "loss" in edge[2]:
+                    tasks[-1][2]["loss"] = edge[2]["loss"]
         else:
             tasks.append((edge[0], edge[1], edge[2]))
 

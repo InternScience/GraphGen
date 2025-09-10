@@ -1,4 +1,3 @@
-# pylint: skip-file
 import json
 import os
 import sys
@@ -6,6 +5,7 @@ import tempfile
 
 import gradio as gr
 import pandas as pd
+from dotenv import load_dotenv
 
 from webui.base import GraphGenParams
 from webui.cache_utils import cleanup_workspace, setup_workspace
@@ -19,9 +19,11 @@ root_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.append(root_dir)
 
 from graphgen.graphgen import GraphGen
-from graphgen.models import OpenAIModel, Tokenizer, TraverseStrategy
+from graphgen.models import OpenAIModel, Tokenizer
 from graphgen.models.llm.limitter import RPM, TPM
 from graphgen.utils import set_logger
+
+load_dotenv()
 
 css = """
 .center-row {
@@ -37,7 +39,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
     log_file, working_dir = setup_workspace(os.path.join(root_dir, "cache"))
 
     set_logger(log_file, if_stream=False)
-    graph_gen = GraphGen(working_dir=working_dir)
+    graph_gen = GraphGen(working_dir=working_dir, config=config)
 
     # Set up LLM clients
     graph_gen.synthesizer_llm_client = OpenAIModel(
@@ -60,19 +62,6 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
 
     graph_gen.tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
 
-    strategy_config = config.get("traverse_strategy", {})
-    graph_gen.traverse_strategy = TraverseStrategy(
-        qa_form=strategy_config.get("qa_form"),
-        expand_method=strategy_config.get("expand_method"),
-        bidirectional=strategy_config.get("bidirectional"),
-        max_extra_edges=strategy_config.get("max_extra_edges"),
-        max_tokens=strategy_config.get("max_tokens"),
-        max_depth=strategy_config.get("max_depth"),
-        edge_sampling=strategy_config.get("edge_sampling"),
-        isolated_node_strategy=strategy_config.get("isolated_node_strategy"),
-        loss_strategy=str(strategy_config.get("loss_strategy")),
-    )
-
     return graph_gen
 
 
@@ -84,10 +73,15 @@ def run_graphgen(params, progress=gr.Progress()):
     config = {
         "if_trainee_model": params.if_trainee_model,
         "input_file": params.input_file,
+        "output_data_type": params.output_data_type,
+        "output_data_format": params.output_data_format,
         "tokenizer": params.tokenizer,
-        "quiz_samples": params.quiz_samples,
+        "search": {"enabled": False},
+        "quiz_and_judge_strategy": {
+            "enabled": params.if_trainee_model,
+            "quiz_samples": params.quiz_samples,
+        },
         "traverse_strategy": {
-            "qa_form": params.qa_form,
             "bidirectional": params.bidirectional,
             "expand_method": params.expand_method,
             "max_extra_edges": params.max_extra_edges,
@@ -122,6 +116,35 @@ def run_graphgen(params, progress=gr.Progress()):
             env["TRAINEE_BASE_URL"], env["TRAINEE_API_KEY"], env["TRAINEE_MODEL"]
         )
 
+    # Load input data
+    file = config["input_file"]
+    if isinstance(file, list):
+        file = file[0]
+
+    data = []
+
+    if file.endswith(".jsonl"):
+        config["input_data_type"] = "raw"
+        with open(file, "r", encoding="utf-8") as f:
+            data.extend(json.loads(line) for line in f)
+    elif file.endswith(".json"):
+        config["input_data_type"] = "chunked"
+        with open(file, "r", encoding="utf-8") as f:
+            data.extend(json.load(f))
+    elif file.endswith(".txt"):
+        # 读取文件后根据chunk_size转成raw格式的数据
+        config["input_data_type"] = "raw"
+        content = ""
+        with open(file, "r", encoding="utf-8") as f:
+            lines = f.readlines()
+            for line in lines:
+                content += line.strip() + " "
+        size = int(config.get("chunk_size", 512))
+        chunks = [content[i : i + size] for i in range(0, len(content), size)]
+        data.extend([{"content": chunk} for chunk in chunks])
+    else:
+        raise ValueError(f"Unsupported file type: {file}")
+
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
     graph_gen.clear()
@@ -129,51 +152,20 @@ def run_graphgen(params, progress=gr.Progress()):
     graph_gen.progress_bar = progress
 
     try:
-        # Load input data
-        file = config["input_file"]
-        if isinstance(file, list):
-            file = file[0]
-
-        data = []
-
-        if file.endswith(".jsonl"):
-            data_type = "raw"
-            with open(file, "r", encoding="utf-8") as f:
-                data.extend(json.loads(line) for line in f)
-        elif file.endswith(".json"):
-            data_type = "chunked"
-            with open(file, "r", encoding="utf-8") as f:
-                data.extend(json.load(f))
-        elif file.endswith(".txt"):
-            # 读取文件后根据chunk_size转成raw格式的数据
-            data_type = "raw"
-            content = ""
-            with open(file, "r", encoding="utf-8") as f:
-                lines = f.readlines()
-                for line in lines:
-                    content += line.strip() + " "
-            size = int(config.get("chunk_size", 512))
-            chunks = [content[i : i + size] for i in range(0, len(content), size)]
-            data.extend([{"content": chunk} for chunk in chunks])
-        else:
-            raise ValueError(f"Unsupported file type: {file}")
-
         # Process the data
-        graph_gen.insert(data, data_type)
+        graph_gen.insert()
 
         if config["if_trainee_model"]:
             # Generate quiz
-            graph_gen.quiz(max_samples=config["quiz_samples"])
+            graph_gen.quiz()
 
             # Judge statements
             graph_gen.judge()
         else:
             graph_gen.traverse_strategy.edge_sampling = "random"
-            # Skip judge statements
-            graph_gen.judge(skip=True)
 
         # Traverse graph
-        graph_gen.traverse(traverse_strategy=graph_gen.traverse_strategy)
+        graph_gen.traverse()
 
         # Save output
         output_data = graph_gen.qa_storage.data
@@ -328,10 +320,16 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
             tokenizer = gr.Textbox(
                 label="Tokenizer", value="cl100k_base", interactive=True
             )
-            qa_form = gr.Radio(
+            output_data_type = gr.Radio(
                 choices=["atomic", "multi_hop", "aggregated"],
-                label="QA Form",
+                label="Output Data Type",
                 value="aggregated",
+                interactive=True,
+            )
+            output_data_format = gr.Radio(
+                choices=["Alpaca", "Sharegpt", "ChatML"],
+                label="Output Data Format",
+                value="Alpaca",
                 interactive=True,
             )
             quiz_samples = gr.Number(
@@ -533,33 +531,35 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                     if_trainee_model=args[0],
                     input_file=args[1],
                     tokenizer=args[2],
-                    qa_form=args[3],
-                    bidirectional=args[4],
-                    expand_method=args[5],
-                    max_extra_edges=args[6],
-                    max_tokens=args[7],
-                    max_depth=args[8],
-                    edge_sampling=args[9],
-                    isolated_node_strategy=args[10],
-                    loss_strategy=args[11],
-                    synthesizer_url=args[12],
-                    synthesizer_model=args[13],
-                    trainee_model=args[14],
-                    api_key=args[15],
-                    chunk_size=args[16],
-                    rpm=args[17],
-                    tpm=args[18],
-                    quiz_samples=args[19],
-                    trainee_url=args[20],
-                    trainee_api_key=args[21],
-                    token_counter=args[22],
+                    output_data_type=args[3],
+                    output_data_format=args[4],
+                    bidirectional=args[5],
+                    expand_method=args[6],
+                    max_extra_edges=args[7],
+                    max_tokens=args[8],
+                    max_depth=args[9],
+                    edge_sampling=args[10],
+                    isolated_node_strategy=args[11],
+                    loss_strategy=args[12],
+                    synthesizer_url=args[13],
+                    synthesizer_model=args[14],
+                    trainee_model=args[15],
+                    api_key=args[16],
+                    chunk_size=args[17],
+                    rpm=args[18],
+                    tpm=args[19],
+                    quiz_samples=args[20],
+                    trainee_url=args[21],
+                    trainee_api_key=args[22],
+                    token_counter=args[23],
                 )
             ),
             inputs=[
                 if_trainee_model,
                 upload_file,
                 tokenizer,
-                qa_form,
+                output_data_type,
+                output_data_format,
                 bidirectional,
                 expand_method,
                 max_extra_edges,

@@ -1,15 +1,18 @@
 from dataclasses import dataclass
 from typing import Any
 
+
 @dataclass
 class GraphGenParams:
     """
     GraphGen parameters
     """
+
     if_trainee_model: bool
     input_file: str
     tokenizer: str
-    qa_form: str
+    output_data_type: str
+    output_data_format: str
     bidirectional: bool
     expand_method: str
     max_extra_edges: int

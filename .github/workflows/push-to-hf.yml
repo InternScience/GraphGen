@@ -43,7 +43,7 @@ jobs:
         [[ -d hf-repo ]] && rm -rf hf-repo
         git clone https://huggingface.co/${HF_REPO_TYPE}/${HF_REPO_ID} hf-repo
 
-        rsync -a --delete --exclude='.git' ./ hf-repo/ || true
+        rsync -a --delete --exclude='.git' --exclude='hf-repo' ./ hf-repo/
 
         cd hf-repo
         git add .
