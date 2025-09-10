@@ -7,7 +7,7 @@ search: # web search configuration
   enabled: false # whether to enable web search
   search_types: ["google"] # search engine types, support: google, bing, uniprot, wikipedia
 quiz_and_judge_strategy: # quiz and test whether the LLM masters the knowledge points
-  enabled: true
+  enabled: false
   quiz_samples: 2 # number of quiz samples to generate
   re_judge: false # whether to re-judge the existing quiz samples
 traverse_strategy: # strategy for clustering sub-graphs using comprehension loss
