@@ -5,8 +5,8 @@ sync:
     dest: resources/nltk_data/
   - source: resources/examples/
     dest: resources/examples/
-  - source: resources/images/
-    dest: resources/images/
+  - source: resources/images/logo.png
+    dest: resources/images/logo.png
   - source: webui/
     dest: webui/
   - source: webui/app.py
