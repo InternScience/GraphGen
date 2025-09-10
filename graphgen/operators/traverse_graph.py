@@ -135,7 +135,9 @@ def get_average_loss(batch: tuple, loss_strategy: str) -> float:
             ) / (len(batch[0]) + len(batch[1]))
         raise ValueError("Invalid loss strategy")
     except Exception as e:  # pylint: disable=broad-except
-        logger.error("Error calculating average loss: %s", e)
+        logger.warning(
+            "Loss not found in some nodes or edges, setting loss to -1.0: %s", e
+        )
         return -1.0
 
 

@@ -38,7 +38,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
     # Set up working directory
     log_file, working_dir = setup_workspace(os.path.join(root_dir, "cache"))
 
-    set_logger(log_file, if_stream=False)
+    set_logger(log_file, if_stream=True)
     graph_gen = GraphGen(working_dir=working_dir, config=config)
 
     # Set up LLM clients
