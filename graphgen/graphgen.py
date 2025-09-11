@@ -69,7 +69,6 @@ class GraphGen:
         self.tokenizer_instance: Tokenizer = Tokenizer(
             model_name=self.config["tokenizer"]
         )
-        print(os.getenv("SYNTHESIZER_MODEL"), os.getenv("SYNTHESIZER_API_KEY"))
         self.synthesizer_llm_client: OpenAIModel = OpenAIModel(
             model_name=os.getenv("SYNTHESIZER_MODEL"),
             api_key=os.getenv("SYNTHESIZER_API_KEY"),

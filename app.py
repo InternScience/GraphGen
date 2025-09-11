@@ -37,10 +37,10 @@ css = """
 def init_graph_gen(config: dict, env: dict) -> GraphGen:
     # Set up working directory
     log_file, working_dir = setup_workspace(os.path.join(root_dir, "cache"))
-
     set_logger(log_file, if_stream=True)
-    graph_gen = GraphGen(working_dir=working_dir, config=config)
+    os.environ.update({k: str(v) for k, v in env.items()})
 
+    graph_gen = GraphGen(working_dir=working_dir, config=config)
     # Set up LLM clients
     graph_gen.synthesizer_llm_client = OpenAIModel(
         model_name=env.get("SYNTHESIZER_MODEL", ""),
