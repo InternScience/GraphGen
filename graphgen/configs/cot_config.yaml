@@ -1,5 +1,4 @@
-input_data_type: raw # raw, chunked
-input_file: resources/input_examples/raw_demo.jsonl  # input file path, support json, jsonl, txt. See resources/input_examples for examples
+input_file: resources/input_examples/txt_demo.txt  # input file path, support json, jsonl, txt. See resources/input_examples for examples
 output_data_type: cot # atomic, aggregated, multi_hop, cot
 output_data_format: Sharegpt # Alpaca, Sharegpt, ChatML
 tokenizer: cl100k_base # tokenizer for counting tokens, support tiktoken tokenizer names and local tokenizer path

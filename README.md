@@ -100,7 +100,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 ### Run Gradio Demo
 
    ```bash
-   python -m webui.app.py
+   python -m webui.app
    ```
 
 ![ui](https://github.com/user-attachments/assets/3024e9bc-5d45-45f8-a4e6-b57bd2350d84)
@@ -148,7 +148,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
     ```yaml
       # configs/cot_config.yaml
       input_data_type: raw
-      input_file: resources/input_examples/raw_demo.jsonl
+      input_file: resources/input_examples/jsonl_demo.jsonl
       output_data_type: cot
       tokenizer: cl100k_base
       # additional settings...
