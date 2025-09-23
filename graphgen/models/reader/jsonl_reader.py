@@ -2,6 +2,7 @@ import json
 from typing import Any, Dict, List
 
 from graphgen.bases.base_reader import BaseReader
+from graphgen.utils import logger
 
 
 class JsonlReader(BaseReader):
@@ -18,5 +19,5 @@ class JsonlReader(BaseReader):
                             f"Missing '{self.text_column}' in document: {doc}"
                         )
                 except json.JSONDecodeError as e:
-                    print(f"Error decoding JSON line: {line}. Error: {e}")
+                    logger.error("Error decoding JSON line: %s. Error: %s", line, e)
         return docs
