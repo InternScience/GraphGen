@@ -6,6 +6,7 @@ from .evaluate.uni_evaluator import UniEvaluator
 from .llm.openai_model import OpenAIModel
 from .llm.tokenizer import Tokenizer
 from .llm.topk_token_model import Token, TopkTokenModel
+from .reader import read_file
 from .search.db.uniprot_search import UniProtSearch
 from .search.kg.wiki_search import WikiSearch
 from .search.web.bing_search import BingSearch
