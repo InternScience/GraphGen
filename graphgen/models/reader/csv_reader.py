@@ -1,11 +1,10 @@
 from typing import Any, Dict, List
 
 from graphgen.bases.base_reader import BaseReader
-
+import pandas as pd
 
 class CsvReader(BaseReader):
     def read(self, file_path: str) -> List[Dict[str, Any]]:
-        import pandas as pd
 
         df = pd.read_csv(file_path)
         if self.text_column not in df.columns:
