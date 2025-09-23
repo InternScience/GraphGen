@@ -116,35 +116,6 @@ def run_graphgen(params, progress=gr.Progress()):
             env["TRAINEE_BASE_URL"], env["TRAINEE_API_KEY"], env["TRAINEE_MODEL"]
         )
 
-    # Load input data
-    file = config["input_file"]
-    if isinstance(file, list):
-        file = file[0]
-
-    data = []
-
-    if file.endswith(".jsonl"):
-        config["input_data_type"] = "raw"
-        with open(file, "r", encoding="utf-8") as f:
-            data.extend(json.loads(line) for line in f)
-    elif file.endswith(".json"):
-        config["input_data_type"] = "chunked"
-        with open(file, "r", encoding="utf-8") as f:
-            data.extend(json.load(f))
-    elif file.endswith(".txt"):
-        # 读取文件后根据chunk_size转成raw格式的数据
-        config["input_data_type"] = "raw"
-        content = ""
-        with open(file, "r", encoding="utf-8") as f:
-            lines = f.readlines()
-            for line in lines:
-                content += line.strip() + " "
-        size = int(config.get("chunk_size", 512))
-        chunks = [content[i : i + size] for i in range(0, len(content), size)]
-        data.extend([{"content": chunk} for chunk in chunks])
-    else:
-        raise ValueError(f"Unsupported file type: {file}")
-
     # Initialize GraphGen
     graph_gen = init_graph_gen(config, env)
     graph_gen.clear()
@@ -436,19 +407,20 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                     upload_file = gr.File(
                         label=_("Upload File"),
                         file_count="single",
-                        file_types=[".txt", ".json", ".jsonl"],
+                        file_types=[".txt", ".json", ".jsonl", ".csv"],
                         interactive=True,
                     )
                     examples_dir = os.path.join(root_dir, "webui", "examples")
                     gr.Examples(
                         examples=[
                             [os.path.join(examples_dir, "txt_demo.txt")],
-                            [os.path.join(examples_dir, "raw_demo.jsonl")],
-                            [os.path.join(examples_dir, "chunked_demo.json")],
+                            [os.path.join(examples_dir, "jsonl_demo.jsonl")],
+                            [os.path.join(examples_dir, "json_demo.json")],
+                            [os.path.join(examples_dir, "csv_demo.csv")],
                         ],
                         inputs=upload_file,
                         label=_("Example Files"),
-                        examples_per_page=3,
+                        examples_per_page=4,
                     )
                 with gr.Column(scale=1):
                     output = gr.File(
