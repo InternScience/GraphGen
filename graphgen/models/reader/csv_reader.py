@@ -1,7 +1,9 @@
 from typing import Any, Dict, List
 
-from graphgen.bases.base_reader import BaseReader
 import pandas as pd
+
+from graphgen.bases.base_reader import BaseReader
+
 
 class CsvReader(BaseReader):
     def read(self, file_path: str) -> List[Dict[str, Any]]:
