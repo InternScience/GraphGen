@@ -22,8 +22,9 @@ class MarkdownTextRefSplitter(RecursiveCharacterSplitter):
             "\n\\*\\*\\*+\n",
             "\n---+\n",
             "\n___+\n",
-            # Note that this splitter doesn't handle horizontal lines defined
-            # by *three or more* of ***, ---, or ___, but this is not handled
+            # Note: horizontal lines defined by three or more of ***, ---, or ___
+            # are handled by the regexes above, but alternative syntaxes (e.g., with spaces)
+            # are not handled.
             "\n\n",
             "\n",
             " ",
