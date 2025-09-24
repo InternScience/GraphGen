@@ -8,8 +8,8 @@ import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.bases.base_storage import StorageNameSpace
+from graphgen.bases.datatypes import Chunk
 from graphgen.models import (
-    Chunk,
     JsonKVStorage,
     JsonListStorage,
     NetworkXStorage,

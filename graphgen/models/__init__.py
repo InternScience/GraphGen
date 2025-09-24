@@ -14,8 +14,6 @@ from .search.web.google_search import GoogleSearch
 from .storage.json_storage import JsonKVStorage, JsonListStorage
 from .storage.networkx_storage import NetworkXStorage
 from .strategy.travserse_strategy import TraverseStrategy
-from .text.chunk import Chunk
-from .text.text_pair import TextPair
 
 __all__ = [
     # llm models
@@ -24,7 +22,6 @@ __all__ = [
     "Token",
     "Tokenizer",
     # storage models
-    "Chunk",
     "NetworkXStorage",
     "JsonKVStorage",
     "JsonListStorage",
@@ -34,7 +31,6 @@ __all__ = [
     "BingSearch",
     "UniProtSearch",
     # evaluate models
-    "TextPair",
     "LengthEvaluator",
     "MTLDEvaluator",
     "RewardEvaluator",
