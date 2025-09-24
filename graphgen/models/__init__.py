@@ -43,4 +43,5 @@ __all__ = [
     "TraverseStrategy",
     # community models
     "CommunityDetector",
+    "read_file",
 ]
