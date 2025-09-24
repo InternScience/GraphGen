@@ -33,7 +33,7 @@ def test_split_markdown_structures():
 
 
 def test_split_size_less_than_single_char():
-    """极端情况：chunk_size 比任何单段都小，应仍能返回原文"""
+    """Edge case: chunk_size is smaller than any segment; should still return the original text."""
     short = "# A\n\nB"
     splitter = MarkdownTextRefSplitter(chunk_size=1, chunk_overlap=0)
     chunks = splitter.split_text(short)
