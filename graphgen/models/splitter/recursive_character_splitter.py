@@ -96,7 +96,6 @@ class ChineseRecursiveTextSplitter(RecursiveCharacterSplitter):
                 splits = ["".join(i) for i in zip(_splits[0::2], _splits[1::2])]
                 if len(_splits) % 2 == 1:
                     splits += _splits[-1:]
-                # splits = [_splits[0]] + splits
             else:
                 splits = re.split(separator, text)
         else:
