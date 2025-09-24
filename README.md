@@ -147,7 +147,6 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 
     ```yaml
       # configs/cot_config.yaml
-      input_data_type: raw
       input_file: resources/input_examples/jsonl_demo.jsonl
       output_data_type: cot
       tokenizer: cl100k_base

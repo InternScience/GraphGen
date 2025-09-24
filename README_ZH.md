@@ -146,7 +146,6 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
     ```yaml
       # configs/cot_config.yaml
-      input_data_type: raw
       input_file: resources/input_examples/jsonl_demo.jsonl
       output_data_type: cot
       tokenizer: cl100k_base
