@@ -1,11 +1,11 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 
 @dataclass
 class Chunk:
     id: str
     content: str
-    metadata: dict
+    metadata: dict = field(default_factory=dict)
 
 
 @dataclass
