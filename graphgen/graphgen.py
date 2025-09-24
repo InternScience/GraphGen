@@ -146,7 +146,7 @@ class GraphGen:
                     "content": txt,
                     "full_doc_id": doc_key,
                     "length": len(self.tokenizer_instance.encode_string(txt)),
-                    "language": "en",
+                    "language": doc_language,
                 }
                 for txt in text_chunks
             }
