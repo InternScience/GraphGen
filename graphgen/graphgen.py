@@ -119,7 +119,6 @@ class GraphGen:
         # TODO: configurable whether to use coreference resolution
 
         # Step 2: Split chunks and filter existing ones
-        inserting_chunks = {}
         assert isinstance(data, list) and isinstance(data[0], dict)
         new_docs = {
             compute_content_hash(doc["content"], prefix="doc-"): {

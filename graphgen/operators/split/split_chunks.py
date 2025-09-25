@@ -3,7 +3,11 @@ from typing import Union
 
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import ChineseRecursiveTextSplitter, RecursiveCharacterSplitter
+from graphgen.models import (
+    ChineseRecursiveTextSplitter,
+    RecursiveCharacterSplitter,
+    Tokenizer,
+)
 from graphgen.utils import compute_content_hash, detect_main_language
 
 _MAPPING = {
@@ -35,7 +39,7 @@ async def chunk_documents(
     new_docs: dict,
     chunk_size: int = 1024,
     chunk_overlap: int = 100,
-    tokenizer_instance=None,
+    tokenizer_instance: Tokenizer = None,
     progress_bar=None,
 ) -> dict:
     inserting_chunks = {}
