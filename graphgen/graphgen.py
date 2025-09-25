@@ -135,7 +135,13 @@ class GraphGen:
             return
         logger.info("[New Docs] inserting %d docs", len(new_docs))
 
-        inserting_chunks = await chunk_documents(new_docs)
+        inserting_chunks = await chunk_documents(
+            new_docs,
+            self.chunk_size,
+            self.chunk_overlap,
+            self.tokenizer_instance,
+            self.progress_bar,
+        )
 
         _add_chunk_keys = await self.text_chunks_storage.filter_keys(
             list(inserting_chunks.keys())
