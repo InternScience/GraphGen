@@ -311,10 +311,6 @@ class GraphGen:
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 
-    # def generate_reasoning(self, method_params):
-    #     loop = create_event_loop()
-    #     loop.run_until_complete(self.async_generate_reasoning(method_params))
-
     @async_to_sync_method
     async def generate_reasoning(self, method_params):
         results = await generate_cot(
