@@ -5,7 +5,6 @@ from dataclasses import dataclass, field
 from typing import Dict, cast
 
 import gradio as gr
-from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.bases.base_storage import StorageNameSpace
 from graphgen.bases.datatypes import Chunk
@@ -18,13 +17,13 @@ from graphgen.models import (
     TraverseStrategy,
 )
 from graphgen.operators import (
+    chunk_documents,
     extract_kg,
     generate_cot,
     judge_statement,
     quiz,
     read_files,
     search_all,
-    split_chunks,
     traverse_graph_for_aggregated,
     traverse_graph_for_atomic,
     traverse_graph_for_multi_hop,
@@ -32,7 +31,6 @@ from graphgen.operators import (
 from graphgen.utils import (
     async_to_sync_method,
     compute_content_hash,
-    detect_main_language,
     format_generation_results,
     logger,
 )
@@ -110,7 +108,6 @@ class GraphGen:
         """
         insert chunks into the graph
         """
-
         input_file = self.config["read"]["input_file"]
 
         # Step 1: Read files
@@ -138,33 +135,7 @@ class GraphGen:
             return
         logger.info("[New Docs] inserting %d docs", len(new_docs))
 
-        cur_index = 1
-        doc_number = len(new_docs)
-        async for doc_key, doc in tqdm_async(
-            new_docs.items(), desc="[1/4]Chunking documents", unit="doc"
-        ):
-            doc_language = detect_main_language(doc["content"])
-            text_chunks = split_chunks(
-                doc["content"],
-                language=doc_language,
-                chunk_size=self.config["split"]["chunk_size"],
-                chunk_overlap=self.config["split"]["chunk_overlap"],
-            )
-
-            chunks = {
-                compute_content_hash(txt, prefix="chunk-"): {
-                    "content": txt,
-                    "full_doc_id": doc_key,
-                    "length": len(self.tokenizer_instance.encode_string(txt)),
-                    "language": doc_language,
-                }
-                for txt in text_chunks
-            }
-            inserting_chunks.update(chunks)
-
-            if self.progress_bar is not None:
-                self.progress_bar(cur_index / doc_number, f"Chunking {doc_key}")
-                cur_index += 1
+        inserting_chunks = await chunk_documents(new_docs)
 
         _add_chunk_keys = await self.text_chunks_storage.filter_keys(
             list(inserting_chunks.keys())
@@ -246,7 +217,7 @@ class GraphGen:
                         ]
                     )
                 # TODO: fix insert after search
-                await self.async_insert()
+                await self.insert()
 
     @async_to_sync_method
     async def quiz(self):

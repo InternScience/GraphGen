@@ -5,7 +5,7 @@ from graphgen.operators.search.search_all import search_all
 from .judge import judge_statement
 from .quiz import quiz
 from .read import read_files
-from .split import split_chunks
+from .split import chunk_documents
 from .traverse_graph import (
     traverse_graph_for_aggregated,
     traverse_graph_for_atomic,
