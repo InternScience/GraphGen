@@ -10,7 +10,7 @@ from graphgen.models import (
     Tokenizer,
     TraverseStrategy,
 )
-from graphgen.operators.kg.split_kg import get_batches_with_strategy
+from graphgen.operators.build_kg.split_kg import get_batches_with_strategy
 from graphgen.templates import (
     ANSWER_REPHRASING_PROMPT,
     MULTI_HOP_GENERATION_PROMPT,

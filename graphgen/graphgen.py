@@ -2,7 +2,7 @@ import asyncio
 import os
 import time
 from dataclasses import dataclass, field
-from typing import Dict, List, Union, cast
+from typing import Dict, cast
 
 import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
@@ -16,23 +16,22 @@ from graphgen.models import (
     OpenAIModel,
     Tokenizer,
     TraverseStrategy,
-    read_file,
-    split_chunks,
 )
-
-from .operators import (
+from graphgen.operators import (
     extract_kg,
     generate_cot,
     judge_statement,
     quiz,
+    read_files,
     search_all,
+    split_chunks,
     traverse_graph_for_aggregated,
     traverse_graph_for_atomic,
     traverse_graph_for_multi_hop,
 )
-from .utils import (
+from graphgen.utils import (
+    async_to_sync_method,
     compute_content_hash,
-    create_event_loop,
     detect_main_language,
     format_generation_results,
     logger,
@@ -106,15 +105,25 @@ class GraphGen:
             namespace=f"qa-{self.unique_id}",
         )
 
-    async def async_split_chunks(self, data: List[Union[List, Dict]]) -> dict:
-        # TODO: configurable whether to use coreference resolution
-        if len(data) == 0:
-            return {}
+    @async_to_sync_method
+    async def insert(self):
+        """
+        insert chunks into the graph
+        """
 
+        input_file = self.config["read"]["input_file"]
+
+        # Step 1: Read files
+        data = read_files(input_file)
+        if len(data) == 0:
+            logger.warning("No data to process")
+            return
+
+        # TODO: configurable whether to use coreference resolution
+
+        # Step 2: Split chunks and filter existing ones
         inserting_chunks = {}
         assert isinstance(data, list) and isinstance(data[0], dict)
-
-        # compute hash for each document
         new_docs = {
             compute_content_hash(doc["content"], prefix="doc-"): {
                 "content": doc["content"]
@@ -123,9 +132,10 @@ class GraphGen:
         }
         _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
         new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
+
         if len(new_docs) == 0:
             logger.warning("All docs are already in the storage")
-            return {}
+            return
         logger.info("[New Docs] inserting %d docs", len(new_docs))
 
         cur_index = 1
@@ -162,29 +172,16 @@ class GraphGen:
         inserting_chunks = {
             k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
         }
-        await self.full_docs_storage.upsert(new_docs)
-        await self.text_chunks_storage.upsert(inserting_chunks)
-
-        return inserting_chunks
-
-    def insert(self):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_insert())
-
-    async def async_insert(self):
-        """
-        insert chunks into the graph
-        """
-
-        input_file = self.config["read"]["input_file"]
-        data = read_file(input_file)
-        inserting_chunks = await self.async_split_chunks(data)
 
         if len(inserting_chunks) == 0:
             logger.warning("All chunks are already in the storage")
             return
-        logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
 
+        logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
+        await self.full_docs_storage.upsert(new_docs)
+        await self.text_chunks_storage.upsert(inserting_chunks)
+
+        # Step 3: Extract entities and relations from chunks
         logger.info("[Entity and Relation Extraction]...")
         _add_entities_and_relations = await extract_kg(
             llm_client=self.synthesizer_llm_client,
@@ -214,11 +211,8 @@ class GraphGen:
             tasks.append(cast(StorageNameSpace, storage_instance).index_done_callback())
         await asyncio.gather(*tasks)
 
-    def search(self):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_search())
-
-    async def async_search(self):
+    @async_to_sync_method
+    async def search(self):
         logger.info(
             "Search is %s", "enabled" if self.search_config["enabled"] else "disabled"
         )
@@ -254,11 +248,8 @@ class GraphGen:
                 # TODO: fix insert after search
                 await self.async_insert()
 
-    def quiz(self):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_quiz())
-
-    async def async_quiz(self):
+    @async_to_sync_method
+    async def quiz(self):
         max_samples = self.config["quiz_and_judge_strategy"]["quiz_samples"]
         await quiz(
             self.synthesizer_llm_client,
@@ -268,11 +259,8 @@ class GraphGen:
         )
         await self.rephrase_storage.index_done_callback()
 
-    def judge(self):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_judge())
-
-    async def async_judge(self):
+    @async_to_sync_method
+    async def judge(self):
         re_judge = self.config["quiz_and_judge_strategy"]["re_judge"]
         _update_relations = await judge_statement(
             self.trainee_llm_client,
@@ -282,11 +270,8 @@ class GraphGen:
         )
         await _update_relations.index_done_callback()
 
-    def traverse(self):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_traverse())
-
-    async def async_traverse(self):
+    @async_to_sync_method
+    async def traverse(self):
         output_data_type = self.config["output_data_type"]
 
         if output_data_type == "atomic":
@@ -326,11 +311,12 @@ class GraphGen:
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 
-    def generate_reasoning(self, method_params):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_generate_reasoning(method_params))
+    # def generate_reasoning(self, method_params):
+    #     loop = create_event_loop()
+    #     loop.run_until_complete(self.async_generate_reasoning(method_params))
 
-    async def async_generate_reasoning(self, method_params):
+    @async_to_sync_method
+    async def generate_reasoning(self, method_params):
         results = await generate_cot(
             self.graph_storage,
             self.synthesizer_llm_client,
@@ -344,11 +330,8 @@ class GraphGen:
         await self.qa_storage.upsert(results)
         await self.qa_storage.index_done_callback()
 
-    def clear(self):
-        loop = create_event_loop()
-        loop.run_until_complete(self.async_clear())
-
-    async def async_clear(self):
+    @async_to_sync_method
+    async def clear(self):
         await self.full_docs_storage.drop()
         await self.text_chunks_storage.drop()
         await self.search_storage.drop()

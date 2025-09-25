@@ -9,7 +9,7 @@ from tqdm.asyncio import tqdm as tqdm_async
 from graphgen.bases.base_storage import BaseGraphStorage
 from graphgen.bases.datatypes import Chunk
 from graphgen.models import OpenAIModel, Tokenizer
-from graphgen.operators.kg.merge_kg import merge_edges, merge_nodes
+from graphgen.operators.build_kg.merge_kg import merge_edges, merge_nodes
 from graphgen.templates import KG_EXTRACTION_PROMPT
 from graphgen.utils import (
     detect_if_chinese,
