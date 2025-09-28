@@ -136,8 +136,8 @@ class GraphGen:
 
         inserting_chunks = await chunk_documents(
             new_docs,
-            self.chunk_size,
-            self.chunk_overlap,
+            self.config["split"]["chunk_size"],
+            self.config["split"]["chunk_overlap"],
             self.tokenizer_instance,
             self.progress_bar,
         )
