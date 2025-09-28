@@ -12,7 +12,7 @@ from graphgen.models import (
     JsonKVStorage,
     JsonListStorage,
     NetworkXStorage,
-    OpenAIModel,
+    OpenAIClient,
     Tokenizer,
     TraverseStrategy,
 )
@@ -46,8 +46,8 @@ class GraphGen:
 
     # llm
     tokenizer_instance: Tokenizer = None
-    synthesizer_llm_client: OpenAIModel = None
-    trainee_llm_client: OpenAIModel = None
+    synthesizer_llm_client: OpenAIClient = None
+    trainee_llm_client: OpenAIClient = None
 
     # search
     search_config: dict = field(
@@ -64,17 +64,17 @@ class GraphGen:
         self.tokenizer_instance: Tokenizer = Tokenizer(
             model_name=self.config["tokenizer"]
         )
-        self.synthesizer_llm_client: OpenAIModel = OpenAIModel(
+        self.synthesizer_llm_client: OpenAIClient = OpenAIClient(
             model_name=os.getenv("SYNTHESIZER_MODEL"),
             api_key=os.getenv("SYNTHESIZER_API_KEY"),
             base_url=os.getenv("SYNTHESIZER_BASE_URL"),
-            tokenizer_instance=self.tokenizer_instance,
+            tokenizer=self.tokenizer_instance,
         )
-        self.trainee_llm_client: OpenAIModel = OpenAIModel(
+        self.trainee_llm_client: OpenAIClient = OpenAIClient(
             model_name=os.getenv("TRAINEE_MODEL"),
             api_key=os.getenv("TRAINEE_API_KEY"),
             base_url=os.getenv("TRAINEE_BASE_URL"),
-            tokenizer_instance=self.tokenizer_instance,
+            tokenizer=self.tokenizer_instance,
         )
         self.search_config = self.config["search"]
 

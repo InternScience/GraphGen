@@ -6,7 +6,7 @@ import gradio as gr
 
 from graphgen.bases.base_storage import BaseGraphStorage
 from graphgen.bases.datatypes import Chunk
-from graphgen.models import OpenAIModel, Tokenizer
+from graphgen.models import OpenAIClient, Tokenizer
 from graphgen.operators.build_kg.merge_kg import merge_edges, merge_nodes
 from graphgen.templates import KG_EXTRACTION_PROMPT
 from graphgen.utils import (
@@ -22,7 +22,7 @@ from graphgen.utils import (
 
 # pylint: disable=too-many-statements
 async def extract_kg(
-    llm_client: OpenAIModel,
+    llm_client: OpenAIClient,
     kg_instance: BaseGraphStorage,
     tokenizer_instance: Tokenizer,
     chunks: List[Chunk],
