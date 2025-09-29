@@ -1,0 +1,52 @@
+name: Push demo branch to ModelScope
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        required: false
+        default: demo
+        type: string
+    secrets:
+      MS_TOKEN:
+        required: true
+
+jobs:
+  push-ms:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Configure Git identity
+        run: |
+          git config --global user.email "actions@github.com"
+          git config --global user.name  "github-actions[bot]"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          # ModelScope 官方 SDK（可选，仅当你需要调用平台 API 时才装）
+          pip install modelscope
+
+      - name: Push to ModelScope
+        env:
+          MS_TOKEN: ${{ secrets.MS_TOKEN }}
+          MS_REPO_TYPE: models
+          MS_REPO_ID: chenzihong/GraphGen
+        run: |
+          git config --global credential.helper store
+          echo "https://oauth2:${MS_TOKEN}@www.modelscope.cn" > ~/.git-credentials
+
+          [[ -d ms-repo ]] && rm -rf ms-repo
+          git clone https://www.modelscope.cn/${MS_REPO_TYPE}/${MS_REPO_ID}.git ms-repo
+
+          rsync -a --delete --exclude='.git' --exclude='ms-repo' ./ ms-repo/
+
+          cd ms-repo
+          git add .
+          git diff-index --quiet HEAD || \
+            (git commit -m "Auto-sync from ${{ inputs.ref }} at $(date -u)" && git push)
