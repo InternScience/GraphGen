@@ -38,15 +38,14 @@ jobs:
           MS_REPO_TYPE: models
           MS_REPO_ID: chenzihong/GraphGen
         run: |
-          git config --global credential.helper store
-          echo "https://oauth2:${MS_TOKEN}@www.modelscope.cn" > ~/.git-credentials
-
+          # Use token in the clone URL, do not write credentials to disk
           [[ -d ms-repo ]] && rm -rf ms-repo
-          git clone https://www.modelscope.cn/${MS_REPO_TYPE}/${MS_REPO_ID}.git ms-repo
+          git clone https://oauth2:${MS_TOKEN}@www.modelscope.cn/${MS_REPO_TYPE}/${MS_REPO_ID}.git ms-repo
 
           rsync -a --delete --exclude='.git' --exclude='ms-repo' ./ ms-repo/
 
           cd ms-repo
           git add .
           git diff-index --quiet HEAD || \
-            (git commit -m "Auto-sync from ${{ inputs.ref }} at $(date -u)" && git push)
+            (git commit -m "Auto-sync from ${{ inputs.ref }} at $(date -u)" && \
+              git push "https://oauth2:${MS_TOKEN}@www.modelscope.cn/${MS_REPO_TYPE}/${MS_REPO_ID}.git")
