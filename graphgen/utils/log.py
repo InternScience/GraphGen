@@ -30,6 +30,7 @@ def set_logger(
         backupCount=backup_count,
         encoding="utf-8",
     )
+    file_handler.setLevel(log_level)
     file_handler.setFormatter(
         logging.Formatter(
             "[%(asctime)s] %(levelname)s [%(name)s:%(filename)s:%(lineno)d] %(message)s",
