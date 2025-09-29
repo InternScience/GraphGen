@@ -29,7 +29,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          # ModelScope 官方 SDK（可选，仅当你需要调用平台 API 时才装）
+          # ModelScope official SDK (optional, install only if you need to call the platform API)
           pip install modelscope
 
       - name: Push to ModelScope
