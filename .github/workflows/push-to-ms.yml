@@ -35,7 +35,7 @@ jobs:
       - name: Push to ModelScope
         env:
           MS_TOKEN: ${{ secrets.MS_TOKEN }}
-          MS_REPO_TYPE: models
+          MS_REPO_TYPE: studios
           MS_REPO_ID: chenzihong/GraphGen
         run: |
           # Use token in the clone URL, do not write credentials to disk
