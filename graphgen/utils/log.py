@@ -9,10 +9,19 @@ logger = logging.getLogger("graphgen")
 def set_logger(
     log_file: str,
     log_level: int = logging.INFO,
+    *,
     if_stream: bool = True,
     max_bytes: int = 50 * 1024 * 1024,  # 50 MB
     backup_count: int = 5,
+    force: bool = False,
 ):
+
+    if logger.hasHandlers() and not force:
+        return
+
+    if force:
+        logger.handlers.clear()
+
     logger.setLevel(log_level)
     logger.propagate = False
 
