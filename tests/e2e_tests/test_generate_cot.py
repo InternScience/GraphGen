@@ -29,7 +29,10 @@ def test_generate_aggregated(tmp_path: Path):
     assert result.returncode == 0, f"Script failed with error: {result.stderr}"
 
     data_root = output_dir / "data" / "graphgen"
-    run_folder = sorted(data_root.iterdir(), key=lambda p: p.name, reverse=True)[0]
+    assert data_root.exists(), f"{data_root} does not exist"
+    run_folders = sorted(data_root.iterdir(), key=lambda p: p.name, reverse=True)
+    assert run_folders, f"No run folders found in {data_root}"
+    run_folder = run_folders[0]
 
     config_saved = run_folder / "config.yaml"
     assert config_saved.exists(), f"{config_saved} not found"
