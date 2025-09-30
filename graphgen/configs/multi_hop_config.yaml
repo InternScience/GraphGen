@@ -12,7 +12,7 @@ quiz_and_judge: # quiz and test whether the LLM masters the knowledge points
   re_judge: false # whether to re-judge the existing quiz samples
 partition: # graph partition configuration
   method: ece # ece is a custom partition method based on comprehension loss
-  ece_params:
+  method_params:
     bidirectional: true # whether to traverse the graph in both directions
     edge_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
     expand_method: max_width # expand method, support: max_width, max_depth

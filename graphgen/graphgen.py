@@ -242,7 +242,7 @@ class GraphGen:
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                partition_config["ece_params"],
+                partition_config["method_params"],
                 self.text_chunks_storage,
                 self.progress_bar,
             )
@@ -251,7 +251,7 @@ class GraphGen:
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                partition_config["ece_params"],
+                partition_config["method_params"],
                 self.text_chunks_storage,
                 self.progress_bar,
             )
@@ -260,7 +260,7 @@ class GraphGen:
                 self.synthesizer_llm_client,
                 self.tokenizer_instance,
                 self.graph_storage,
-                partition_config["ece_params"],
+                partition_config["method_params"],
                 self.text_chunks_storage,
                 self.progress_bar,
             )
@@ -268,7 +268,7 @@ class GraphGen:
             results = await generate_cot(
                 self.graph_storage,
                 self.synthesizer_llm_client,
-                method_params=partition_config["leiden_params"],
+                method_params=partition_config["method_params"],
             )
         else:
             raise ValueError(f"Unknown generation mode: {mode}")
