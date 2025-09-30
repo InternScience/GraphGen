@@ -1,9 +1,10 @@
 import random
 from collections import defaultdict
+from typing import Dict
 
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import NetworkXStorage, TraverseStrategy
+from graphgen.models import NetworkXStorage
 from graphgen.utils import logger
 
 
@@ -247,9 +248,9 @@ async def get_batches_with_strategy(  # pylint: disable=too-many-branches
     nodes: list,
     edges: list,
     graph_storage: NetworkXStorage,
-    traverse_strategy: TraverseStrategy,
+    traverse_strategy: Dict,
 ):
-    expand_method = traverse_strategy.expand_method
+    expand_method = traverse_strategy["expand_method"]
     if expand_method == "max_width":
         logger.info("Using max width strategy")
     elif expand_method == "max_tokens":
@@ -257,8 +258,8 @@ async def get_batches_with_strategy(  # pylint: disable=too-many-branches
     else:
         raise ValueError(f"Invalid expand method: {expand_method}")
 
-    max_depth = traverse_strategy.max_depth
-    edge_sampling = traverse_strategy.edge_sampling
+    max_depth = traverse_strategy["max_depth"]
+    edge_sampling = traverse_strategy["edge_sampling"]
 
     # 构建临接矩阵
     edge_adj_list = defaultdict(list)
@@ -275,16 +276,16 @@ async def get_batches_with_strategy(  # pylint: disable=too-many-branches
     for i, (node_name, _) in enumerate(nodes):
         node_dict[node_name] = i
 
-    if traverse_strategy.loss_strategy == "both":
+    if traverse_strategy["loss_strategy"] == "both":
         er_tuples = [
             ([nodes[node_dict[edge[0]]], nodes[node_dict[edge[1]]]], edge)
             for edge in edges
         ]
         edges = _sort_tuples(er_tuples, edge_sampling)
-    elif traverse_strategy.loss_strategy == "only_edge":
+    elif traverse_strategy["loss_strategy"] == "only_edge":
         edges = _sort_edges(edges, edge_sampling)
     else:
-        raise ValueError(f"Invalid loss strategy: {traverse_strategy.loss_strategy}")
+        raise ValueError(f"Invalid loss strategy: {traverse_strategy['loss_strategy']}")
 
     for i, (src, tgt, _) in enumerate(edges):
         edge_adj_list[src].append(i)
@@ -315,10 +316,10 @@ async def get_batches_with_strategy(  # pylint: disable=too-many-branches
                 nodes,
                 edge,
                 max_depth,
-                traverse_strategy.bidirectional,
-                traverse_strategy.max_extra_edges,
+                traverse_strategy["bidirectional"],
+                traverse_strategy["max_extra_edges"],
                 edge_sampling,
-                traverse_strategy.loss_strategy,
+                traverse_strategy["loss_strategy"],
             )
         else:
             level_n_edges = _get_level_n_edges_by_max_tokens(
@@ -328,10 +329,10 @@ async def get_batches_with_strategy(  # pylint: disable=too-many-branches
                 nodes,
                 edge,
                 max_depth,
-                traverse_strategy.bidirectional,
-                traverse_strategy.max_tokens,
+                traverse_strategy["bidirectional"],
+                traverse_strategy["max_tokens"],
                 edge_sampling,
-                traverse_strategy.loss_strategy,
+                traverse_strategy["loss_strategy"],
             )
 
         for _edge in level_n_edges:
@@ -352,7 +353,7 @@ async def get_batches_with_strategy(  # pylint: disable=too-many-branches
     logger.info("Processing batches: %d", len(processing_batches))
 
     # isolate nodes
-    isolated_node_strategy = traverse_strategy.isolated_node_strategy
+    isolated_node_strategy = traverse_strategy["isolated_node_strategy"]
     if isolated_node_strategy == "add":
         processing_batches = await _add_isolated_nodes(
             nodes, processing_batches, graph_storage
