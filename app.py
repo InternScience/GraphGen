@@ -39,27 +39,32 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
     set_logger(log_file, if_stream=True)
     os.environ.update({k: str(v) for k, v in env.items()})
 
-    graph_gen = GraphGen(working_dir=working_dir, config=config)
-    # Set up LLM clients
-    graph_gen.synthesizer_llm_client = OpenAIClient(
+    tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
+    synthesizer_llm_client = OpenAIClient(
         model_name=env.get("SYNTHESIZER_MODEL", ""),
         base_url=env.get("SYNTHESIZER_BASE_URL", ""),
         api_key=env.get("SYNTHESIZER_API_KEY", ""),
         request_limit=True,
         rpm=RPM(env.get("RPM", 1000)),
         tpm=TPM(env.get("TPM", 50000)),
+        tokenizer=tokenizer_instance,
     )
-
-    graph_gen.trainee_llm_client = OpenAIClient(
+    trainee_llm_client = OpenAIClient(
         model_name=env.get("TRAINEE_MODEL", ""),
         base_url=env.get("TRAINEE_BASE_URL", ""),
         api_key=env.get("TRAINEE_API_KEY", ""),
         request_limit=True,
         rpm=RPM(env.get("RPM", 1000)),
         tpm=TPM(env.get("TPM", 50000)),
+        tokenizer=tokenizer_instance,
     )
 
-    graph_gen.tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
+    graph_gen = GraphGen(
+        working_dir=working_dir,
+        tokenizer_instance=tokenizer_instance,
+        synthesizer_llm_client=synthesizer_llm_client,
+        trainee_llm_client=trainee_llm_client,
+    )
 
     return graph_gen
 
@@ -78,27 +83,32 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
             "chunk_size": params.chunk_size,
             "chunk_overlap": params.chunk_overlap,
         },
-        "output_data_type": params.output_data_type,
-        "output_data_format": params.output_data_format,
-        "tokenizer": params.tokenizer,
         "search": {"enabled": False},
-        "quiz_and_judge_strategy": {
+        "quiz_and_judge": {
             "enabled": params.if_trainee_model,
             "quiz_samples": params.quiz_samples,
         },
-        "traverse_strategy": {
-            "bidirectional": params.bidirectional,
-            "expand_method": params.expand_method,
-            "max_extra_edges": params.max_extra_edges,
-            "max_tokens": params.max_tokens,
-            "max_depth": params.max_depth,
-            "edge_sampling": params.edge_sampling,
-            "isolated_node_strategy": params.isolated_node_strategy,
-            "loss_strategy": params.loss_strategy,
+        "partition": {
+            "method": "ece",
+            "method_params": {
+                "bidirectional": params.bidirectional,
+                "expand_method": params.expand_method,
+                "max_extra_edges": params.max_extra_edges,
+                "max_tokens": params.max_tokens,
+                "max_depth": params.max_depth,
+                "edge_sampling": params.edge_sampling,
+                "isolated_node_strategy": params.isolated_node_strategy,
+                "loss_strategy": params.loss_strategy,
+            },
+        },
+        "generate": {
+            "mode": params.output_data_type,
+            "data_format": params.output_data_format,
         },
     }
 
     env = {
+        "TOKENIZER_MODEL": params.tokenizer,
         "SYNTHESIZER_BASE_URL": params.synthesizer_url,
         "SYNTHESIZER_MODEL": params.synthesizer_model,
         "TRAINEE_BASE_URL": params.trainee_url,
@@ -128,19 +138,18 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
 
     try:
         # Process the data
-        graph_gen.insert()
+        graph_gen.insert(read_config=config["read"], split_config=config["split"])
 
         if config["if_trainee_model"]:
-            # Generate quiz
-            graph_gen.quiz()
-
-            # Judge statements
-            graph_gen.judge()
+            # Quiz and Judge
+            graph_gen.quiz_and_judge(quiz_and_judge_config=config["quiz_and_judge"])
         else:
-            graph_gen.traverse_strategy.edge_sampling = "random"
+            config["partition"]["method_params"]["edge_sampling"] = "random"
 
-        # Traverse graph
-        graph_gen.traverse()
+        graph_gen.generate(
+            partition_config=config["partition"],
+            generate_config=config["generate"],
+        )
 
         # Save output
         output_data = graph_gen.qa_storage.data
@@ -249,6 +258,9 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
         )
 
         with gr.Accordion(label=_("Model Config"), open=False):
+            tokenizer = gr.Textbox(
+                label="Tokenizer", value="cl100k_base", interactive=True
+            )
             synthesizer_url = gr.Textbox(
                 label="Synthesizer URL",
                 value="https://api.siliconflow.cn/v1",
@@ -299,9 +311,6 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                 value=100,
                 step=100,
                 interactive=True,
-            )
-            tokenizer = gr.Textbox(
-                label="Tokenizer", value="cl100k_base", interactive=True
             )
             output_data_type = gr.Radio(
                 choices=["atomic", "multi_hop", "aggregated"],
