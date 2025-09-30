@@ -13,7 +13,5 @@ sync:
     dest: app.py
   - source: requirements.txt
     dest: requirements.txt
-  - source: README_HF.md
-    dest: README.md
   - source: LICENSE
     dest: LICENSE

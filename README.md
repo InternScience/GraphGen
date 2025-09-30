@@ -14,6 +14,7 @@
 [![Hugging Face](https://img.shields.io/badge/Paper-on%20HF-white?logo=huggingface&logoColor=yellow)](https://huggingface.co/papers/2505.20416)
 
 [![Hugging Face](https://img.shields.io/badge/Demo-on%20HF-blue?logo=huggingface&logoColor=yellow)](https://huggingface.co/spaces/chenzihong/GraphGen)
+[![Model Scope](https://img.shields.io/badge/%F0%9F%A4%96%20Demo-on%20MS-green)](https://modelscope.cn/studios/chenzihong/GraphGen)
 [![OpenXLab](https://img.shields.io/badge/Demo-on%20OpenXLab-blue?logo=openxlab&logoColor=yellow)](https://g-app-center-120612-6433-jpdvmvp.openxlab.space)
 
 
@@ -60,6 +61,7 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 
 ## 📌 Latest Updates
 
+- **2025.09.29**: We auto-update gradio demo on [Hugging Face](https://huggingface.co/spaces/chenzihong/GraphGen) and [ModelScope](https://modelscope.cn/studios/chenzihong/GraphGen).
 - **2025.08.14**: We have added support for community detection in knowledge graphs using the Leiden algorithm, enabling the synthesis of Chain-of-Thought (CoT) data.
 - **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends.
 - **2025.04.21**: We have released the initial version of GraphGen.

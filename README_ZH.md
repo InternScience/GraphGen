@@ -14,6 +14,7 @@
 [![Hugging Face](https://img.shields.io/badge/Paper-on%20HF-white?logo=huggingface&logoColor=yellow)](https://huggingface.co/papers/2505.20416)
 
 [![Hugging Face](https://img.shields.io/badge/Demo-on%20HF-blue?logo=huggingface&logoColor=yellow)](https://huggingface.co/spaces/chenzihong/GraphGen)
+[![Model Scope](https://img.shields.io/badge/%F0%9F%A4%96%20Demo-on%20MS-green)](https://modelscope.cn/studios/chenzihong/GraphGen)
 [![OpenXLab](https://img.shields.io/badge/Demo-on%20OpenXLab-blue?logo=openxlab&logoColor=yellow)](https://g-app-center-120612-6433-jpdvmvp.openxlab.space)
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
@@ -61,6 +62,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 ## 📌 最新更新
 
+- **2025.09.29**：我们在 [Hugging Face](https://huggingface.co/spaces/chenzihong/GraphGen) 和 [ModelScope](https://modelscope.cn/studios/chenzihong/GraphGen) 上自动更新 Gradio 应用。
 - **2025.08.14**：支持利用 Leiden 社区发现算法对知识图谱进行社区划分，合成 CoT 数据。
 - **2025.07.31**：新增 Google、Bing、Wikipedia 和 UniProt 作为搜索后端，帮助填补数据缺口。  
 - **2025.04.21**：发布 GraphGen 初始版本。

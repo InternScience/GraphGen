@@ -87,3 +87,10 @@ jobs:
     uses: ./.github/workflows/push-to-hf.yml
     secrets:
       HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  push-ms:
+    needs: sync-demo
+    uses: ./.github/workflows/push-to-ms.yml
+    secrets:
+      MS_TOKEN: ${{ secrets.MS_TOKEN }}
+    with:
+      ref: demo
