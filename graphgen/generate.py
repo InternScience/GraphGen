@@ -53,20 +53,20 @@ def main():
     mode = config["generate"]["mode"]
     unique_id = int(time.time())
 
-    output_path = os.path.join(working_dir, "data", "graphgen", f"{unique_id}_{mode}")
+    output_path = os.path.join(working_dir, "data", "graphgen", f"{unique_id}")
     set_working_dir(output_path)
 
     set_logger(
-        os.path.join(output_path, f"{unique_id}.log"),
+        os.path.join(output_path, f"{unique_id}_{mode}.log"),
         if_stream=True,
     )
     logger.info(
         "GraphGen with unique ID %s logging to %s",
         unique_id,
-        os.path.join(working_dir, f"{unique_id}.log"),
+        os.path.join(working_dir, f"{unique_id}_{mode}.log"),
     )
 
-    graph_gen = GraphGen(working_dir=working_dir, output_path=output_path)
+    graph_gen = GraphGen(unique_id=unique_id, working_dir=working_dir)
 
     graph_gen.insert(read_config=config["read"], split_config=config["split"])
 
@@ -81,8 +81,11 @@ def main():
             logger.warning(
                 "Quiz and Judge strategy is disabled. Edge sampling falls back to random."
             )
-            # TODO: make edge sampling random
-        #     graph_gen.traverse_strategy.edge_sampling = "random"
+            assert (
+                config["partition"]["method"] == "ece"
+                and "ece_params" in config["partition"]
+            ), "Only ECE partition with edge sampling is supported."
+            config["partition"]["ece_params"]["edge_sampling"] = "random"
     elif mode == "cot":
         logger.info("Generation mode set to 'cot'. Start generation.")
     else:

@@ -1,15 +1,10 @@
 import asyncio
+from typing import Dict
 
 import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import (
-    JsonKVStorage,
-    NetworkXStorage,
-    OpenAIClient,
-    Tokenizer,
-    TraverseStrategy,
-)
+from graphgen.models import JsonKVStorage, NetworkXStorage, OpenAIClient, Tokenizer
 from graphgen.operators.build_kg.split_kg import get_batches_with_strategy
 from graphgen.templates import (
     ANSWER_REPHRASING_PROMPT,
@@ -164,7 +159,7 @@ async def traverse_graph_for_aggregated(
     llm_client: OpenAIClient,
     tokenizer: Tokenizer,
     graph_storage: NetworkXStorage,
-    traverse_strategy: TraverseStrategy,
+    traverse_strategy: Dict,
     text_chunks_storage: JsonKVStorage,
     progress_bar: gr.Progress = None,
     max_concurrent: int = 1000,
@@ -240,7 +235,7 @@ async def traverse_graph_for_aggregated(
                         "question": question,
                         "answer": context,
                         "loss": get_average_loss(
-                            _process_batch, traverse_strategy.loss_strategy
+                            _process_batch, traverse_strategy["loss_strategy"]
                         ),
                     }
                 }
@@ -272,7 +267,7 @@ async def traverse_graph_for_aggregated(
                     "question": qa["question"],
                     "answer": qa["answer"],
                     "loss": get_average_loss(
-                        _process_batch, traverse_strategy.loss_strategy
+                        _process_batch, traverse_strategy["loss_strategy"]
                     ),
                 }
             return final_results
@@ -313,7 +308,7 @@ async def traverse_graph_for_atomic(
     llm_client: OpenAIClient,
     tokenizer: Tokenizer,
     graph_storage: NetworkXStorage,
-    traverse_strategy: TraverseStrategy,
+    traverse_strategy: Dict,
     text_chunks_storage: JsonKVStorage,
     progress_bar: gr.Progress = None,
     max_concurrent: int = 1000,
@@ -331,7 +326,6 @@ async def traverse_graph_for_atomic(
     :return: question and answer
     """
 
-    assert traverse_strategy.qa_form == "atomic"
     semaphore = asyncio.Semaphore(max_concurrent)
 
     def _parse_qa(qa: str) -> tuple:
@@ -429,7 +423,7 @@ async def traverse_graph_for_multi_hop(
     llm_client: OpenAIClient,
     tokenizer: Tokenizer,
     graph_storage: NetworkXStorage,
-    traverse_strategy: TraverseStrategy,
+    traverse_strategy: Dict,
     text_chunks_storage: JsonKVStorage,
     progress_bar: gr.Progress = None,
     max_concurrent: int = 1000,
@@ -517,7 +511,7 @@ async def traverse_graph_for_multi_hop(
                         "question": question,
                         "answer": answer,
                         "loss": get_average_loss(
-                            _process_batch, traverse_strategy.loss_strategy
+                            _process_batch, traverse_strategy["loss_strategy"]
                         ),
                     }
                 }
