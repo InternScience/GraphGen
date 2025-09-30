@@ -265,11 +265,10 @@ class GraphGen:
                 self.progress_bar,
             )
         elif mode == "cot":
-            method_params = generate_config.get("method_params", {})
             results = await generate_cot(
                 self.graph_storage,
                 self.synthesizer_llm_client,
-                method_params=method_params,
+                method_params=partition_config["leiden_params"],
             )
         else:
             raise ValueError(f"Unknown generation mode: {mode}")

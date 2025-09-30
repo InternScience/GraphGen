@@ -75,7 +75,7 @@ def main():
     # Use pipeline according to the output data type
     if mode in ["atomic", "aggregated", "multi_hop"]:
         logger.info("Generation mode set to '%s'. Start generation.", mode)
-        if "quiz_and_judge" in config:
+        if "quiz_and_judge" in config and config["quiz_and_judge"]["enabled"]:
             graph_gen.quiz_and_judge(quiz_and_judge_config=config["quiz_and_judge"])
         else:
             logger.warning(
