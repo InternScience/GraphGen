@@ -3,7 +3,6 @@ from typing import List
 
 from graphgen.bases import BaseTokenizer
 
-from .hf_tokenizer import HFTokenizer
 from .tiktoken_tokenizer import TiktokenTokenizer
 
 try:
@@ -22,6 +21,8 @@ def get_tokenizer_impl(tokenizer_name: str = "cl100k_base") -> BaseTokenizer:
 
     # 2. HuggingFace
     if _HF_AVAILABLE:
+        from .hf_tokenizer import HFTokenizer
+
         return HFTokenizer(model_name=tokenizer_name)
 
     raise ValueError(
