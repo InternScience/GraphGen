@@ -39,6 +39,8 @@ class Tokenizer(BaseTokenizer):
     _impl: BaseTokenizer = field(init=False, repr=False)
 
     def __post_init__(self):
+        if not self.model_name:
+            raise ValueError("TOKENIZER_MODEL must be specified in the ENV variables.")
         self._impl = get_tokenizer_impl(self.model_name)
 
     def encode(self, text: str) -> List[int]:

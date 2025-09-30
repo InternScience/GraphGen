@@ -1,7 +1,7 @@
 import asyncio
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Dict, cast
 
 import gradio as gr
@@ -14,7 +14,6 @@ from graphgen.models import (
     NetworkXStorage,
     OpenAIClient,
     Tokenizer,
-    TraverseStrategy,
 )
 from graphgen.operators import (
     chunk_documents,
@@ -40,30 +39,24 @@ sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 @dataclass
 class GraphGen:
-    unique_id: int = int(time.time())
     working_dir: str = os.path.join(sys_path, "cache")
-    config: Dict = field(default_factory=dict)
+    output_path: str = os.path.join(
+        working_dir, "data", "graphgen", str(int(time.time()))
+    )
 
     # llm
     tokenizer_instance: Tokenizer = None
     synthesizer_llm_client: OpenAIClient = None
     trainee_llm_client: OpenAIClient = None
 
-    # search
-    search_config: dict = field(
-        default_factory=lambda: {"enabled": False, "search_types": ["wikipedia"]}
-    )
-
-    # traversal
-    traverse_strategy: TraverseStrategy = None
-
     # webui
     progress_bar: gr.Progress = None
 
     def __post_init__(self):
         self.tokenizer_instance: Tokenizer = Tokenizer(
-            model_name=self.config["tokenizer"]
+            model_name=os.getenv("TOKENIZER_MODEL")
         )
+
         self.synthesizer_llm_client: OpenAIClient = OpenAIClient(
             model_name=os.getenv("SYNTHESIZER_MODEL"),
             api_key=os.getenv("SYNTHESIZER_API_KEY"),
@@ -76,12 +69,6 @@ class GraphGen:
             base_url=os.getenv("TRAINEE_BASE_URL"),
             tokenizer=self.tokenizer_instance,
         )
-        self.search_config = self.config["search"]
-
-        if "traverse_strategy" in self.config:
-            self.traverse_strategy = TraverseStrategy(
-                **self.config["traverse_strategy"]
-            )
 
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="full_docs"
@@ -99,24 +86,17 @@ class GraphGen:
             self.working_dir, namespace="rephrase"
         )
         self.qa_storage: JsonListStorage = JsonListStorage(
-            os.path.join(
-                self.working_dir,
-                "data",
-                "graphgen",
-                f"{self.unique_id}_{self.config['output_data_type']}",
-            ),
+            self.working_dir,
             namespace="qa",
         )
 
     @async_to_sync_method
-    async def insert(self):
+    async def insert(self, read_config: Dict, split_config: Dict):
         """
         insert chunks into the graph
         """
-        input_file = self.config["read"]["input_file"]
-
         # Step 1: Read files
-        data = read_files(input_file)
+        data = read_files(read_config["input_file"])
         if len(data) == 0:
             logger.warning("No data to process")
             return
@@ -141,8 +121,8 @@ class GraphGen:
 
         inserting_chunks = await chunk_documents(
             new_docs,
-            self.config["split"]["chunk_size"],
-            self.config["split"]["chunk_overlap"],
+            split_config["chunk_size"],
+            split_config["chunk_overlap"],
             self.tokenizer_instance,
             self.progress_bar,
         )
@@ -178,6 +158,7 @@ class GraphGen:
             return
 
         await self._insert_done()
+        return _add_entities_and_relations
 
     async def _insert_done(self):
         tasks = []
@@ -193,14 +174,12 @@ class GraphGen:
         await asyncio.gather(*tasks)
 
     @async_to_sync_method
-    async def search(self):
+    async def search(self, search_config: Dict):
         logger.info(
-            "Search is %s", "enabled" if self.search_config["enabled"] else "disabled"
+            "Search is %s", "enabled" if search_config["enabled"] else "disabled"
         )
-        if self.search_config["enabled"]:
-            logger.info(
-                "[Search] %s ...", ", ".join(self.search_config["search_types"])
-            )
+        if search_config["enabled"]:
+            logger.info("[Search] %s ...", ", ".join(search_config["search_types"]))
             all_nodes = await self.graph_storage.get_all_nodes()
             all_nodes_names = [node[0] for node in all_nodes]
             new_search_entities = await self.full_docs_storage.filter_keys(
@@ -210,7 +189,7 @@ class GraphGen:
                 "[Search] Found %d entities to search", len(new_search_entities)
             )
             _add_search_data = await search_all(
-                search_types=self.search_config["search_types"],
+                search_types=search_config["search_types"],
                 search_entities=new_search_entities,
             )
             if _add_search_data:
@@ -230,26 +209,36 @@ class GraphGen:
                 await self.insert()
 
     @async_to_sync_method
-    async def quiz(self):
-        max_samples = self.config["quiz_and_judge_strategy"]["quiz_samples"]
+    async def quiz_and_judge(self, quiz_and_judge_config: Dict):
+        if quiz_and_judge_config is None or not quiz_and_judge_config.get(
+            "enabled", False
+        ):
+            logger.warning("Quiz and Judge is not used in this pipeline.")
+            return
+        max_samples = quiz_and_judge_config["quiz_samples"]
         await quiz(
             self.synthesizer_llm_client,
             self.graph_storage,
             self.rephrase_storage,
             max_samples,
         )
-        await self.rephrase_storage.index_done_callback()
 
-    @async_to_sync_method
-    async def judge(self):
-        re_judge = self.config["quiz_and_judge_strategy"]["re_judge"]
+        # TODO： assert trainee_llm_client is valid before judge
+        re_judge = quiz_and_judge_config["re_judge"]
         _update_relations = await judge_statement(
             self.trainee_llm_client,
             self.graph_storage,
             self.rephrase_storage,
             re_judge,
         )
+        await self.rephrase_storage.index_done_callback()
         await _update_relations.index_done_callback()
+
+    @async_to_sync_method
+    async def generate(self, partition_config: Dict, generate_config: Dict):
+        # Step 1: partition the graph
+        # TODO: implement graph partitioning, e.g. Partitioner().partition(self.graph_storage)
+        pass
 
     @async_to_sync_method
     async def traverse(self):
