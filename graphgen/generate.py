@@ -85,7 +85,7 @@ def main():
                 config["partition"]["method"] == "ece"
                 and "ece_params" in config["partition"]
             ), "Only ECE partition with edge sampling is supported."
-            config["partition"]["ece_params"]["edge_sampling"] = "random"
+            config["partition"]["method_params"]["edge_sampling"] = "random"
     elif mode == "cot":
         logger.info("Generation mode set to 'cot'. Start generation.")
     else:

@@ -51,17 +51,21 @@ class GraphGen:
     progress_bar: gr.Progress = None
 
     def __post_init__(self):
-        self.tokenizer_instance: Tokenizer = Tokenizer(
+        self.tokenizer_instance: Tokenizer = self.tokenizer_instance or Tokenizer(
             model_name=os.getenv("TOKENIZER_MODEL")
         )
 
-        self.synthesizer_llm_client: OpenAIClient = OpenAIClient(
-            model_name=os.getenv("SYNTHESIZER_MODEL"),
-            api_key=os.getenv("SYNTHESIZER_API_KEY"),
-            base_url=os.getenv("SYNTHESIZER_BASE_URL"),
-            tokenizer=self.tokenizer_instance,
+        self.synthesizer_llm_client: OpenAIClient = (
+            self.synthesizer_llm_client
+            or OpenAIClient(
+                model_name=os.getenv("SYNTHESIZER_MODEL"),
+                api_key=os.getenv("SYNTHESIZER_API_KEY"),
+                base_url=os.getenv("SYNTHESIZER_BASE_URL"),
+                tokenizer=self.tokenizer_instance,
+            )
         )
-        self.trainee_llm_client: OpenAIClient = OpenAIClient(
+
+        self.trainee_llm_client: OpenAIClient = self.trainee_llm_client or OpenAIClient(
             model_name=os.getenv("TRAINEE_MODEL"),
             api_key=os.getenv("TRAINEE_API_KEY"),
             base_url=os.getenv("TRAINEE_BASE_URL"),
