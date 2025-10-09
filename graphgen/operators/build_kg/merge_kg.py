@@ -56,7 +56,6 @@ async def merge_nodes(
     kg_instance: BaseGraphStorage,
     llm_client: BaseLLMClient,
     tokenizer_instance: Tokenizer,
-    max_concurrent: int = 1000,
 ):
     """
     Merge nodes
@@ -65,52 +64,48 @@ async def merge_nodes(
     :param kg_instance
     :param llm_client
     :param tokenizer_instance
-    :param max_concurrent
     :return
     """
 
-    semaphore = asyncio.Semaphore(max_concurrent)
-
     async def process_single_node(entity_name: str, node_data: list[dict]):
-        async with semaphore:
-            entity_types = []
-            source_ids = []
-            descriptions = []
+        entity_types = []
+        source_ids = []
+        descriptions = []
 
-            node = await kg_instance.get_node(entity_name)
-            if node is not None:
-                entity_types.append(node["entity_type"])
-                source_ids.extend(
-                    split_string_by_multi_markers(node["source_id"], ["<SEP>"])
-                )
-                descriptions.append(node["description"])
-
-            # 统计当前节点数据和已有节点数据的entity_type出现次数，取出现次数最多的entity_type
-            entity_type = sorted(
-                Counter([dp["entity_type"] for dp in node_data] + entity_types).items(),
-                key=lambda x: x[1],
-                reverse=True,
-            )[0][0]
-
-            description = "<SEP>".join(
-                sorted(set([dp["description"] for dp in node_data] + descriptions))
+        node = await kg_instance.get_node(entity_name)
+        if node is not None:
+            entity_types.append(node["entity_type"])
+            source_ids.extend(
+                split_string_by_multi_markers(node["source_id"], ["<SEP>"])
             )
-            description = await _handle_kg_summary(
-                entity_name, description, llm_client, tokenizer_instance
-            )
+            descriptions.append(node["description"])
 
-            source_id = "<SEP>".join(
-                set([dp["source_id"] for dp in node_data] + source_ids)
-            )
+        # 统计当前节点数据和已有节点数据的entity_type出现次数，取出现次数最多的entity_type
+        entity_type = sorted(
+            Counter([dp["entity_type"] for dp in node_data] + entity_types).items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )[0][0]
 
-            node_data = {
-                "entity_type": entity_type,
-                "description": description,
-                "source_id": source_id,
-            }
-            await kg_instance.upsert_node(entity_name, node_data=node_data)
-            node_data["entity_name"] = entity_name
-            return node_data
+        description = "<SEP>".join(
+            sorted(set([dp["description"] for dp in node_data] + descriptions))
+        )
+        description = await _handle_kg_summary(
+            entity_name, description, llm_client, tokenizer_instance
+        )
+
+        source_id = "<SEP>".join(
+            set([dp["source_id"] for dp in node_data] + source_ids)
+        )
+
+        node_data = {
+            "entity_type": entity_type,
+            "description": description,
+            "source_id": source_id,
+        }
+        await kg_instance.upsert_node(entity_name, node_data=node_data)
+        node_data["entity_name"] = entity_name
+        return node_data
 
     logger.info("Inserting entities into storage...")
     entities_data = []
