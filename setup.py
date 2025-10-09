@@ -49,8 +49,6 @@ if __name__ == "__main__":
         include_package_data=True,
         install_requires=install_packages,
         classifiers=[
-            "Programming Language :: Python :: 3.8",
-            "Programming Language :: Python :: 3.9",
             "Programming Language :: Python :: 3.10",
             "Programming Language :: Python :: 3.11",
             "Programming Language :: Python :: 3.12",
@@ -58,5 +56,5 @@ if __name__ == "__main__":
             "Intended Audience :: Education",
             "Intended Audience :: Science/Research",
         ],
-        entry_points={"console_scripts": ["graphgen=graphgen.generate:main"]},
+        entry_points={"console_scripts": ["graphg=graphgen.generate:main"]},
     )

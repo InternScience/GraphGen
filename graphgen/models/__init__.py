@@ -14,5 +14,4 @@ from .search.web.google_search import GoogleSearch
 from .splitter import ChineseRecursiveTextSplitter, RecursiveCharacterSplitter
 from .storage.json_storage import JsonKVStorage, JsonListStorage
 from .storage.networkx_storage import NetworkXStorage
-from .strategy.travserse_strategy import TraverseStrategy
 from .tokenizer import Tokenizer
