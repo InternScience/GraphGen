@@ -1,12 +1,13 @@
 import re
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseKGBuilder, BaseLLMClient, Chunk
-from graphgen.templates import KG_EXTRACTION_PROMPT
+from graphgen.templates import KG_EXTRACTION_PROMPT, KG_SUMMARIZATION_PROMPT
 from graphgen.utils import (
     detect_if_chinese,
+    detect_main_language,
     handle_single_entity_extraction,
     handle_single_relationship_extraction,
     logger,
@@ -99,55 +100,127 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
     async def merge_nodes(
         self,
-        entity_name: str,
-        node_data: Dict[str, List[dict]],
+        node_data: tuple[str, List[dict]],
         kg_instance: BaseGraphStorage,
-    ) -> BaseGraphStorage:
-        pass
+    ) -> None:
+        entity_name, node_data = node_data
+        entity_types = []
+        source_ids = []
+        descriptions = []
+
+        node = await kg_instance.get_node(entity_name)
+        if node is not None:
+            entity_types.append(node["entity_type"])
+            source_ids.extend(
+                split_string_by_multi_markers(node["source_id"], ["<SEP>"])
+            )
+            descriptions.append(node["description"])
+
+        # take the most frequent entity_type
+        entity_type = sorted(
+            Counter([dp["entity_type"] for dp in node_data] + entity_types).items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )[0][0]
+
+        description = "<SEP>".join(
+            sorted(set([dp["description"] for dp in node_data] + descriptions))
+        )
+        description = await self._handle_kg_summary(entity_name, description)
+
+        source_id = "<SEP>".join(
+            set([dp["source_id"] for dp in node_data] + source_ids)
+        )
+
+        node_data = {
+            "entity_type": entity_type,
+            "description": description,
+            "source_id": source_id,
+        }
+        await kg_instance.upsert_node(entity_name, node_data=node_data)
 
     async def merge_edges(
         self,
-        edges_data: Dict[Tuple[str, str], List[dict]],
+        edges_data: tuple[Tuple[str, str], List[dict]],
         kg_instance: BaseGraphStorage,
-    ) -> BaseGraphStorage:
-        pass
+    ) -> None:
+        (src_id, tgt_id), edge_data = edges_data
 
-    # async def process_single_node(entity_name: str, node_data: list[dict]):
-    #     entity_types = []
-    #     source_ids = []
-    #     descriptions = []
-    #
-    #     node = await kg_instance.get_node(entity_name)
-    #     if node is not None:
-    #         entity_types.append(node["entity_type"])
-    #         source_ids.extend(
-    #             split_string_by_multi_markers(node["source_id"], ["<SEP>"])
-    #         )
-    #         descriptions.append(node["description"])
-    #
-    #     # 统计当前节点数据和已有节点数据的entity_type出现次数，取出现次数最多的entity_type
-    #     entity_type = sorted(
-    #         Counter([dp["entity_type"] for dp in node_data] + entity_types).items(),
-    #         key=lambda x: x[1],
-    #         reverse=True,
-    #     )[0][0]
-    #
-    #     description = "<SEP>".join(
-    #         sorted(set([dp["description"] for dp in node_data] + descriptions))
-    #     )
-    #     description = await _handle_kg_summary(
-    #         entity_name, description, llm_client, tokenizer_instance
-    #     )
-    #
-    #     source_id = "<SEP>".join(
-    #         set([dp["source_id"] for dp in node_data] + source_ids)
-    #     )
-    #
-    #     node_data = {
-    #         "entity_type": entity_type,
-    #         "description": description,
-    #         "source_id": source_id,
-    #     }
-    #     await kg_instance.upsert_node(entity_name, node_data=node_data)
-    #     node_data["entity_name"] = entity_name
-    #     return node_data
+        source_ids = []
+        descriptions = []
+
+        edge = await kg_instance.get_edge(src_id, tgt_id)
+        if edge is not None:
+            source_ids.extend(
+                split_string_by_multi_markers(edge["source_id"], ["<SEP>"])
+            )
+            descriptions.append(edge["description"])
+
+        description = "<SEP>".join(
+            sorted(set([dp["description"] for dp in edge_data] + descriptions))
+        )
+        source_id = "<SEP>".join(
+            set([dp["source_id"] for dp in edge_data] + source_ids)
+        )
+
+        for insert_id in [src_id, tgt_id]:
+            if not await kg_instance.has_node(insert_id):
+                await kg_instance.upsert_node(
+                    insert_id,
+                    node_data={
+                        "source_id": source_id,
+                        "description": description,
+                        "entity_type": "UNKNOWN",
+                    },
+                )
+
+        description = await self._handle_kg_summary(
+            f"({src_id}, {tgt_id})", description
+        )
+
+        await kg_instance.upsert_edge(
+            src_id,
+            tgt_id,
+            edge_data={"source_id": source_id, "description": description},
+        )
+
+    async def _handle_kg_summary(
+        self,
+        entity_or_relation_name: str,
+        description: str,
+        max_summary_tokens: int = 200,
+    ) -> str:
+        """
+        Handle knowledge graph summary
+
+        :param entity_or_relation_name
+        :param description
+        :param max_summary_tokens
+        :return summary
+        """
+
+        tokenizer_instance = self.llm_client.tokenizer
+        language = detect_main_language(description)
+        if language == "en":
+            language = "English"
+        else:
+            language = "Chinese"
+        KG_EXTRACTION_PROMPT["FORMAT"]["language"] = language
+
+        tokens = tokenizer_instance.encode(description)
+        if len(tokens) < max_summary_tokens:
+            return description
+
+        use_description = tokenizer_instance.decode(tokens[:max_summary_tokens])
+        prompt = KG_SUMMARIZATION_PROMPT[language]["TEMPLATE"].format(
+            entity_name=entity_or_relation_name,
+            description_list=use_description.split("<SEP>"),
+            **KG_SUMMARIZATION_PROMPT["FORMAT"],
+        )
+        new_description = await self.llm_client.generate_answer(prompt)
+        logger.info(
+            "Entity or relation %s summary: %s",
+            entity_or_relation_name,
+            new_description,
+        )
+        return new_description

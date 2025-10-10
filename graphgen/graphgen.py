@@ -149,7 +149,6 @@ class GraphGen:
         _add_entities_and_relations = await build_kg(
             llm_client=self.synthesizer_llm_client,
             kg_instance=self.graph_storage,
-            tokenizer_instance=self.tokenizer_instance,
             chunks=[
                 Chunk(id=k, content=v["content"]) for k, v in inserting_chunks.items()
             ],

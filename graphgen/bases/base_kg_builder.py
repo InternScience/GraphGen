@@ -27,18 +27,17 @@ class BaseKGBuilder(ABC):
     @abstractmethod
     async def merge_nodes(
         self,
-        entity_name: str,
-        node_data: Dict[str, List[dict]],
+        node_data: tuple[str, List[dict]],
         kg_instance: BaseGraphStorage,
-    ) -> BaseGraphStorage:
+    ) -> None:
         """Merge extracted nodes into the knowledge graph."""
         raise NotImplementedError
 
     @abstractmethod
     async def merge_edges(
         self,
-        edges_data: Dict[Tuple[str, str], List[dict]],
+        edges_data: tuple[Tuple[str, str], List[dict]],
         kg_instance: BaseGraphStorage,
-    ) -> BaseGraphStorage:
+    ) -> None:
         """Merge extracted edges into the knowledge graph."""
         raise NotImplementedError
