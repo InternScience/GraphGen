@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
 from graphgen.bases.datatypes import QAPair
-from graphgen.models.evaluate.base_evaluator import BaseEvaluator
+from graphgen.models.evaluator.base_evaluator import BaseEvaluator
 from graphgen.models.tokenizer import Tokenizer
 from graphgen.utils import create_event_loop
 

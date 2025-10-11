@@ -17,8 +17,8 @@ partition: # graph partition configuration
     edge_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
     expand_method: max_width # expand method, support: max_width, max_depth
     isolated_node_strategy: ignore # strategy for isolated nodes, support: ignore, add
-    max_depth: 3 # maximum depth for graph traversal
-    max_extra_edges: 5 # max edges per direction (if expand_method="max_width")
+    max_depth: 1 # maximum depth for graph traversal
+    max_extra_edges: 0 # max edges per direction (if expand_method="max_width")
     max_tokens: 256 # restricts input length (if expand_method="max_tokens")
     loss_strategy: only_edge # defines loss computation focus, support: only_edge, both
 generate:

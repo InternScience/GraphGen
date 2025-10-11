@@ -5,13 +5,18 @@ import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.models import JsonKVStorage, NetworkXStorage, OpenAIClient, Tokenizer
-from graphgen.operators.build_kg.split_kg import get_batches_with_strategy
+from graphgen.operators.partition.split_kg import get_batches_with_strategy
 from graphgen.templates import (
     ANSWER_REPHRASING_PROMPT,
     MULTI_HOP_GENERATION_PROMPT,
     QUESTION_GENERATION_PROMPT,
 )
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import (
+    compute_content_hash,
+    detect_main_language,
+    logger,
+    run_concurrent,
+)
 
 
 async def _pre_tokenize(
@@ -282,23 +287,14 @@ async def traverse_graph_for_aggregated(
         nodes, edges, graph_storage, traverse_strategy
     )
 
-    for result in tqdm_async(
-        asyncio.as_completed(
-            [_process_single_batch(batch) for batch in processing_batches]
-        ),
-        total=len(processing_batches),
+    results_list = await run_concurrent(
+        _process_single_batch,
+        processing_batches,
+        progress_bar=progress_bar,
         desc="[4/4]Generating QAs",
-    ):
-        try:
-            if progress_bar is not None:
-                progress_bar(
-                    len(results) / len(processing_batches), desc="[4/4]Generating QAs"
-                )
-            results.update(await result)
-            if progress_bar is not None and len(results) == len(processing_batches):
-                progress_bar(1, desc="[4/4]Generating QAs")
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error occurred while generating QA: %s", e)
+    )
+    for res in results_list:
+        results.update(res)
 
     return results
 
@@ -403,19 +399,14 @@ async def traverse_graph_for_atomic(
         else:
             tasks.append((edge[0], edge[1], edge[2]))
 
-    for result in tqdm_async(
-        asyncio.as_completed([_generate_question(task) for task in tasks]),
-        total=len(tasks),
+    results_list = await run_concurrent(
+        _generate_question,
+        tasks,
+        progress_bar=progress_bar,
         desc="[4/4]Generating QAs",
-    ):
-        try:
-            if progress_bar is not None:
-                progress_bar(len(results) / len(tasks), desc="[4/4]Generating QAs")
-            results.update(await result)
-            if progress_bar is not None and len(results) == len(tasks):
-                progress_bar(1, desc="[4/4]Generating QAs")
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error occurred while generating QA: %s", e)
+    )
+    for res in results_list:
+        results.update(res)
     return results
 
 
@@ -442,10 +433,10 @@ async def traverse_graph_for_multi_hop(
     """
     semaphore = asyncio.Semaphore(max_concurrent)
 
-    results = {}
     edges = list(await graph_storage.get_all_edges())
     nodes = list(await graph_storage.get_all_nodes())
 
+    results = {}
     edges, nodes = await _pre_tokenize(graph_storage, tokenizer, edges, nodes)
 
     processing_batches = await get_batches_with_strategy(
@@ -520,21 +511,14 @@ async def traverse_graph_for_multi_hop(
                 logger.error("Error occurred while processing batch: %s", e)
                 return {}
 
-    async for result in tqdm_async(
-        asyncio.as_completed(
-            [_process_single_batch(batch) for batch in processing_batches]
-        ),
-        total=len(processing_batches),
+    results_list = await run_concurrent(
+        _process_single_batch,
+        processing_batches,
+        progress_bar=progress_bar,
         desc="[4/4]Generating QAs",
-    ):
-        try:
-            if progress_bar is not None:
-                progress_bar(
-                    len(results) / len(processing_batches), desc="[4/4]Generating QAs"
-                )
-            results.update(await result)
-            if progress_bar is not None and len(results) == len(processing_batches):
-                progress_bar(1, desc="[4/4]Generating QAs")
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error occurred while generating QA: %s", e)
+    )
+
+    for res in results_list:
+        results.update(res)
+
     return results

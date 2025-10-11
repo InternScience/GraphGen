@@ -9,7 +9,7 @@ search: # web search configuration
 quiz_and_judge: # quiz and test whether the LLM masters the knowledge points
   enabled: false
 partition: # graph partition configuration
-  method: leiden # leiden is a community detection algorithm
+  method: leiden # leiden is a partitioner detection algorithm
   method_params:
     max_size: 20 # Maximum size of communities
     use_lcc: false

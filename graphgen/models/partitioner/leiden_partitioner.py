@@ -6,8 +6,8 @@ from graphgen.models.storage.networkx_storage import NetworkXStorage
 
 
 @dataclass
-class CommunityDetector:
-    """Class for community detection algorithms."""
+class LeidenPartitioner:
+    """Class for partitioner detection algorithms."""
 
     graph_storage: NetworkXStorage = None
     method: str = "leiden"
@@ -16,7 +16,7 @@ class CommunityDetector:
     async def detect_communities(self) -> Dict[str, int]:
         if self.method == "leiden":
             return await self._leiden_communities(**self.method_params or {})
-        raise ValueError(f"Unknown community detection method: {self.method}")
+        raise ValueError(f"Unknown partitioner detection method: {self.method}")
 
     async def get_graph(self):
         return await self.graph_storage.get_graph()
@@ -26,7 +26,7 @@ class CommunityDetector:
     ) -> Dict[str, int]:
         """
         Detect communities using the Leiden algorithm.
-        If max_size is given, any community larger than max_size will be split
+        If max_size is given, any partitioner larger than max_size will be split
         into smaller sub-communities each having at most max_size nodes.
         """
         import igraph as ig
