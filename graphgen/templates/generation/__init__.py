@@ -1,2 +1,3 @@
+from .atomic_generation import ATOMIC_GENERATION_PROMPT
 from .cot_generation import COT_GENERATION_PROMPT
 from .cot_template_design import COT_TEMPLATE_DESIGN_PROMPT
