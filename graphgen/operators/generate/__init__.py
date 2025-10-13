@@ -1,1 +1,1 @@
-from .generate_cot import generate_cot
+from .generate_qas import generate_qas

@@ -5,7 +5,6 @@ from dataclasses import dataclass
 from typing import Dict, cast
 
 import gradio as gr
-from jieba.lac_small.predict import results
 
 from graphgen.bases.base_storage import StorageNameSpace
 from graphgen.bases.datatypes import Chunk
@@ -19,18 +18,14 @@ from graphgen.models import (
 from graphgen.operators import (
     build_kg,
     chunk_documents,
+    generate_qas,
     judge_statement,
     partition_kg,
     quiz,
     read_files,
     search_all,
 )
-from graphgen.utils import (
-    async_to_sync_method,
-    compute_content_hash,
-    format_generation_results,
-    logger,
-)
+from graphgen.utils import async_to_sync_method, compute_content_hash, logger
 
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
@@ -239,52 +234,17 @@ class GraphGen:
         batches = await partition_kg(self.graph_storage, partition_config)
 
         # Step 2： generate QA pairs
-        mode = generate_config["mode"]
-        logger.info("[Generation] mode: %s, batches: %d", mode, len(batches))
-        # results = generate_qa_pairs(generate_config)
-        # if mode == "atomic":
-        #     results = await traverse_graph_for_atomic(
-        #         self.synthesizer_llm_client,
-        #         self.tokenizer_instance,
-        #         self.graph_storage,
-        #         partition_config["method_params"],
-        #         self.text_chunks_storage,
-        #         self.progress_bar,
-        #     )
-        # elif mode == "multi_hop":
-        #     results = await traverse_graph_for_multi_hop(
-        #         self.synthesizer_llm_client,
-        #         self.tokenizer_instance,
-        #         self.graph_storage,
-        #         partition_config["method_params"],
-        #         self.text_chunks_storage,
-        #         self.progress_bar,
-        #     )
-        # elif mode == "aggregated":
-        #     results = await traverse_graph_for_aggregated(
-        #         self.synthesizer_llm_client,
-        #         self.tokenizer_instance,
-        #         self.graph_storage,
-        #         partition_config["method_params"],
-        #         self.text_chunks_storage,
-        #         self.progress_bar,
-        #     )
-        # elif mode == "cot":
-        #     results = await generate_cot(
-        #         self.graph_storage,
-        #         self.synthesizer_llm_client,
-        #         method_params=partition_config["method_params"],
-        #     )
-        # else:
-        #     raise ValueError(f"Unknown generation mode: {mode}")
+        results = await generate_qas(
+            self.synthesizer_llm_client, batches, generate_config
+        )
 
-        # Step 3: format
-        # results = format_generation_results(
-        #     results, output_data_format=generate_config["data_format"]
-        # )
-        #
-        # await self.qa_storage.upsert(results)
-        # await self.qa_storage.index_done_callback()
+        if not results:
+            logger.warning("No QA pairs generated")
+            return
+
+        # Step 3: store the generated QA pairs
+        await self.qa_storage.upsert(results)
+        await self.qa_storage.index_done_callback()
 
     @async_to_sync_method
     async def clear(self):

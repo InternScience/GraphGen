@@ -1,3 +1,4 @@
+from .base_generator import BaseGenerator
 from .base_kg_builder import BaseKGBuilder
 from .base_llm_client import BaseLLMClient
 from .base_partitioner import BasePartitioner

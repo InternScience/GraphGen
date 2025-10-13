@@ -4,8 +4,6 @@ import os
 import re
 from typing import Any
 
-from .log import logger
-
 
 def pack_history_conversations(*args: str):
     roles = ["user", "assistant"]
@@ -92,43 +90,3 @@ def write_json(json_obj, file_name):
         os.makedirs(os.path.dirname(file_name), exist_ok=True)
     with open(file_name, "w", encoding="utf-8") as f:
         json.dump(json_obj, f, indent=4, ensure_ascii=False)
-
-
-def format_generation_results(
-    results: dict[str, Any], output_data_format: str
-) -> list[dict[str, Any]]:
-    if output_data_format == "Alpaca":
-        logger.info("Output data format: Alpaca")
-        results = [
-            {
-                "instruction": item["question"],
-                "input": "",
-                "output": item["answer"],
-            }
-            for item in list(results.values())
-        ]
-    elif output_data_format == "Sharegpt":
-        logger.info("Output data format: Sharegpt")
-        results = [
-            {
-                "conversations": [
-                    {"from": "human", "value": item["question"]},
-                    {"from": "gpt", "value": item["answer"]},
-                ]
-            }
-            for item in list(results.values())
-        ]
-    elif output_data_format == "ChatML":
-        logger.info("Output data format: ChatML")
-        results = [
-            {
-                "messages": [
-                    {"role": "user", "content": item["question"]},
-                    {"role": "assistant", "content": item["answer"]},
-                ]
-            }
-            for item in list(results.values())
-        ]
-    else:
-        raise ValueError(f"Unknown output data format: {output_data_format}")
-    return results

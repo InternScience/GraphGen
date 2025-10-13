@@ -1,4 +1,5 @@
 from .answer_rephrasing import ANSWER_REPHRASING_PROMPT
+from .atomic_generation import ATOMIC_GENERATION_PROMPT
 from .community import COT_GENERATION_PROMPT, COT_TEMPLATE_DESIGN_PROMPT
 from .coreference_resolution import COREFERENCE_RESOLUTION_PROMPT
 from .description_rephrasing import DESCRIPTION_REPHRASING_PROMPT
