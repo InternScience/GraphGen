@@ -18,7 +18,7 @@ async def generate_qas(
         ]
     ],
     generation_config: dict,
-) -> None:
+) -> list[dict[str, Any]]:
     """
     Generate question-answer pairs based on nodes and edges.
     :param llm_client: LLM client
