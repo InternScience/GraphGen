@@ -48,7 +48,7 @@ async def test_small_graph():
     0 - 1 - 2
     |   |   |
     3 - 4 - 5
-    6 nodes & 7 edged，max_units=4 => 3 communities
+    6 nodes & 7 edges，max_units=4 => 3 communities
     """
     nodes = [(str(i), {"desc": f"node{i}"}) for i in range(6)]
     edges = [
