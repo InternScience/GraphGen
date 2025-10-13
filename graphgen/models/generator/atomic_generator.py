@@ -36,7 +36,7 @@ class AtomicGenerator(BaseGenerator):
             answer = response.split("答案：")[1].strip()
         else:
             logger.warning("Failed to parse response: %s", response)
-            return None, None
+            return {}
         question = question.strip('"')
         answer = answer.strip('"')
         logger.info("Question: %s", question)
