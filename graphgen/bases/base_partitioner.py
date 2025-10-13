@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Any, List
+from typing import Any, List, Tuple
 
 from graphgen.bases.base_storage import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -28,6 +28,41 @@ class BasePartitioner(ABC):
         :param communities
         :return:
         """
+
+    @staticmethod
+    async def community2batch(
+        communities: List[Community], g: BaseGraphStorage
+    ) -> list[
+        tuple[
+            list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
+        ]
+    ]:
+        """
+        Convert communities to batches of nodes and edges.
+        :param communities
+        :param g: Graph storage instance
+        :return: List of batches, each batch is a tuple of (nodes, edges)
+        """
+        batches = []
+        for comm in communities:
+            nodes = comm.nodes
+            edges = comm.edges
+            nodes_data = []
+            for node in nodes:
+                node_data = await g.get_node(node)
+                if node_data:
+                    nodes_data.append((node, node_data))
+            edges_data = []
+            for u, v in edges:
+                edge_data = await g.get_edge(u, v)
+                if edge_data:
+                    edges_data.append((u, v, edge_data))
+                else:
+                    edge_data = await g.get_edge(v, u)
+                    if edge_data:
+                        edges_data.append((v, u, edge_data))
+            batches.append((nodes_data, edges_data))
+        return batches
 
     @staticmethod
     def _build_adjacency_list(

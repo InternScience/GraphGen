@@ -1,4 +1,4 @@
-from typing import List
+from typing import Any, List, Tuple
 
 from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -11,10 +11,12 @@ from graphgen.models import (
 from graphgen.utils import logger
 
 
-def partition_kg(
+async def partition_kg(
     kg_instance: BaseGraphStorage,
     partition_config: dict = None,
-) -> List[Community]:
+) -> list[
+    tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]]
+]:
     method = partition_config["method"]
     method_params = partition_config["method_params"]
     if method == "bfs":
@@ -32,6 +34,7 @@ def partition_kg(
     else:
         raise ValueError(f"Unsupported partition method: {method}")
 
-    communities = partitioner.partition(g=kg_instance, **method_params)
-    logger.info(f"Partitioned the graph into {len(communities)} communities.")
-    return communities
+    communities = await partitioner.partition(g=kg_instance, **method_params)
+    logger.info("Partitioned the graph into %d communities.", len(communities))
+    batches = await partitioner.community2batch(communities, g=kg_instance)
+    return batches

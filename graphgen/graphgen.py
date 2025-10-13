@@ -5,6 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, cast
 
 import gradio as gr
+from jieba.lac_small.predict import results
 
 from graphgen.bases.base_storage import StorageNameSpace
 from graphgen.bases.datatypes import Chunk
@@ -234,10 +235,13 @@ class GraphGen:
 
     @async_to_sync_method
     async def generate(self, partition_config: Dict, generate_config: Dict):
-        pass
         # Step 1: partition the graph
-        # mode = generate_config["mode"]
-        # batches = partition_kg(self.graph_storage, partition_config)
+        batches = await partition_kg(self.graph_storage, partition_config)
+
+        # Step 2： generate QA pairs
+        mode = generate_config["mode"]
+        logger.info("[Generation] mode: %s, batches: %d", mode, len(batches))
+        # results = generate_qa_pairs(generate_config)
         # if mode == "atomic":
         #     results = await traverse_graph_for_atomic(
         #         self.synthesizer_llm_client,
@@ -273,8 +277,6 @@ class GraphGen:
         #     )
         # else:
         #     raise ValueError(f"Unknown generation mode: {mode}")
-        # Step 2： generate QA pairs
-        # TODO
 
         # Step 3: format
         # results = format_generation_results(
