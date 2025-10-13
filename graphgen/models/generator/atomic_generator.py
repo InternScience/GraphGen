@@ -1,6 +1,6 @@
 from typing import Any
 
-from baselines.EntiGraph.tasks.baseline_task import compute_content_hash
+from graphgen.utils import compute_content_hash
 from graphgen.bases import BaseGenerator
 from graphgen.templates import ATOMIC_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
