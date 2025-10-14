@@ -1,5 +1,4 @@
 # pylint: disable=C0301
-
 TEMPLATE_ZH: str = """请基于以下知识子图生成多跳推理问题和答案。你将获得一个知识子图，其中包含一系列实体、关系和事实。你的任务是提出一个问题，该问题需要经过多次推理才能回答。问题的答案应该是从给定的知识子图中推断出来的。确保问题的难度适中，需要多步推理才能回答。
 
 例如：
@@ -54,7 +53,4 @@ Answer: Vitamin C
 Output the generated question and answer directly, please do not copy the example question and answer directly, and do not provide irrelevant information.
 """
 
-MULTI_HOP_GENERATION_PROMPT = {
-    "English": TEMPLATE_EN,
-    "Chinese": TEMPLATE_ZH
-}
+MULTI_HOP_GENERATION_PROMPT = {"en": TEMPLATE_EN, "zh": TEMPLATE_ZH}

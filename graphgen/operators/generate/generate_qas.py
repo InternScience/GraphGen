@@ -33,7 +33,7 @@ async def generate_qas(
         generator = AtomicGenerator(llm_client)
     elif mode == "aggregated":
         generator = AggregatedGenerator(llm_client)
-    elif mode == "multi-hop":
+    elif mode == "multi_hop":
         generator = MultiHopGenerator(llm_client)
     elif mode == "cot":
         generator = CoTGenerator(llm_client)
