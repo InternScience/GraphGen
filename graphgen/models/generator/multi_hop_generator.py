@@ -34,12 +34,6 @@ class MultiHopGenerator(BaseGenerator):
 
     @staticmethod
     def parse_response(response: str) -> dict:
-        """
-        AtomicGenerator normally generates one QA pair per response.
-        So we just need to parse one QA pair from the response.
-        :param response:
-        :return:
-        """
         if "Question:" in response and "Answer:" in response:
             question = response.split("Question:")[1].split("Answer:")[0].strip()
             answer = response.split("Answer:")[1].strip()

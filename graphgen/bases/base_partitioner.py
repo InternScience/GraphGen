@@ -21,14 +21,6 @@ class BasePartitioner(ABC):
         :return: List of communities
         """
 
-    @abstractmethod
-    def split_communities(self, communities: List[Community]) -> List[Community]:
-        """
-        Split large communities into smaller ones based on max_size.
-        :param communities
-        :return:
-        """
-
     @staticmethod
     async def community2batch(
         communities: List[Community], g: BaseGraphStorage

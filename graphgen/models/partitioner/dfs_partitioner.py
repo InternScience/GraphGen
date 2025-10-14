@@ -73,6 +73,3 @@ class DFSPartitioner(BasePartitioner):
                 )
 
         return communities
-
-    def split_communities(self, communities: List[Community]) -> List[Community]:
-        raise NotImplementedError("DFSPartitioner does not need to split communities.")

@@ -12,8 +12,8 @@ partition: # graph partition configuration
   method: leiden # leiden is a partitioner detection algorithm
   method_params:
     max_size: 20 # Maximum size of communities
-    use_lcc: false
-    random_seed: 42
+    use_lcc: false # whether to use the largest connected component
+    random_seed: 42 # random seed for partitioning
 generate:
   mode: cot # atomic, aggregated, multi_hop, cot
   data_format: Sharegpt # Alpaca, Sharegpt, ChatML
