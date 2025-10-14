@@ -186,7 +186,7 @@ async def test_ece_max_tokens_limit():
             storage,
             max_units_per_community=10,
             max_tokens_per_community=5000,  # 1 node (3000) + 1 edge (2000) = 5000
-            edge_sampling="random",
+            unit_sampling="random",
         )
 
         # With a 5000-token budget we need at least two communities
