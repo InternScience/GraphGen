@@ -1,6 +1,5 @@
 from graphgen.operators.partition.traverse_graph import (
     traverse_graph_for_aggregated,
-    traverse_graph_for_atomic,
     traverse_graph_for_multi_hop,
 )
 

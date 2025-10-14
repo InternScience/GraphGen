@@ -1,7 +1,6 @@
-from typing import Any, List, Tuple
+from typing import Any
 
-from graphgen.bases import BaseGraphStorage
-from graphgen.bases.datatypes import Community
+from graphgen.bases import BaseGraphStorage, BaseTokenizer
 from graphgen.models import (
     BFSPartitioner,
     DFSPartitioner,
@@ -10,9 +9,12 @@ from graphgen.models import (
 )
 from graphgen.utils import logger
 
+from .pre_tokenize import pre_tokenize
+
 
 async def partition_kg(
     kg_instance: BaseGraphStorage,
+    tokenizer: Any = BaseTokenizer,
     partition_config: dict = None,
 ) -> list[
     tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]]
@@ -27,6 +29,12 @@ async def partition_kg(
         partitioner = DFSPartitioner()
     elif method == "ece":
         logger.info("Partitioning knowledge graph using ECE method.")
+        # TODO： before ECE partitioning, we need to:
+        # 1. 'quiz and judge' to get the comprehension loss
+        # 2. pre-tokenize nodes and edges to get the token length
+        edges = await kg_instance.get_all_edges()
+        nodes = await kg_instance.get_all_nodes()
+        await pre_tokenize(kg_instance, tokenizer, edges, nodes)
         partitioner = ECEPartitioner()
     elif method == "leiden":
         logger.info("Partitioning knowledge graph using Leiden method.")
