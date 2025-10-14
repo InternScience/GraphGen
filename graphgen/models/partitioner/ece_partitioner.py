@@ -1,7 +1,7 @@
 import asyncio
 import random
 from dataclasses import dataclass
-from typing import Any, Dict, List, Set, Tuple
+from typing import Any, Dict, List, Optional, Set, Tuple
 
 from tqdm.asyncio import tqdm as tqdm_async
 
@@ -54,6 +54,7 @@ class ECEPartitioner(BFSPartitioner):
         self,
         g: BaseGraphStorage,
         max_units_per_community: int = 10,
+        min_units_per_community: int = 1,
         max_tokens_per_community: int = 10240,
         unit_sampling: str = "random",
         **kwargs: Any,
@@ -75,7 +76,9 @@ class ECEPartitioner(BFSPartitioner):
 
         all_units = self._sort_units(all_units, unit_sampling)
 
-        async def _grow_community(seed_unit: Tuple[str, Any, dict]) -> Community:
+        async def _grow_community(
+            seed_unit: Tuple[str, Any, dict]
+        ) -> Optional[Community]:
             nonlocal used_n, used_e
 
             community_nodes: Dict[str, dict] = {}
@@ -135,6 +138,9 @@ class ECEPartitioner(BFSPartitioner):
                     if await _add_unit(nb):
                         await queue.put(nb)
 
+            if len(community_nodes) + len(community_edges) < min_units_per_community:
+                return None
+
             return Community(
                 id=len(communities),
                 nodes=list(community_nodes.keys()),
@@ -145,6 +151,8 @@ class ECEPartitioner(BFSPartitioner):
             utype, uid, _ = unit
             if (utype == "n" and uid in used_n) or (utype == "e" and uid in used_e):
                 continue
-            communities.append(await _grow_community(unit))
+            comm = await _grow_community(unit)
+            if comm is not None:
+                communities.append(comm)
 
         return communities

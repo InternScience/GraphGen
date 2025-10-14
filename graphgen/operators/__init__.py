@@ -1,8 +1,3 @@
-from graphgen.operators.partition.traverse_graph import (
-    traverse_graph_for_aggregated,
-    traverse_graph_for_multi_hop,
-)
-
 from .build_kg import build_kg
 from .generate import generate_qas
 from .judge import judge_statement
