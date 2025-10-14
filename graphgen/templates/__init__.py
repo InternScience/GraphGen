@@ -1,7 +1,7 @@
-from .answer_rephrasing import ANSWER_REPHRASING_PROMPT
 from .coreference_resolution import COREFERENCE_RESOLUTION_PROMPT
 from .description_rephrasing import DESCRIPTION_REPHRASING_PROMPT
 from .generation import (
+    AGGREGATED_GENERATION_PROMPT,
     ATOMIC_GENERATION_PROMPT,
     COT_GENERATION_PROMPT,
     COT_TEMPLATE_DESIGN_PROMPT,

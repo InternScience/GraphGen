@@ -1,14 +1,16 @@
+from dataclasses import dataclass
 from typing import Any
 
-from graphgen.utils import compute_content_hash
 from graphgen.bases import BaseGenerator
 from graphgen.templates import ATOMIC_GENERATION_PROMPT
-from graphgen.utils import detect_main_language, logger
+from graphgen.utils import compute_content_hash, detect_main_language, logger
 
 
+@dataclass
 class AtomicGenerator(BaseGenerator):
+    @staticmethod
     def build_prompt(
-        self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
         nodes, edges = batch
         context = ""
@@ -21,7 +23,8 @@ class AtomicGenerator(BaseGenerator):
         prompt = ATOMIC_GENERATION_PROMPT[language].format(context=context)
         return prompt
 
-    def parse_response(self, response: str) -> dict:
+    @staticmethod
+    def parse_response(response: str) -> dict:
         """
         AtomicGenerator normally generates one QA pair per response.
         So we just need to parse one QA pair from the response.

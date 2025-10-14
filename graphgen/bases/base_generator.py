@@ -13,14 +13,16 @@ class BaseGenerator(ABC):
 
     llm_client: BaseLLMClient
 
+    @staticmethod
     @abstractmethod
     def build_prompt(
-        self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
         """Build prompt for LLM based on the given batch"""
 
+    @staticmethod
     @abstractmethod
-    def parse_response(self, response: str) -> Any:
+    def parse_response(response: str) -> Any:
         """Parse the LLM response and return the generated QAs"""
 
     async def generate(

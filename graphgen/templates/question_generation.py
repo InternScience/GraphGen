@@ -1,21 +1,4 @@
 # pylint: disable=C0301
-TEMPLATE_SINGLE_EN: str = """The answer to a question is provided. Please generate a question that corresponds to the answer.
-
-################
-Answer:
-{answer}
-################
-Question:
-"""
-
-TEMPLATE_SINGLE_ZH: str = """下面提供了一个问题的答案，请生成一个与答案对应的问题。
-
-################
-答案：
-{answer}
-################
-问题：
-"""
 
 
 # TODO: 修改这里的prompt
@@ -41,11 +24,9 @@ TEMPLATE_MULTI_ZH = """你是一位助手，帮助阅读一篇文章，然后以
 
 QUESTION_GENERATION_PROMPT = {
     "English": {
-        "SINGLE_TEMPLATE": TEMPLATE_SINGLE_EN,
         "MULTI_TEMPLATE": TEMPLATE_MULTI_EN,
     },
     "Chinese": {
-        "SINGLE_TEMPLATE": TEMPLATE_SINGLE_ZH,
         "MULTI_TEMPLATE": TEMPLATE_MULTI_ZH,
     },
 }

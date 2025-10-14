@@ -13,7 +13,7 @@ quiz_and_judge: # quiz and test whether the LLM masters the knowledge points
 partition: # graph partition configuration
   method: ece # ece is a custom partition method based on comprehension loss
   method_params:
-    max_units_per_community: 10 # max nodes and edges per community
+    max_units_per_community: 20 # max nodes and edges per community
     max_tokens_per_community: 10240 # max tokens per community
     unit_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
 generate:
