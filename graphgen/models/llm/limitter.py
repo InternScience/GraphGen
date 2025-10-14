@@ -45,7 +45,7 @@ class RPM:
 
 
 class TPM:
-    def __init__(self, tpm: int = 100000):
+    def __init__(self, tpm: int = 20000):
         self.tpm = tpm
         self.record = {"tpm_slot": self.get_minute_slot(), "counter": 0}
 
