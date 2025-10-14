@@ -55,7 +55,7 @@ class ECEPartitioner(BFSPartitioner):
         g: BaseGraphStorage,
         max_units_per_community: int = 10,
         max_tokens_per_community: int = 10240,
-        edge_sampling: str = "random",
+        unit_sampling: str = "random",
         **kwargs: Any,
     ) -> List[Community]:
         nodes: List[Tuple[str, dict]] = await g.get_all_nodes()
@@ -73,7 +73,7 @@ class ECEPartitioner(BFSPartitioner):
         used_e: Set[frozenset[str]] = set()
         communities: List = []
 
-        all_units = self._sort_units(all_units, edge_sampling)
+        all_units = self._sort_units(all_units, unit_sampling)
 
         async def _grow_community(seed_unit: Tuple[str, Any, dict]) -> Community:
             nonlocal used_n, used_e
@@ -124,7 +124,7 @@ class ECEPartitioner(BFSPartitioner):
                         if n_id not in used_n and n_id not in community_nodes:
                             neighbors.append(("n", n_id, node_dict[n_id]))
 
-                neighbors = self._sort_units(neighbors, edge_sampling)
+                neighbors = self._sort_units(neighbors, unit_sampling)
                 for nb in neighbors:
                     if (
                         len(community_nodes) + len(community_edges)

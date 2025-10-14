@@ -30,7 +30,7 @@ async def partition_kg(
     elif method == "ece":
         logger.info("Partitioning knowledge graph using ECE method.")
         # TODO： before ECE partitioning, we need to:
-        # 1. 'quiz and judge' to get the comprehension loss
+        # 1. 'quiz and judge' to get the comprehension loss if unit_sampling is not random
         # 2. pre-tokenize nodes and edges to get the token length
         edges = await kg_instance.get_all_edges()
         nodes = await kg_instance.get_all_nodes()
