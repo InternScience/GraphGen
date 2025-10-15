@@ -104,6 +104,13 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
    ```bash
    python -m webui.app
    ```
+   
+   如果在开发过程中需要热重载，请运行
+
+   ```bash
+    PYTHONPATH=. gradio webui/app.py
+   ```
+
 
 ![ui](https://github.com/user-attachments/assets/3024e9bc-5d45-45f8-a4e6-b57bd2350d84)
 
