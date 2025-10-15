@@ -67,9 +67,10 @@ class TPM:
             return
 
         # check RPM exceed
+        old_counter = self.record["counter"]
         self.record["counter"] += token_count
         if self.record["counter"] > self.tpm:
-            logger.info("Current TPM: %s, limit: %s", self.record["counter"], self.tpm)
+            logger.info("Current TPM: %s, limit: %s", old_counter, self.tpm)
             # wait until next minute
             next_minute = dt_object.replace(second=0, microsecond=0) + timedelta(
                 minutes=1
