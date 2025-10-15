@@ -1,4 +1,5 @@
-TEMPLATE_CONTEXT_EN: str = """---Role---
+# pylint: disable=C0301
+ANSWER_REPHRASING_CONTEXT_EN: str = """---Role---
 You are an NLP expert responsible for generating a logically structured and coherent rephrased version of the TEXT based on ENTITIES and RELATIONSHIPS provided below. You may refer to the original text to assist in generating the rephrased version, but ensure that the final output text meets the requirements.
 Use {language} as output language.
 
@@ -49,7 +50,7 @@ To generate a version of the text that is rephrased and conveys the same meaning
 
 """
 
-TEMPLATE_CONTEXT_ZH: str = """---角色---
+ANSWER_REPHRASING_CONTEXT_ZH: str = """---角色---
 你是一位NLP专家，负责根据下面提供的实体和关系生成逻辑结构清晰且连贯的文本重述版本。你可以参考原始文本辅助生成，但需要确保最终输出的文本符合要求。
 使用{language}作为输出语言。
 
@@ -97,7 +98,7 @@ TEMPLATE_CONTEXT_ZH: str = """---角色---
 
 """
 
-TEMPLATE_EN: str = """---Role---
+ANSWER_REPHRASING_EN: str = """---Role---
 You are an NLP expert responsible for generating a logically structured and coherent rephrased version of the TEXT based on ENTITIES and RELATIONSHIPS provided below.
 Use {language} as output language.
 
@@ -143,7 +144,7 @@ To generate a version of the text that is rephrased and conveys the same meaning
 
 """
 
-TEMPLATE_ZH: str = """---角色---
+ANSWER_REPHRASING_ZH: str = """---角色---
 你是一位NLP专家，负责根据下面提供的实体和关系生成逻辑结构清晰且连贯的文本重述版本。
 使用{language}作为输出语言。
 
@@ -200,14 +201,33 @@ Please directly output the coherent rephrased text below, without any additional
 Rephrased Text:
 """
 
+QUESTION_GENERATION_EN: str = """The answer to a question is provided. Please generate a question that corresponds to the answer.
 
-ANSWER_REPHRASING_PROMPT = {
-    "English": {
-        "TEMPLATE": TEMPLATE_EN + REQUIREMENT_EN,
-        "CONTEXT_TEMPLATE": TEMPLATE_CONTEXT_EN + REQUIREMENT_EN,
+################
+Answer:
+{answer}
+################
+Question:
+"""
+
+QUESTION_GENERATION_ZH: str = """下面提供了一个问题的答案，请生成一个与答案对应的问题。
+
+################
+答案：
+{answer}
+################
+问题：
+"""
+
+AGGREGATED_GENERATION_PROMPT = {
+    "en": {
+        "ANSWER_REPHRASING": ANSWER_REPHRASING_EN + REQUIREMENT_EN,
+        "ANSWER_REPHRASING_CONTEXT": ANSWER_REPHRASING_CONTEXT_EN + REQUIREMENT_EN,
+        "QUESTION_GENERATION": QUESTION_GENERATION_EN,
     },
-    "Chinese": {
-        "TEMPLATE": TEMPLATE_ZH + REQUIREMENT_ZH,
-        "CONTEXT_TEMPLATE": TEMPLATE_CONTEXT_ZH + REQUIREMENT_ZH,
+    "zh": {
+        "ANSWER_REPHRASING": ANSWER_REPHRASING_ZH + REQUIREMENT_ZH,
+        "ANSWER_REPHRASING_CONTEXT": ANSWER_REPHRASING_CONTEXT_ZH + REQUIREMENT_ZH,
+        "QUESTION_GENERATION": QUESTION_GENERATION_ZH,
     },
 }

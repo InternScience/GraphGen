@@ -39,6 +39,8 @@ class OpenAIClient(BaseLLMClient):
         seed: Optional[int] = None,
         topk_per_token: int = 5,  # number of topk tokens to generate for each token
         request_limit: bool = False,
+        rpm: Optional[RPM] = None,
+        tpm: Optional[TPM] = None,
         **kwargs: Any,
     ):
         super().__init__(**kwargs)
@@ -51,8 +53,8 @@ class OpenAIClient(BaseLLMClient):
 
         self.token_usage: list = []
         self.request_limit = request_limit
-        self.rpm = RPM(rpm=1000)
-        self.tpm = TPM(tpm=50000)
+        self.rpm = rpm or RPM()
+        self.tpm = tpm or TPM()
 
         self.__post_init__()
 
