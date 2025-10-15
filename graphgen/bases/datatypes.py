@@ -30,3 +30,11 @@ class Token:
     @property
     def logprob(self) -> float:
         return math.log(self.prob)
+
+
+@dataclass
+class Community:
+    id: Union[int, str]
+    nodes: List[str] = field(default_factory=list)
+    edges: List[tuple] = field(default_factory=list)
+    metadata: dict = field(default_factory=dict)

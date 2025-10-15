@@ -13,14 +13,10 @@ quiz_and_judge: # quiz and test whether the LLM masters the knowledge points
 partition: # graph partition configuration
   method: ece # ece is a custom partition method based on comprehension loss
   method_params:
-    bidirectional: true # whether to traverse the graph in both directions
-    edge_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
-    expand_method: max_width # expand method, support: max_width, max_depth
-    isolated_node_strategy: ignore # strategy for isolated nodes, support: ignore, add
-    max_depth: 5 # maximum depth for graph traversal
-    max_extra_edges: 20 # max edges per direction (if expand_method="max_width")
-    max_tokens: 256 # restricts input length (if expand_method="max_tokens")
-    loss_strategy: only_edge # defines loss computation focus, support: only_edge, both
+    max_units_per_community: 20 # max nodes and edges per community
+    min_units_per_community: 5 # min nodes and edges per community
+    max_tokens_per_community: 10240 # max tokens per community
+    unit_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
 generate:
   mode: aggregated # atomic, aggregated, multi_hop, cot
   data_format: ChatML # Alpaca, Sharegpt, ChatML

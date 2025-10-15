@@ -468,7 +468,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                         label="TPM",
                         minimum=5000,
                         maximum=5000000,
-                        value=50000,
+                        value=100000,
                         step=1000,
                         interactive=True,
                         visible=True,
