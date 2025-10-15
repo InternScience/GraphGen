@@ -6,6 +6,9 @@ from typing import Any, List
 from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community
 
+NODE_UNIT: str = "n"
+EDGE_UNIT: str = "e"
+
 
 @dataclass
 class BFSPartitioner(BasePartitioner):
@@ -31,13 +34,15 @@ class BFSPartitioner(BasePartitioner):
         used_e: set[frozenset[str]] = set()
         communities: List[Community] = []
 
-        units = [("n", n[0]) for n in nodes] + [
-            ("e", frozenset((u, v))) for u, v, _ in edges
+        units = [(NODE_UNIT, n[0]) for n in nodes] + [
+            (EDGE_UNIT, frozenset((u, v))) for u, v, _ in edges
         ]
         random.shuffle(units)
 
         for kind, seed in units:
-            if (kind == "n" and seed in used_n) or (kind == "e" and seed in used_e):
+            if (kind == NODE_UNIT and seed in used_n) or (
+                kind == EDGE_UNIT and seed in used_e
+            ):
                 continue
 
             comm_n: List[str] = []
@@ -47,7 +52,7 @@ class BFSPartitioner(BasePartitioner):
 
             while queue and cnt < max_units_per_community:
                 k, it = queue.popleft()
-                if k == "n":
+                if k == NODE_UNIT:
                     if it in used_n:
                         continue
                     used_n.add(it)
@@ -56,7 +61,7 @@ class BFSPartitioner(BasePartitioner):
                     for nei in adj[it]:
                         e_key = frozenset((it, nei))
                         if e_key not in used_e:
-                            queue.append(("e", e_key))
+                            queue.append((EDGE_UNIT, e_key))
                 else:
                     if it in used_e:
                         continue
@@ -68,7 +73,7 @@ class BFSPartitioner(BasePartitioner):
                     # push nodes that are not visited
                     for n in it:
                         if n not in used_n:
-                            queue.append(("n", n))
+                            queue.append((NODE_UNIT, n))
 
             if comm_n or comm_e:
                 communities.append(
