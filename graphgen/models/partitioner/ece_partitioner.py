@@ -9,6 +9,9 @@ from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
 from graphgen.models.partitioner.bfs_partitioner import BFSPartitioner
 
+NODE_UNIT: str = "n"
+EDGE_UNIT: str = "e"
+
 
 @dataclass
 class ECEPartitioner(BFSPartitioner):
@@ -66,9 +69,9 @@ class ECEPartitioner(BFSPartitioner):
         node_dict = dict(nodes)
         edge_dict = {frozenset((u, v)): d for u, v, d in edges}
 
-        all_units: List[Tuple[str, Any, dict]] = [("n", nid, d) for nid, d in nodes] + [
-            ("e", frozenset((u, v)), d) for u, v, d in edges
-        ]
+        all_units: List[Tuple[str, Any, dict]] = [
+            (NODE_UNIT, nid, d) for nid, d in nodes
+        ] + [(EDGE_UNIT, frozenset((u, v)), d) for u, v, d in edges]
 
         used_n: Set[str] = set()
         used_e: Set[frozenset[str]] = set()
@@ -89,7 +92,7 @@ class ECEPartitioner(BFSPartitioner):
             async def _add_unit(u):
                 nonlocal token_sum
                 t, i, d = u
-                if t == "n":
+                if t == NODE_UNIT:  # node
                     if i in used_n or i in community_nodes:
                         return False
                     community_nodes[i] = d
@@ -117,15 +120,15 @@ class ECEPartitioner(BFSPartitioner):
                 cur_type, cur_id, _ = await queue.get()
 
                 neighbors: List[Tuple[str, Any, dict]] = []
-                if cur_type == "n":
+                if cur_type == NODE_UNIT:
                     for nb_id in adj.get(cur_id, []):
                         e_key = frozenset((cur_id, nb_id))
                         if e_key not in used_e and e_key not in community_edges:
-                            neighbors.append(("e", e_key, edge_dict[e_key]))
+                            neighbors.append((EDGE_UNIT, e_key, edge_dict[e_key]))
                 else:
                     for n_id in cur_id:
                         if n_id not in used_n and n_id not in community_nodes:
-                            neighbors.append(("n", n_id, node_dict[n_id]))
+                            neighbors.append((NODE_UNIT, n_id, node_dict[n_id]))
 
                 neighbors = self._sort_units(neighbors, unit_sampling)
                 for nb in neighbors:
@@ -149,7 +152,9 @@ class ECEPartitioner(BFSPartitioner):
 
         async for unit in tqdm_async(all_units, desc="ECE partition"):
             utype, uid, _ = unit
-            if (utype == "n" and uid in used_n) or (utype == "e" and uid in used_e):
+            if (utype == NODE_UNIT and uid in used_n) or (
+                utype == EDGE_UNIT and uid in used_e
+            ):
                 continue
             comm = await _grow_community(unit)
             if comm is not None:
