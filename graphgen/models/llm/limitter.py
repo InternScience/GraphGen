@@ -69,13 +69,13 @@ class TPM:
         # check RPM exceed
         self.record["counter"] += token_count
         if self.record["counter"] > self.tpm:
+            logger.info("Current TPM: %s, limit: %s", self.record["counter"], self.tpm)
             # wait until next minute
             next_minute = dt_object.replace(second=0, microsecond=0) + timedelta(
                 minutes=1
             )
             _next = next_minute.timestamp()
             sleep_time = abs(_next - current)
-            logger.info("Current TPM: %s, limit: %s", self.record["counter"], self.tpm)
             logger.warning("TPM limit exceeded, wait %s seconds", sleep_time)
             await asyncio.sleep(sleep_time)
 
