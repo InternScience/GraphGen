@@ -47,7 +47,7 @@
     "Unit Sampling Strategy": "unit_sampling(Unit Sampling Strategy)",
     "Partition Config": "Knowledge Graph Partition Config",
     "Generation Config Info": "Generation configuration includes generation mode and output data format.",
-    "Mode Info": "Includes various generation modes such as atomic, aggregate, multi-hop, and chain-of-thought, suitable for tasks of different complexity.",
+    "Mode Info": "Includes various generation modes such as atomic, aggregated, multi-hop, and chain-of-thought, suitable for tasks of different complexity.",
     "Mode": "mode(Mode)",
     "Output Data Format Info": "Includes various output formats such as Alpaca, Sharegpt, and ChatML.",
     "Output Data Format": "data_format(Output Data Format)",
