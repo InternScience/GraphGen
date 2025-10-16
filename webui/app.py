@@ -74,11 +74,32 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
     def sum_tokens(client):
         return sum(u["total_tokens"] for u in client.token_usage)
 
+    method = params.partition_method
+    if method == "dfs":
+        partition_params = {
+            "max_units_per_community": params.dfs_max_units,
+        }
+    elif method == "bfs":
+        partition_params = {
+            "max_units_per_community": params.bfs_max_units,
+        }
+    elif method == "leiden":
+        partition_params = {
+            "max_size": params.leiden_max_size,
+            "use_lcc": params.leiden_use_lcc,
+            "random_seed": params.leiden_random_seed,
+        }
+    else:  # ece
+        partition_params = {
+            "max_units_per_community": params.ece_max_units,
+            "min_units_per_community": params.ece_min_units,
+            "max_tokens_per_community": params.ece_max_tokens,
+            "unit_sampling": params.ece_unit_sampling,
+        }
+
     config = {
         "if_trainee_model": params.if_trainee_model,
-        "read": {
-            "input_file": params.input_file,
-        },
+        "read": {"input_file": params.upload_file},
         "split": {
             "chunk_size": params.chunk_size,
             "chunk_overlap": params.chunk_overlap,
@@ -89,21 +110,12 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
             "quiz_samples": params.quiz_samples,
         },
         "partition": {
-            "method": "ece",
-            "method_params": {
-                "bidirectional": params.bidirectional,
-                "expand_method": params.expand_method,
-                "max_extra_edges": params.max_extra_edges,
-                "max_tokens": params.max_tokens,
-                "max_depth": params.max_depth,
-                "edge_sampling": params.edge_sampling,
-                "isolated_node_strategy": params.isolated_node_strategy,
-                "loss_strategy": params.loss_strategy,
-            },
+            "method": partition_method,
+            "method_params": partition_params,
         },
         "generate": {
-            "mode": params.output_data_type,
-            "data_format": params.output_data_format,
+            "mode": params.mode,
+            "data_format": params.data_format,
         },
     }
 
@@ -141,10 +153,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         graph_gen.insert(read_config=config["read"], split_config=config["split"])
 
         if config["if_trainee_model"]:
-            # Quiz and Judge
             graph_gen.quiz_and_judge(quiz_and_judge_config=config["quiz_and_judge"])
-        else:
-            config["partition"]["method_params"]["edge_sampling"] = "random"
 
         graph_gen.generate(
             partition_config=config["partition"],
@@ -599,44 +608,34 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
         )
 
         submit_btn.click(
-            lambda *args: run_graphgen(
-                WebuiParams(
-                    if_trainee_model=args[0],
-                    input_file=args[1],
-                    tokenizer=args[2],
-                    output_data_type=args[3],
-                    output_data_format=args[4],
-                    synthesizer_url=args[13],
-                    synthesizer_model=args[14],
-                    trainee_model=args[15],
-                    api_key=args[16],
-                    chunk_size=args[17],
-                    chunk_overlap=args[18],
-                    rpm=args[19],
-                    tpm=args[20],
-                    quiz_samples=args[21],
-                    trainee_url=args[22],
-                    trainee_api_key=args[23],
-                    token_counter=args[24],
-                )
-            ),
+            lambda *args: run_graphgen(WebuiParams.from_list(args)),
             inputs=[
                 if_trainee_model,
                 upload_file,
                 tokenizer,
-                mode,
-                data_format,
-                synthesizer_url,
                 synthesizer_model,
+                synthesizer_url,
                 trainee_model,
+                trainee_url,
                 api_key,
+                trainee_api_key,
                 chunk_size,
                 chunk_overlap,
+                quiz_samples,
+                partition_method,
+                dfs_max_units,
+                bfs_max_units,
+                leiden_max_size,
+                leiden_use_lcc,
+                leiden_random_seed,
+                ece_max_units,
+                ece_min_units,
+                ece_max_tokens,
+                ece_unit_sampling,
+                mode,
+                data_format,
                 rpm,
                 tpm,
-                quiz_samples,
-                trainee_url,
-                trainee_api_key,
                 token_counter,
             ],
             outputs=[output, token_counter],
