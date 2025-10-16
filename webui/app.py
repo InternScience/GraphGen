@@ -110,7 +110,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
             "quiz_samples": params.quiz_samples,
         },
         "partition": {
-            "method": partition_method,
+            "method": params.partition_method,
             "method_params": partition_params,
         },
         "generate": {
