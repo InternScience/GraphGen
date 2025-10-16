@@ -608,7 +608,9 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
         )
 
         submit_btn.click(
-            lambda *args: run_graphgen(WebuiParams.from_list(args)),
+            lambda *args: run_graphgen(
+                WebuiParams(**dict(zip(WebuiParams.__annotations__, args)))
+            ),
             inputs=[
                 if_trainee_model,
                 upload_file,

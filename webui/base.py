@@ -1,4 +1,4 @@
-from dataclasses import dataclass, fields
+from dataclasses import dataclass
 from typing import Any
 
 
@@ -35,13 +35,3 @@ class WebuiParams:
     rpm: int
     tpm: int
     token_counter: Any
-
-    @classmethod
-    def from_list(cls, args):
-        """
-        args: a list/tuple of values corresponding to the fields in order.
-        """
-        field_names = [f.name for f in fields(cls)]
-        if len(args) != len(field_names):
-            raise ValueError(f"Expected {len(field_names)} arguments, got {len(args)}")
-        return cls(**dict(zip(field_names, args)))
