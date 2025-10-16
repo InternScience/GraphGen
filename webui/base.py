@@ -34,7 +34,7 @@ class WebuiParams:
     data_format: str
     rpm: int
     tpm: int
-    token_counter: bool
+    token_counter: Any
 
     @classmethod
     def from_list(cls, args):
