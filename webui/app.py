@@ -245,13 +245,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
     ):
         lang_btn.render()
 
-        gr.Markdown(
-            value="# "
-            + _("Title")
-            + "\n\n"
-            + "### [GraphGen](https://github.com/open-sciencelab/GraphGen) "
-            + _("Intro")
-        )
+        gr.Markdown(value=_("Title") + _("Intro"))
 
         if_trainee_model = gr.Checkbox(
             label=_("Use Trainee Model"), value=False, interactive=True
@@ -295,106 +289,13 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                 visible=if_trainee_model.value is True,
             )
 
-        with gr.Accordion(label=_("Generation Config"), open=False):
-            chunk_size = gr.Slider(
-                label="Chunk Size",
-                minimum=256,
-                maximum=4096,
-                value=1024,
-                step=256,
-                interactive=True,
-            )
-            chunk_overlap = gr.Slider(
-                label="Chunk Overlap",
-                minimum=0,
-                maximum=500,
-                value=100,
-                step=100,
-                interactive=True,
-            )
-            output_data_type = gr.Radio(
-                choices=["atomic", "multi_hop", "aggregated"],
-                label="Output Data Type",
-                value="aggregated",
-                interactive=True,
-            )
-            output_data_format = gr.Radio(
-                choices=["Alpaca", "Sharegpt", "ChatML"],
-                label="Output Data Format",
-                value="Alpaca",
-                interactive=True,
-            )
-            quiz_samples = gr.Number(
-                label="Quiz Samples",
-                value=2,
-                minimum=1,
-                interactive=True,
-                visible=if_trainee_model.value is True,
-            )
-            bidirectional = gr.Checkbox(
-                label="Bidirectional", value=True, interactive=True
-            )
-
-            expand_method = gr.Radio(
-                choices=["max_width", "max_tokens"],
-                label="Expand Method",
-                value="max_tokens",
-                interactive=True,
-            )
-            max_extra_edges = gr.Slider(
-                minimum=1,
-                maximum=10,
-                value=5,
-                label="Max Extra Edges",
-                step=1,
-                interactive=True,
-                visible=expand_method.value == "max_width",
-            )
-            max_tokens = gr.Slider(
-                minimum=64,
-                maximum=1024,
-                value=256,
-                label="Max Tokens",
-                step=64,
-                interactive=True,
-                visible=(expand_method.value != "max_width"),
-            )
-
-            max_depth = gr.Slider(
-                minimum=1,
-                maximum=5,
-                value=2,
-                label="Max Depth",
-                step=1,
-                interactive=True,
-            )
-            edge_sampling = gr.Radio(
-                choices=["max_loss", "min_loss", "random"],
-                label="Edge Sampling",
-                value="max_loss",
-                interactive=True,
-                visible=if_trainee_model.value is True,
-            )
-            isolated_node_strategy = gr.Radio(
-                choices=["add", "ignore"],
-                label="Isolated Node Strategy",
-                value="ignore",
-                interactive=True,
-            )
-            loss_strategy = gr.Radio(
-                choices=["only_edge", "both"],
-                label="Loss Strategy",
-                value="only_edge",
-                interactive=True,
-            )
-
         with gr.Row(equal_height=True):
             with gr.Column(scale=3):
                 api_key = gr.Textbox(
                     label=_("SiliconFlow Token"),
                     type="password",
                     value="",
-                    info="https://cloud.siliconflow.cn/account/ak",
+                    info=_("SiliconFlow Token Info"),
                 )
             with gr.Column(scale=1):
                 test_connection_btn = gr.Button(_("Test Connection"))
@@ -437,6 +338,177 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                         elem_id="preview_df",
                     )
 
+        with gr.Accordion(label=_("Split Config"), open=False):
+            gr.Markdown(value=_("Split Config Info"))
+            with gr.Row(equal_height=True):
+                with gr.Column(scale=1):
+                    chunk_size = gr.Slider(
+                        label=_("Chunk Size"),
+                        minimum=256,
+                        maximum=4096,
+                        value=1024,
+                        step=256,
+                        interactive=True,
+                        info=_("Chunk Size Info"),
+                    )
+                with gr.Column(scale=1):
+                    chunk_overlap = gr.Slider(
+                        label=_("Chunk Overlap"),
+                        minimum=0,
+                        maximum=500,
+                        value=100,
+                        step=100,
+                        interactive=True,
+                        info=_("Chunk Overlap Info"),
+                    )
+
+        with gr.Accordion(
+            label=_("Quiz & Judge Config"), open=False, visible=False
+        ) as quiz_accordion:
+            gr.Markdown(value=_("Quiz & Judge Config Info"))
+            quiz_samples = gr.Number(
+                label=_("Quiz Samples"),
+                value=2,
+                minimum=1,
+                interactive=True,
+                info=_("Quiz Samples Info"),
+            )
+
+        with gr.Accordion(label=_("Partition Config"), open=False):
+            gr.Markdown(value=_("Partition Config Info"))
+
+            partition_method = gr.Dropdown(
+                label=_("Partition Method"),
+                choices=["dfs", "bfs", "ece", "leiden"],
+                value="ece",
+                interactive=True,
+                info=_("Which algorithm to use for graph partitioning."),
+            )
+
+            # DFS method parameters
+            with gr.Group(visible=False) as dfs_group:
+                gr.Markdown(_("DFS intro"))
+                dfs_max_units = gr.Slider(
+                    label=_("Max Units Per Community"),
+                    minimum=1,
+                    maximum=100,
+                    value=5,
+                    step=1,
+                    interactive=True,
+                    info=_("Max Units Per Community Info"),
+                )
+            # BFS method parameters
+            with gr.Group(visible=False) as bfs_group:
+                gr.Markdown(_("BFS intro"))
+                bfs_max_units = gr.Slider(
+                    label=_("Max Units Per Community"),
+                    minimum=1,
+                    maximum=100,
+                    value=5,
+                    step=1,
+                    interactive=True,
+                    info=_("Max Units Per Community Info"),
+                )
+
+            # Leiden method parameters
+            with gr.Group(visible=False) as leiden_group:
+                gr.Markdown(_("Leiden intro"))
+                leiden_max_size = gr.Slider(
+                    label=_("Maximum Size of Communities"),
+                    minimum=1,
+                    maximum=100,
+                    value=20,
+                    step=1,
+                    interactive=True,
+                    info=_("Maximum Size of Communities Info"),
+                )
+                leiden_use_lcc = gr.Checkbox(
+                    label=_("Use Largest Connected Component"),
+                    value=False,
+                    interactive=True,
+                    info=_("Use Largest Connected Component Info"),
+                )
+                leiden_random_seed = gr.Number(
+                    label=_("Random Seed"),
+                    value=42,
+                    precision=0,
+                    interactive=True,
+                    info=_("Random Seed Info"),
+                )
+
+            # ECE method parameters
+            with gr.Group(visible=True) as ece_group:
+                gr.Markdown(_("ECE intro"))
+                ece_max_units = gr.Slider(
+                    label=_("Max Units Per Community"),
+                    minimum=1,
+                    maximum=100,
+                    value=20,
+                    step=1,
+                    interactive=True,
+                    info=_("Max Units Per Community Info"),
+                )
+                ece_min_units = gr.Slider(
+                    label=_("Min Units Per Community"),
+                    minimum=1,
+                    maximum=100,
+                    value=3,
+                    step=1,
+                    interactive=True,
+                    info=_("Min Units Per Community Info"),
+                )
+                ece_max_tokens = gr.Slider(
+                    label=_("Max Tokens Per Community"),
+                    minimum=512,
+                    maximum=20_480,
+                    value=10_240,
+                    step=512,
+                    interactive=True,
+                    info=_("Max Tokens Per Community Info"),
+                )
+                ece_unit_sampling = gr.Radio(
+                    label=_("Unit Sampling Strategy"),
+                    choices=["random", "max_loss", "min_loss"],
+                    value="random",
+                    interactive=True,
+                    info=_("Unit Sampling Strategy Info"),
+                )
+
+            def toggle_partition_params(method):
+                dfs = method == "dfs"
+                bfs = method == "bfs"
+                leiden = method == "leiden"
+                ece = method == "ece"
+                return (
+                    gr.update(visible=dfs),  # dfs_group
+                    gr.update(visible=bfs),  # bfs_group
+                    gr.update(visible=leiden),  # leiden_group
+                    gr.update(visible=ece),  # ece_group
+                )
+
+            partition_method.change(
+                fn=toggle_partition_params,
+                inputs=partition_method,
+                outputs=[dfs_group, bfs_group, leiden_group, ece_group],
+            )
+
+        with gr.Accordion(label=_("Generation Config"), open=False):
+            gr.Markdown(value=_("Generation Config Info"))
+            mode = gr.Radio(
+                choices=["atomic", "multi_hop", "aggregated", "CoT"],
+                label=_("Mode"),
+                value="aggregated",
+                interactive=True,
+                info=_("Mode Info"),
+            )
+            data_format = gr.Radio(
+                choices=["Alpaca", "Sharegpt", "ChatML"],
+                label=_("Output Data Format"),
+                value="Alpaca",
+                interactive=True,
+                info=_("Output Data Format Info"),
+            )
+
         with gr.Blocks():
             token_counter = gr.DataFrame(
                 label="Token Stats",
@@ -468,7 +540,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                         label="TPM",
                         minimum=5000,
                         maximum=5000000,
-                        value=100000,
+                        value=50000,
                         step=1000,
                         interactive=True,
                         visible=True,
@@ -498,24 +570,14 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                 outputs=[],
             )
 
-        expand_method.change(
-            lambda method: (
-                gr.update(visible=method == "max_width"),
-                gr.update(visible=method != "max_width"),
-            ),
-            inputs=expand_method,
-            outputs=[max_extra_edges, max_tokens],
-        )
-
         if_trainee_model.change(
-            lambda use_trainee: [gr.update(visible=use_trainee)] * 5,
+            lambda use_trainee: [gr.update(visible=use_trainee)] * 4,
             inputs=if_trainee_model,
             outputs=[
                 trainee_url,
                 trainee_model,
-                quiz_samples,
-                edge_sampling,
                 trainee_api_key,
+                quiz_accordion,
             ],
         )
 
@@ -544,14 +606,6 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                     tokenizer=args[2],
                     output_data_type=args[3],
                     output_data_format=args[4],
-                    bidirectional=args[5],
-                    expand_method=args[6],
-                    max_extra_edges=args[7],
-                    max_tokens=args[8],
-                    max_depth=args[9],
-                    edge_sampling=args[10],
-                    isolated_node_strategy=args[11],
-                    loss_strategy=args[12],
                     synthesizer_url=args[13],
                     synthesizer_model=args[14],
                     trainee_model=args[15],
@@ -570,16 +624,8 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                 if_trainee_model,
                 upload_file,
                 tokenizer,
-                output_data_type,
-                output_data_format,
-                bidirectional,
-                expand_method,
-                max_extra_edges,
-                max_tokens,
-                max_depth,
-                edge_sampling,
-                isolated_node_strategy,
-                loss_strategy,
+                mode,
+                data_format,
                 synthesizer_url,
                 synthesizer_model,
                 trainee_model,
@@ -599,4 +645,4 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
 
 if __name__ == "__main__":
     demo.queue(api_open=False, default_concurrency_limit=2)
-    demo.launch(server_name="0.0.0.0")
+    demo.launch(server_name="0.0.0.0", server_port=7860, show_api=False)
