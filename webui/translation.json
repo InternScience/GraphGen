@@ -2,7 +2,7 @@
   "en": {
     "Title": "# ✨Easy-to-use LLM Training Data Generation Framework✨\n\n",
     "Intro": "### [GraphGen](https://github.com/open-sciencelab/GraphGen) is a framework for synthetic data generation guided by knowledge graphs, designed to tackle challenges for knowledge-intensive QA generation. \n\nBy uploading your text chunks (such as knowledge in agriculture, healthcare, or marine science) and filling in the LLM API key, you can generate the training data required by **[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory)** and **[xtuner](https://github.com/InternLM/xtuner)** online. We will automatically delete user information after completion.",
-    "Use Trainee Model": "Use Trainee Model to identify knowledge blind spots, please keep disable for SiliconCloud",
+    "Use Trainee Model": "Use Trainee Model to identify knowledge blind spots, please keep disabled for SiliconCloud",
     "Synthesizer URL Info": "Base URL for the Synthesizer Model API, use SiliconFlow as default",
     "Synthesizer Model Info": "Model for constructing KGs and generating QAs",
     "Trainee URL Info": "Base URL for the Trainee Model API, use SiliconFlow as default",
