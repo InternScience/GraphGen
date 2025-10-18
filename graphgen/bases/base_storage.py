@@ -1,13 +1,12 @@
-from dataclasses import dataclass
 from typing import Generic, TypeVar, Union
 
 T = TypeVar("T")
 
 
-@dataclass
 class StorageNameSpace:
-    working_dir: str = None
-    namespace: str = None
+    def __init__(self, working_dir: str = None, namespace: str = None):
+        self.working_dir = working_dir
+        self.namespace = namespace
 
     async def index_done_callback(self):
         """commit the storage operations after indexing"""
@@ -16,7 +15,6 @@ class StorageNameSpace:
         """commit the storage operations after querying"""
 
 
-@dataclass
 class BaseListStorage(Generic[T], StorageNameSpace):
     async def all_items(self) -> list[T]:
         raise NotImplementedError
@@ -34,7 +32,6 @@ class BaseListStorage(Generic[T], StorageNameSpace):
         raise NotImplementedError
 
 
-@dataclass
 class BaseKVStorage(Generic[T], StorageNameSpace):
     async def all_keys(self) -> list[str]:
         raise NotImplementedError
@@ -58,7 +55,6 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
         raise NotImplementedError
 
 
-@dataclass
 class BaseGraphStorage(StorageNameSpace):
     async def has_node(self, node_id: str) -> bool:
         raise NotImplementedError
