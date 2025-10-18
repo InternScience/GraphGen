@@ -7,6 +7,8 @@ from graphgen.utils import load_json, logger, write_json
 
 @dataclass
 class JsonKVStorage(BaseKVStorage):
+    working_dir: str = None
+    namespace: str = None
     _data: dict[str, str] = None
 
     def __post_init__(self):
@@ -53,6 +55,8 @@ class JsonKVStorage(BaseKVStorage):
 
 @dataclass
 class JsonListStorage(BaseListStorage):
+    working_dir: str = None
+    namespace: str = None
     _data: list = None
 
     def __post_init__(self):
