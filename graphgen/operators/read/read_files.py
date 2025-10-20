@@ -9,7 +9,7 @@ _MAPPING = {
 }
 
 
-def read_files(file_path: str, cache_dir: str):
+def read_files(file_path: str, cache_dir: str) -> list[dict]:
     suffix = file_path.split(".")[-1].lower()
     if suffix == "pdf":
         reader = _MAPPING[suffix](output_dir=cache_dir)

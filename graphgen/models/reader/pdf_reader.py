@@ -32,6 +32,7 @@ class PDFReader(BaseReader):
         end_page: Optional[int] = None,  # 0-based， inclusive
         formula: bool = True,
         table: bool = True,
+        return_assets: bool = True,
         **other_mineru_kwargs: Any,
     ):
         super().__init__()
@@ -53,7 +54,7 @@ class PDFReader(BaseReader):
         self._default_kwargs = {
             k: v for k, v in self._default_kwargs.items() if v is not None
         }
-
+        self.return_assets = return_assets
         self.parser = MinerUParser()
         self.txt_reader = TXTReader()
 
@@ -68,16 +69,8 @@ class PDFReader(BaseReader):
 
         kwargs = {**self._default_kwargs, **override}
 
-        self._call_mineru(pdf_path, kwargs)
-
-        md_file = self._locate_md(pdf_path, kwargs)
-        if md_file is None:
-            logger.warning(
-                "Cannot locate generated markdown file for PDF: %s", pdf_path
-            )
-            return []
-
-        return self.txt_reader.read(str(md_file))
+        mineru_result = self._call_mineru(pdf_path, kwargs)
+        return mineru_result
 
     def _call_mineru(
         self, pdf_path: Path, kwargs: Dict[str, Any]
@@ -97,12 +90,14 @@ class PDFReader(BaseReader):
         if backend.startswith("vlm-"):
             method = "vlm"
 
-        candidate = out_dir / pdf_path.stem / method / f"{pdf_path.stem}.md"
+        candidate = Path(
+            os.path.join(out_dir, pdf_path.stem, method, f"{pdf_path.stem}.md")
+        )
         if candidate.exists():
             return candidate
-        candidate2 = out_dir / f"{pdf_path.stem}.md"
-        if candidate2.exists():
-            return candidate2
+        candidate = Path(os.path.join(out_dir, f"{pdf_path.stem}.md"))
+        if candidate.exists():
+            return candidate
         return None
 
 
@@ -161,12 +156,22 @@ class MinerUParser:
             return None
 
         base = os.path.dirname(json_file)
+        results = []
         for item in data:
             for key in ("img_path", "table_img_path", "equation_img_path"):
                 rel_path = item.get(key)
                 if rel_path:
                     item[key] = str(Path(base).joinpath(rel_path).resolve())
-        return data
+            if item["type"] == "text":
+                item["content"] = item["text"]
+                del item["text"]
+            for key in ("page_idx", "bbox", "text_level"):
+                if item.get(key) is not None:
+                    del item[key]
+            if item["type"] == "text" and not item["content"].strip():
+                continue
+            results.append(item)
+        return results
 
     @staticmethod
     def _run_mineru(

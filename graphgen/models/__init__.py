@@ -4,6 +4,7 @@ from .generator import (
     AtomicGenerator,
     CoTGenerator,
     MultiHopGenerator,
+    VQAGenerator,
 )
 from .kg_builder import LightRAGKGBuilder
 from .llm.openai_client import OpenAIClient
