@@ -7,7 +7,7 @@ from typing import Any, Dict, List, Optional, Union
 
 from graphgen.bases.base_reader import BaseReader
 from graphgen.models.reader.txt_reader import TXTReader
-from graphgen.utils import logger
+from graphgen.utils import logger, pick_device
 
 
 class PDFReader(BaseReader):
@@ -26,7 +26,7 @@ class PDFReader(BaseReader):
         backend: Optional[
             str
         ] = None,  # pipeline | vlm-transformers | vlm-sglang-engine | vlm-sglang-client
-        device: Optional[str] = None,  # cpu | cuda | cuda:0 | npu | mps
+        device: Optional[str] = "auto",  # cpu | cuda | cuda:0 | npu | mps | auto
         source: Optional[str] = None,  # huggingface | modelscope | local
         vlm_url: Optional[str] = None,  # 当 backend=vlm-sglang-client 时必填
         start_page: Optional[int] = None,  # 0-based
@@ -38,6 +38,9 @@ class PDFReader(BaseReader):
     ):
         super().__init__()
         self.output_dir = os.path.join(output_dir, "mineru") if output_dir else None
+
+        if device == "auto":
+            device = pick_device()
 
         self._default_kwargs: Dict[str, Any] = {
             "method": method,
