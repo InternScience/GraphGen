@@ -91,7 +91,7 @@ class GraphGen:
         insert chunks into the graph
         """
         # Step 1: Read files
-        data = read_files(read_config["input_file"])
+        data = read_files(read_config["input_file"], self.working_dir)
         if len(data) == 0:
             logger.warning("No data to process")
             return

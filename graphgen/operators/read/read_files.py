@@ -1,16 +1,19 @@
-from graphgen.models import CsvReader, JsonlReader, JsonReader, TxtReader
+from graphgen.models import CSVReader, JSONLReader, JSONReader, PDFReader, TXTReader
 
 _MAPPING = {
-    "jsonl": JsonlReader,
-    "json": JsonReader,
-    "txt": TxtReader,
-    "csv": CsvReader,
+    "jsonl": JSONLReader,
+    "json": JSONReader,
+    "txt": TXTReader,
+    "csv": CSVReader,
+    "pdf": PDFReader,
 }
 
 
-def read_files(file_path: str):
-    suffix = file_path.split(".")[-1]
-    if suffix in _MAPPING:
+def read_files(file_path: str, cache_dir: str):
+    suffix = file_path.split(".")[-1].lower()
+    if suffix == "pdf":
+        reader = _MAPPING[suffix](output_dir=cache_dir)
+    elif suffix in _MAPPING:
         reader = _MAPPING[suffix]()
     else:
         raise ValueError(

@@ -14,7 +14,7 @@ from .partitioner import (
     ECEPartitioner,
     LeidenPartitioner,
 )
-from .reader import CsvReader, JsonlReader, JsonReader, TxtReader
+from .reader import CSVReader, JSONLReader, JSONReader, PDFReader, TXTReader
 from .search.db.uniprot_search import UniProtSearch
 from .search.kg.wiki_search import WikiSearch
 from .search.web.bing_search import BingSearch
