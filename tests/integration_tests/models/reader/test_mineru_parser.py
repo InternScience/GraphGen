@@ -25,8 +25,8 @@ def test_parse_pdf():
 
     first = text_blocks[0]
     assert "text" in first
-    assert isinstance(first["text"], str)
-    assert first["text"].strip(), "Empty text content"
+    assert isinstance(first["content"], str)
+    assert first["content"].strip(), "Empty text content"
 
 
 def test_empty_pdf(tmp_path: Path) -> None:
