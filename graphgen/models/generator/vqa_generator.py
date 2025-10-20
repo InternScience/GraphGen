@@ -10,8 +10,8 @@ class VQAGenerator(BaseGenerator):
     def build_prompt(
         batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
-        pass
+        raise NotImplementedError("VQAGenerator.build_prompt is not implemented. Please provide an implementation for VQA prompt construction.")
 
     @staticmethod
     def parse_response(response: str) -> Any:
-        pass
+        raise NotImplementedError("VQAGenerator.parse_response is not implemented. Please provide an implementation for VQA response parsing.")
