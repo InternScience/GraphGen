@@ -184,13 +184,3 @@ class MinerUParser:
                 "MinerU is not installed or not found in PATH. Please install it from pip: \n"
                 "pip install -U 'mineru[core]'"
             ) from exc
-
-
-if __name__ == "__main__":
-    # Simple test
-    sample_pdf = "resources/input_examples/pdf_demo.pdf"
-    parser = MinerUParser()
-    blocks = parser.parse_pdf(
-        sample_pdf, device="cpu", method="auto", output_dir="cache"
-    )
-    print(f"Parsed {len(blocks)} blocks from {sample_pdf}")
