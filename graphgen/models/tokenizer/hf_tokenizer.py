@@ -8,6 +8,8 @@ from graphgen.bases import BaseTokenizer
 
 @dataclass
 class HFTokenizer(BaseTokenizer):
+    model_name: str = "cl100k_base"
+
     def __post_init__(self):
         self.enc = AutoTokenizer.from_pretrained(self.model_name)
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any
 
-from graphgen.bases import BaseGenerator
+from graphgen.bases import BaseGenerator, BaseLLMClient
 from graphgen.templates import AGGREGATED_GENERATION_PROMPT
 from graphgen.utils import compute_content_hash, detect_main_language, logger
 
@@ -14,6 +14,8 @@ class AggregatedGenerator(BaseGenerator):
                  The rephrased text is considered as answer to be used in the next step.
     2. question generation: Generate relevant questions based on the rephrased text.
     """
+
+    llm_client: BaseLLMClient = None
 
     @staticmethod
     def build_prompt(
