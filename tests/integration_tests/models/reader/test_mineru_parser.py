@@ -12,7 +12,6 @@ def test_check_bin():
 def test_parse_pdf():
     """Parse a real PDF and verify basic structure."""
     repo_root = Path(__file__).resolve().parents[4]
-    os.chdir(repo_root)
 
     sample_pdf = os.path.join(repo_root, "resources", "input_examples", "pdf_demo.pdf")
     parser = MinerUParser()

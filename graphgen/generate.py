@@ -72,7 +72,8 @@ def main():
 
     graph_gen.search(search_config=config["search"])
 
-    graph_gen.quiz_and_judge(quiz_and_judge_config=config["quiz_and_judge"])
+    if config.get("quiz_and_judge", {}).get("enabled"):
+        graph_gen.quiz_and_judge(quiz_and_judge_config=config["quiz_and_judge"])
 
     # TODO: add data filtering step here in the future
     # graph_gen.filter(filter_config=config["filter"])

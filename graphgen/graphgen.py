@@ -105,7 +105,7 @@ class GraphGen:
                 "content": doc["content"]
             }
             for doc in data
-            if doc["type"] == "text"
+            if doc.get("type", "text") == "text"
         }
         _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
         new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
