@@ -13,7 +13,8 @@ from graphgen.utils import logger
 class PDFReader(BaseReader):
     """
     PDF files are converted using MinerU, see [MinerU](https://github.com/opendatalab/MinerU).
-    After conversion, the generated markdown file is read using TxtReader and pictures can be used for VQA tasks.
+    After conversion, the resulting markdown file is parsed into text, images, tables, and formulas which can be used
+    for multi-modal graph generation.
     """
 
     def __init__(
