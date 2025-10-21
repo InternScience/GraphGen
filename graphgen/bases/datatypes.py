@@ -7,7 +7,17 @@ from typing import List, Union
 class Chunk:
     id: str
     content: str
+    type: str
     metadata: dict = field(default_factory=dict)
+
+    @staticmethod
+    def from_dict(key: str, data: dict) -> "Chunk":
+        return Chunk(
+            id=key,
+            content=data.get("content", ""),
+            type=data.get("type", "unknown"),
+            metadata={k: v for k, v in data.items() if k != "content"},
+        )
 
 
 @dataclass

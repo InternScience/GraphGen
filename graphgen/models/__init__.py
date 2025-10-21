@@ -6,7 +6,7 @@ from .generator import (
     MultiHopGenerator,
     VQAGenerator,
 )
-from .kg_builder import LightRAGKGBuilder
+from .kg_builder import LightRAGKGBuilder, MMKGBuilder
 from .llm.openai_client import OpenAIClient
 from .llm.topk_token_model import TopkTokenModel
 from .partitioner import (
