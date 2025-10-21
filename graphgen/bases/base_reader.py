@@ -40,9 +40,9 @@ class BaseReader(ABC):
             """
             if not path_or_url:
                 return False
-
             if not path_or_url.startswith(("http://", "https://", "ftp://")):
                 path = path_or_url.replace("file://", "", 1)
+                path = os.path.abspath(path)
                 return os.path.isfile(path)
             try:
                 resp = requests.head(path_or_url, allow_redirects=True, timeout=timeout)
