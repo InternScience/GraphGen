@@ -21,7 +21,7 @@
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
-[English](README.md) | [中文](README_ZH.md)
+[English](README.md) | [中文](README_zh)
 
 <details close>
 <summary><b>📚 Table of Contents</b></summary>
@@ -62,10 +62,18 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 
 ## 📌 Latest Updates
 
+- **2025.10.21**: We support PDF as input format for data generation now via [MinerU](https://github.com/opendatalab/MinerU).
 - **2025.09.29**: We auto-update gradio demo on [Hugging Face](https://huggingface.co/spaces/chenzihong/GraphGen) and [ModelScope](https://modelscope.cn/studios/chenzihong/GraphGen).
 - **2025.08.14**: We have added support for community detection in knowledge graphs using the Leiden algorithm, enabling the synthesis of Chain-of-Thought (CoT) data.
+
+<details>
+<summary>History</summary>
+
 - **2025.07.31**: We have added Google, Bing, Wikipedia, and UniProt as search back-ends.
 - **2025.04.21**: We have released the initial version of GraphGen.
+
+</details>
+
 
 ## 🚀 Quick Start
 
