@@ -9,6 +9,9 @@ class CSVReader(BaseReader):
     def read(self, file_path: str) -> List[Dict[str, Any]]:
 
         df = pd.read_csv(file_path)
-        if self.text_column not in df.columns:
-            raise ValueError(f"Missing '{self.text_column}' column in CSV file.")
-        return df.to_dict(orient="records")
+        for _, row in df.iterrows():
+            if row.get("type") == "text" and self.text_column not in row:
+                raise ValueError(
+                    f"Missing '{self.text_column}' in document: {row.to_dict()}"
+                )
+        return self.filter(df.to_dict(orient="records"))

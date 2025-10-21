@@ -12,12 +12,11 @@ class JSONLReader(BaseReader):
             for line in f:
                 try:
                     doc = json.loads(line)
-                    if self.text_column in doc:
-                        docs.append(doc)
-                    else:
+                    if doc["type"] == "text" and self.text_column not in doc:
                         raise ValueError(
                             f"Missing '{self.text_column}' in document: {doc}"
                         )
+                    docs.append(doc)
                 except json.JSONDecodeError as e:
                     logger.error("Error decoding JSON line: %s. Error: %s", line, e)
-        return docs
+        return self.filter(docs)
