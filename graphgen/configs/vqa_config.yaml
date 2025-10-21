@@ -1,5 +1,5 @@
 read:
-  input_file: resources/input_examples/pdf_demo.pdf # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
+  input_file: resources/input_examples/vqa_demo.json # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
 split:
   chunk_size: 1024 # chunk size for text splitting
   chunk_overlap: 100 # chunk overlap for text splitting

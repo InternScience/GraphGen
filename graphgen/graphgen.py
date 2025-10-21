@@ -92,6 +92,7 @@ class GraphGen:
         """
         # Step 1: Read files
         data = read_files(read_config["input_file"], self.working_dir)
+        print(data)
         if len(data) == 0:
             logger.warning("No data to process")
             return
