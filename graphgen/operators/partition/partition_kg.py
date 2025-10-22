@@ -2,6 +2,7 @@ from typing import Any
 
 from graphgen.bases import BaseGraphStorage, BaseTokenizer
 from graphgen.models import (
+    AnchorBFSPartitioner,
     BFSPartitioner,
     DFSPartitioner,
     ECEPartitioner,
@@ -39,6 +40,14 @@ async def partition_kg(
     elif method == "leiden":
         logger.info("Partitioning knowledge graph using Leiden method.")
         partitioner = LeidenPartitioner()
+    elif method == "anchor_bfs":
+        logger.info("Partitioning knowledge graph using Anchor BFS method.")
+        partitioner = AnchorBFSPartitioner(
+            anchor_type=method_params.get("anchor_type"),
+            anchor_ids=set(method_params.get("anchor_ids", []))
+            if method_params.get("anchor_ids")
+            else None,
+        )
     else:
         raise ValueError(f"Unsupported partition method: {method}")
 
