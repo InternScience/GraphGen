@@ -53,7 +53,7 @@ class AggregatedGenerator(BaseGenerator):
         #             ]
         #         )
         prompt = AGGREGATED_GENERATION_PROMPT[language]["ANSWER_REPHRASING"].format(
-            language=language, entities=entities_str, relationships=relations_str
+            entities=entities_str, relationships=relations_str
         )
         return prompt
 
