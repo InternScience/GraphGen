@@ -1,0 +1,3 @@
+from .kg_extraction import KG_EXTRACTION_PROMPT
+from .kg_summarization import KG_SUMMARIZATION_PROMPT
+from .mm_kg_extraction import MMKG_EXTRACTION_PROMPT

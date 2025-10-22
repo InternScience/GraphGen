@@ -13,7 +13,6 @@ def detect_main_language(text):
     def is_english_char(char):
         return char.isascii() and char.isalpha()
 
-    # 去除空格和标点符号
     text = "".join(char for char in text if char.strip())
 
     chinese_count = sum(1 for char in text if is_chinese_char(char))

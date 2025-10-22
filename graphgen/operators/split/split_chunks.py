@@ -71,7 +71,7 @@ async def chunk_documents(
                 for txt in text_chunks
             }
         else:
-            chunks = {doc_key.replace("doc-", "chunk-"): {**doc}}
+            chunks = {doc_key.replace("doc-", f"{doc_type}-"): {**doc}}
 
         inserting_chunks.update(chunks)
 
