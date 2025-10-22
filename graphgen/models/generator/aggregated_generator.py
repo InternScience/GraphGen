@@ -115,8 +115,8 @@ class AggregatedGenerator(BaseGenerator):
         question_generation_prompt = self._build_prompt_for_question_generation(context)
         response = await self.llm_client.generate_answer(question_generation_prompt)
         question = self.parse_response(response)["question"]
-        logger.info("Question: %s", question)
-        logger.info("Answer: %s", context)
+        logger.debug("Question: %s", question)
+        logger.debug("Answer: %s", context)
         qa_pairs = {
             compute_content_hash(question): {
                 "question": question,
