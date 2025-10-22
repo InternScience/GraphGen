@@ -10,7 +10,7 @@ class JSONReader(BaseReader):
             data = json.load(f)
             if isinstance(data, list):
                 for doc in data:
-                    if doc["type"] == "text" and self.text_column not in doc:
+                    if doc.get("type") == "text" and self.text_column not in doc:
                         raise ValueError(
                             f"Missing '{self.text_column}' in document: {doc}"
                         )
