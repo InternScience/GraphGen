@@ -9,7 +9,7 @@ from graphgen.models import LightRAGKGBuilder, OpenAIClient
 from graphgen.utils import run_concurrent
 
 
-async def build_kg(
+async def build_text_kg(
     llm_client: OpenAIClient,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],

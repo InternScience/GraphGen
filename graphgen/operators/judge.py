@@ -37,7 +37,7 @@ async def judge_statement(  # pylint: disable=too-many-statements
             edge_data = edge[2]
 
             if (not re_judge) and "loss" in edge_data and edge_data["loss"] is not None:
-                logger.info(
+                logger.debug(
                     "Edge %s -> %s already judged, loss: %s, skip",
                     source_id,
                     target_id,
@@ -63,7 +63,7 @@ async def judge_statement(  # pylint: disable=too-many-statements
 
                 loss = yes_no_loss_entropy(judgements, gts)
 
-                logger.info(
+                logger.debug(
                     "Edge %s -> %s description: %s loss: %s",
                     source_id,
                     target_id,
@@ -100,7 +100,7 @@ async def judge_statement(  # pylint: disable=too-many-statements
             node_data = node[1]
 
             if (not re_judge) and "loss" in node_data and node_data["loss"] is not None:
-                logger.info(
+                logger.debug(
                     "Node %s already judged, loss: %s, skip", node_id, node_data["loss"]
                 )
                 return node_id, node_data
@@ -123,14 +123,14 @@ async def judge_statement(  # pylint: disable=too-many-statements
 
                 loss = yes_no_loss_entropy(judgements, gts)
 
-                logger.info(
+                logger.debug(
                     "Node %s description: %s loss: %s", node_id, description, loss
                 )
 
                 node_data["loss"] = loss
             except Exception as e:  # pylint: disable=broad-except
                 logger.error("Error in judging entity %s: %s", node_id, e)
-                logger.info("Use default loss 0.1")
+                logger.error("Use default loss 0.1")
                 node_data["loss"] = -math.log(0.1)
 
             await graph_storage.update_node(node_id, node_data)
