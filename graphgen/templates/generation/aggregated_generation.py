@@ -100,7 +100,7 @@ ANSWER_REPHRASING_CONTEXT_ZH: str = """---角色---
 
 ANSWER_REPHRASING_EN: str = """---Role---
 You are an NLP expert responsible for generating a logically structured and coherent rephrased version of the TEXT based on ENTITIES and RELATIONSHIPS provided below.
-Use {language} as output language.
+Use English as output language.
 
 ---Goal---
 To generate a version of the text that is rephrased and conveys the same meaning as the original entity and relationship descriptions, while:
@@ -146,7 +146,7 @@ To generate a version of the text that is rephrased and conveys the same meaning
 
 ANSWER_REPHRASING_ZH: str = """---角色---
 你是一位NLP专家，负责根据下面提供的实体和关系生成逻辑结构清晰且连贯的文本重述版本。
-使用{language}作为输出语言。
+使用中文作为输出语言。
 
 ---目标---
 生成文本的重述版本，使其传达与原始实体和关系描述相同的含义，同时：
