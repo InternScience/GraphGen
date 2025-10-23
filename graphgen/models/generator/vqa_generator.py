@@ -1,13 +1,15 @@
 from dataclasses import dataclass
 from typing import Any
 
-from graphgen.bases import BaseGenerator
+from graphgen.bases import BaseGenerator, BaseLLMClient
 from graphgen.templates import VQA_GENERATION_PROMPT
 from graphgen.utils import compute_content_hash, detect_main_language, logger
 
 
 @dataclass
 class VQAGenerator(BaseGenerator):
+    llm_client: BaseLLMClient = None
+
     @staticmethod
     def build_prompt(
         batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]

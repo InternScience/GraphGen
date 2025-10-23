@@ -1,5 +1,6 @@
 import re
 from collections import defaultdict
+from dataclasses import dataclass
 from typing import Dict, List, Tuple
 
 from graphgen.bases import BaseLLMClient, Chunk
@@ -15,8 +16,10 @@ from graphgen.utils import (
 from .light_rag_kg_builder import LightRAGKGBuilder
 
 
+@dataclass
 class MMKGBuilder(LightRAGKGBuilder):
     llm_client: BaseLLMClient = None
+    max_loop: int = 3
 
     async def extract(
         self, chunk: Chunk
