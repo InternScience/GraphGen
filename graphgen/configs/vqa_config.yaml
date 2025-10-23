@@ -12,7 +12,7 @@ partition: # graph partition configuration
   method: anchor_bfs # partition method
   method_params:
     anchor_type: image # node type to select anchor nodes
-    max_units_per_community: 1 # atomic partition, one node or edge per community
+    max_units_per_community: 10 # atomic partition, one node or edge per community
 generate:
   mode: vqa # atomic, aggregated, multi_hop, cot, vqa
   data_format: ChatML # Alpaca, Sharegpt, ChatML
