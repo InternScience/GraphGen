@@ -60,7 +60,7 @@ async def partition_kg(
         nodes, edges = batch
         for node_id, node_data in nodes:
             entity_type = node_data.get("entity_type")
-            if "image" in entity_type.lower():
+            if entity_type and "image" in entity_type.lower():
                 node_id = node_id.strip('"').lower()
                 image_data = await chunk_storage.get_by_id(node_id)
                 if image_data:
