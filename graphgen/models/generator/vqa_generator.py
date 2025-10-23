@@ -60,3 +60,79 @@ class VQAGenerator(BaseGenerator):
                 "answer": answer,
             }
         return qa_pairs
+
+    async def generate(
+        self,
+        batch: tuple[
+            list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
+        ],
+    ) -> dict[str, Any]:
+        """
+        Generate QAs based on a given batch.
+        :param batch
+        :return: QA pairs
+        """
+        result = {}
+        prompt = self.build_prompt(batch)
+        response = await self.llm_client.generate_answer(prompt)
+        qa_pairs = self.parse_response(response)  # generate one or more QA pairs
+        nodes, _ = batch
+        for node in nodes:
+            node_data = node[1]
+            if "images" in node_data and node_data["images"]:
+                img_path = node_data["images"]
+                for qa in qa_pairs.values():
+                    qa["img_path"] = img_path
+        result.update(qa_pairs)
+        return result
+
+    @staticmethod
+    def format_generation_results(
+        results: list[dict], output_data_format: str
+    ) -> list[dict[str, Any]]:
+        if output_data_format == "Alpaca":
+            results = [
+                {
+                    "instruction": v["question"],
+                    "input": "",
+                    "output": v["answer"],
+                    "image": v.get("img_path", ""),
+                }
+                for item in results
+                for k, v in item.items()
+            ]
+        elif output_data_format == "Sharegpt":
+            results = [
+                {
+                    "conversations": [
+                        {
+                            "from": "human",
+                            "value": [
+                                {"text": v["question"], "image": v.get("img_path", "")}
+                            ],
+                        },
+                        {"from": "gpt", "value": v["answer"]},
+                    ]
+                }
+                for item in results
+                for k, v in item.items()
+            ]
+        elif output_data_format == "ChatML":
+            results = [
+                {
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": [
+                                {"text": v["question"], "image": v.get("img_path", "")}
+                            ],
+                        },
+                        {"role": "assistant", "content": v["answer"]},
+                    ]
+                }
+                for item in results
+                for k, v in item.items()
+            ]
+        else:
+            raise ValueError(f"Unknown output data format: {output_data_format}")
+        return results

@@ -286,7 +286,10 @@ class GraphGen:
     async def generate(self, partition_config: Dict, generate_config: Dict):
         # Step 1: partition the graph
         batches = await partition_kg(
-            self.graph_storage, self.tokenizer_instance, partition_config
+            self.graph_storage,
+            self.chunks_storage,
+            self.tokenizer_instance,
+            partition_config,
         )
 
         # Step 2： generate QA pairs
