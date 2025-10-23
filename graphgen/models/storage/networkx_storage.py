@@ -11,9 +11,6 @@ from graphgen.utils import logger
 
 @dataclass
 class NetworkXStorage(BaseGraphStorage):
-    working_dir: str = None
-    namespace: str = None
-
     @staticmethod
     def load_nx_graph(file_name) -> Optional[nx.Graph]:
         if os.path.exists(file_name):
