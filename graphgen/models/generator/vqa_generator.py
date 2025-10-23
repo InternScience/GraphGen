@@ -80,7 +80,7 @@ class VQAGenerator(BaseGenerator):
         for node in nodes:
             node_data = node[1]
             if "images" in node_data and node_data["images"]:
-                img_path = node_data["images"]
+                img_path = node_data["images"]["img_path"]
                 for qa in qa_pairs.values():
                     qa["img_path"] = img_path
         result.update(qa_pairs)
