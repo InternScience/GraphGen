@@ -74,7 +74,7 @@ class PDFReader(BaseReader):
         kwargs = {**self._default_kwargs, **override}
 
         mineru_result = self._call_mineru(pdf_path, kwargs)
-        return mineru_result
+        return self.filter(mineru_result)
 
     def _call_mineru(
         self, pdf_path: Path, kwargs: Dict[str, Any]
@@ -172,8 +172,6 @@ class MinerUParser:
             for key in ("page_idx", "bbox", "text_level"):
                 if item.get(key) is not None:
                     del item[key]
-            if item["type"] == "text" and not item["content"].strip():
-                continue
             results.append(item)
         return results
 

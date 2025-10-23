@@ -3,7 +3,7 @@ Given one entity or relationship, and a list of descriptions, all related to the
 Please concatenate all of these into a single, comprehensive description. Make sure to include information collected from all the descriptions.
 If the provided descriptions are contradictory, please resolve the contradictions and provide a single, coherent summary.
 Make sure it is written in third person, and include the entity names so we the have full context.
-Use {language} as output language.
+Use English as output language.
 
 #######
 -Data-
@@ -18,7 +18,7 @@ TEMPLATE_ZH = """你是一个NLP专家，负责根据以下提供的数据生成
 请将所有这些描述整合成一个综合描述。确保包含所有描述中收集的信息。
 如果提供的描述是矛盾的，请解决这些矛盾并提供一个连贯的总结。
 确保以第三人称写作，并包含实体名称，以便我们有完整的上下文。
-使用{language}作为输出语言。
+使用中文作为输出语言。
 
 #######
 -数据-
@@ -30,14 +30,9 @@ TEMPLATE_ZH = """你是一个NLP专家，负责根据以下提供的数据生成
 
 
 KG_SUMMARIZATION_PROMPT = {
-    "Chinese": {
-        "TEMPLATE": TEMPLATE_ZH
-    },
-    "English": {
-        "TEMPLATE": TEMPLATE_EN
-    },
+    "zh": {"TEMPLATE": TEMPLATE_ZH},
+    "en": {"TEMPLATE": TEMPLATE_EN},
     "FORMAT": {
-        "language": "English",
         "tuple_delimiter": "<|>",
         "record_delimiter": "##",
         "completion_delimiter": "<|COMPLETE|>",

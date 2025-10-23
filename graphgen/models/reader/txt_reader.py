@@ -11,4 +11,4 @@ class TXTReader(BaseReader):
                 line = line.strip()
                 if line:
                     docs.append({self.text_column: line})
-        return docs
+        return self.filter(docs)

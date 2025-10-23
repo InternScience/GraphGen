@@ -6,7 +6,6 @@ from typing import Dict, List, Tuple
 from graphgen.bases import BaseGraphStorage, BaseKGBuilder, BaseLLMClient, Chunk
 from graphgen.templates import KG_EXTRACTION_PROMPT, KG_SUMMARIZATION_PROMPT
 from graphgen.utils import (
-    detect_if_chinese,
     detect_main_language,
     handle_single_entity_extraction,
     handle_single_relationship_extraction,
@@ -33,8 +32,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
         content = chunk.content
 
         # step 1: language_detection
-        language = "Chinese" if detect_if_chinese(content) else "English"
-        KG_EXTRACTION_PROMPT["FORMAT"]["language"] = language
+        language = detect_main_language(content)
 
         hint_prompt = KG_EXTRACTION_PROMPT[language]["TEMPLATE"].format(
             **KG_EXTRACTION_PROMPT["FORMAT"], input_text=content
@@ -42,7 +40,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
         # step 2: initial glean
         final_result = await self.llm_client.generate_answer(hint_prompt)
-        logger.info("First extraction result: %s", final_result)
+        logger.debug("First extraction result: %s", final_result)
 
         # step3: iterative refinement
         history = pack_history_conversations(hint_prompt, final_result)
@@ -57,7 +55,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
             glean_result = await self.llm_client.generate_answer(
                 text=KG_EXTRACTION_PROMPT[language]["CONTINUE"], history=history
             )
-            logger.info("Loop %s glean: %s", loop_idx + 1, glean_result)
+            logger.debug("Loop %s glean: %s", loop_idx + 1, glean_result)
 
             history += pack_history_conversations(
                 KG_EXTRACTION_PROMPT[language]["CONTINUE"], glean_result
@@ -201,11 +199,6 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
         tokenizer_instance = self.llm_client.tokenizer
         language = detect_main_language(description)
-        if language == "en":
-            language = "English"
-        else:
-            language = "Chinese"
-        KG_EXTRACTION_PROMPT["FORMAT"]["language"] = language
 
         tokens = tokenizer_instance.encode(description)
         if len(tokens) < max_summary_tokens:

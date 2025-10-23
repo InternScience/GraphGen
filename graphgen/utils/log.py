@@ -8,7 +8,8 @@ logger = logging.getLogger("graphgen")
 
 def set_logger(
     log_file: str,
-    log_level: int = logging.INFO,
+    file_level: int = logging.DEBUG,
+    console_level: int = logging.INFO,
     *,
     if_stream: bool = True,
     max_bytes: int = 50 * 1024 * 1024,  # 50 MB
@@ -22,14 +23,18 @@ def set_logger(
     if force:
         logger.handlers.clear()
 
-    logger.setLevel(log_level)
+    logger.setLevel(
+        min(file_level, console_level)
+    )  # Set to the lowest level to capture all logs
     logger.propagate = False
 
     if logger.handlers:
         logger.handlers.clear()
 
     if if_stream:
-        console = RichHandler(level=log_level, show_path=False, rich_tracebacks=True)
+        console = RichHandler(
+            level=console_level, show_path=False, rich_tracebacks=True
+        )
         console.setFormatter(logging.Formatter("%(message)s"))
         logger.addHandler(console)
 
@@ -39,7 +44,7 @@ def set_logger(
         backupCount=backup_count,
         encoding="utf-8",
     )
-    file_handler.setLevel(log_level)
+    file_handler.setLevel(file_level)
     file_handler.setFormatter(
         logging.Formatter(
             "[%(asctime)s] %(levelname)s [%(name)s:%(filename)s:%(lineno)d] %(message)s",
