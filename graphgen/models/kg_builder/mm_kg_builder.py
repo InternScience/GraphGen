@@ -2,7 +2,7 @@ import re
 from collections import defaultdict
 from typing import Dict, List, Tuple
 
-from graphgen.bases import BaseLLMClient, Chunk
+from graphgen.bases import Chunk
 from graphgen.templates import MMKG_EXTRACTION_PROMPT
 from graphgen.utils import (
     detect_main_language,

@@ -1,12 +1,13 @@
+from dataclasses import dataclass
 from typing import Generic, TypeVar, Union
 
 T = TypeVar("T")
 
 
+@dataclass
 class StorageNameSpace:
-    def __init__(self, working_dir: str = None, namespace: str = None):
-        self.working_dir = working_dir
-        self.namespace = namespace
+    working_dir: str = None
+    namespace: str = None
 
     async def index_done_callback(self):
         """commit the storage operations after indexing"""
