@@ -101,7 +101,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
 
         anchor_ids: Set[str] = set()
         for node_id, meta in nodes:
-            node_type = str(meta.get("entity_type") or "").lower()
+            node_type = str(meta.get("entity_type", "")).lower()
             if self.anchor_type.lower() in node_type:
                 anchor_ids.add(node_id)
         return anchor_ids
