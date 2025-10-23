@@ -1,10 +1,9 @@
 # pylint: disable=C0301
-
 TEMPLATE_EN: str = """You are an NLP expert, skilled at analyzing text to extract named entities and their relationships.
 
 -Goal-
 Given a text document that is potentially relevant to this activity and a list of entity types, identify all entities of those types from the text and all relationships among the identified entities.
-Use {language} as output language.
+Use English as output language.
 
 -Steps-
 1. Identify all entities. For each identified entity, extract the following information:
@@ -23,7 +22,7 @@ Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tupl
 3. Identify high-level key words that summarize the main concepts, themes, or topics of the entire text. These should capture the overarching ideas present in the document.
 Format the content-level key words as ("content_keywords"{tuple_delimiter}<high_level_keywords>)
 
-4. Return output in {language} as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
+4. Return output in English as a single list of all the entities and relationships identified in steps 1 and 2. Use **{record_delimiter}** as the list delimiter.
 
 5. When finished, output {completion_delimiter}
 
@@ -85,7 +84,7 @@ TEMPLATE_ZH: str = """你是一个NLP专家，擅长分析文本提取命名实�
 
 -目标-
 给定一个实体类型列表和可能与列表相关的文本，从文本中识别所有这些类型的实体，以及这些实体之间所有的关系。
-使用{language}作为输出语言。
+使用中文作为输出语言。
 
 -步骤-
 1. 识别所有实体。对于每个识别的实体，提取以下信息：
@@ -189,12 +188,12 @@ Answer YES | NO if there are still entities and relationships that need to be ad
 IF_LOOP_ZH: str = """看起来可能仍然遗漏了一些实体和关系。如果仍有实体和关系需要添加，请回答YES | NO。"""
 
 KG_EXTRACTION_PROMPT: dict = {
-    "English": {
+    "en": {
         "TEMPLATE": TEMPLATE_EN,
         "CONTINUE": CONTINUE_EN,
         "IF_LOOP": IF_LOOP_EN,
     },
-    "Chinese": {
+    "zh": {
         "TEMPLATE": TEMPLATE_ZH,
         "CONTINUE": CONTINUE_ZH,
         "IF_LOOP": IF_LOOP_ZH,
@@ -205,6 +204,5 @@ KG_EXTRACTION_PROMPT: dict = {
         "completion_delimiter": "<|COMPLETE|>",
         "entity_types": "concept, date, location, keyword, organization, person, event, work, nature, artificial, \
 science, technology, mission, gene",
-        "language": "English",
     },
 }

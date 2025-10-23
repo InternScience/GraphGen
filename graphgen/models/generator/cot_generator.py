@@ -87,8 +87,8 @@ class CoTGenerator(BaseGenerator):
 
         question = question.strip('"')
         reasoning_path = reasoning_path.strip('"')
-        logger.info("CoT Question: %s", question)
-        logger.info("CoT Reasoning Path: %s", reasoning_path)
+        logger.debug("CoT Question: %s", question)
+        logger.debug("CoT Reasoning Path: %s", reasoning_path)
         return {
             "question": question,
             "reasoning_path": reasoning_path,
@@ -112,7 +112,7 @@ class CoTGenerator(BaseGenerator):
         question, reasoning_path = response["question"], response["reasoning_path"]
         prompt = self.build_prompt_for_cot_generation(batch, question, reasoning_path)
         cot_answer = await self.llm_client.generate_answer(prompt)
-        logger.info("CoT Answer: %s", cot_answer)
+        logger.debug("CoT Answer: %s", cot_answer)
         qa_pairs = {
             compute_content_hash(question): {
                 "question": question,

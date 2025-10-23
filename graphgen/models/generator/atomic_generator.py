@@ -44,8 +44,8 @@ class AtomicGenerator(BaseGenerator):
             return {}
         question = question.strip('"')
         answer = answer.strip('"')
-        logger.info("Question: %s", question)
-        logger.info("Answer: %s", answer)
+        logger.debug("Question: %s", question)
+        logger.debug("Answer: %s", answer)
         return {
             compute_content_hash(question): {
                 "question": question,

@@ -48,25 +48,31 @@ async def chunk_documents(
     async for doc_key, doc in tqdm_async(
         new_docs.items(), desc="[1/4]Chunking documents", unit="doc"
     ):
-        doc_language = detect_main_language(doc["content"])
-        text_chunks = split_chunks(
-            doc["content"],
-            language=doc_language,
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-        )
+        doc_type = doc.get("type")
+        if doc_type == "text":
+            doc_language = detect_main_language(doc["content"])
+            text_chunks = split_chunks(
+                doc["content"],
+                language=doc_language,
+                chunk_size=chunk_size,
+                chunk_overlap=chunk_overlap,
+            )
 
-        chunks = {
-            compute_content_hash(txt, prefix="chunk-"): {
-                "content": txt,
-                "full_doc_id": doc_key,
-                "length": len(tokenizer_instance.encode(txt))
-                if tokenizer_instance
-                else len(txt),
-                "language": doc_language,
+            chunks = {
+                compute_content_hash(txt, prefix="chunk-"): {
+                    "content": txt,
+                    "type": "text",
+                    "full_doc_id": doc_key,
+                    "length": len(tokenizer_instance.encode(txt))
+                    if tokenizer_instance
+                    else len(txt),
+                    "language": doc_language,
+                }
+                for txt in text_chunks
             }
-            for txt in text_chunks
-        }
+        else:
+            chunks = {doc_key.replace("doc-", f"{doc_type}-"): {**doc}}
+
         inserting_chunks.update(chunks)
 
         if progress_bar is not None:
