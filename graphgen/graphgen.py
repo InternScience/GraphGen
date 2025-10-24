@@ -118,16 +118,16 @@ class GraphGen:
             self.progress_bar,
         )
 
-        _add_chunk_keys = await self.chunks_storage.filter_keys(
-            list(inserting_chunks.keys())
-        )
-        inserting_chunks = {
-            k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
-        }
-
-        if len(inserting_chunks) == 0:
-            logger.warning("All chunks are already in the storage")
-            return
+        # _add_chunk_keys = await self.chunks_storage.filter_keys(
+        #     list(inserting_chunks.keys())
+        # )
+        # inserting_chunks = {
+        #     k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
+        # }
+        #
+        # if len(inserting_chunks) == 0:
+        #     logger.warning("All chunks are already in the storage")
+        #     return
 
         logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
         await self.chunks_storage.upsert(inserting_chunks)
@@ -136,6 +136,7 @@ class GraphGen:
             llm_client=self.synthesizer_llm_client,
             kg_instance=self.graph_storage,
             chunks=[Chunk.from_dict(k, v) for k, v in inserting_chunks.items()],
+            anchor_type=read_config.get("anchor_type", None),
             progress_bar=self.progress_bar,
         )
         if not _add_entities_and_relations:
