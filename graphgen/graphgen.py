@@ -1,7 +1,6 @@
 import asyncio
 import os
 import time
-from dataclasses import dataclass
 from typing import Dict, cast
 
 import gradio as gr
@@ -16,8 +15,7 @@ from graphgen.models import (
     Tokenizer,
 )
 from graphgen.operators import (
-    build_mm_kg,
-    build_text_kg,
+    build_kg,
     chunk_documents,
     generate_qas,
     judge_statement,
@@ -31,26 +29,26 @@ from graphgen.utils import async_to_sync_method, compute_mm_hash, logger
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
-@dataclass
 class GraphGen:
-    unique_id: int = int(time.time())
-    working_dir: str = os.path.join(sys_path, "cache")
+    def __init__(
+        self,
+        unique_id: int = int(time.time()),
+        working_dir: str = os.path.join(sys_path, "cache"),
+        tokenizer_instance: Tokenizer = None,
+        synthesizer_llm_client: OpenAIClient = None,
+        trainee_llm_client: OpenAIClient = None,
+        progress_bar: gr.Progress = None,
+    ):
+        self.unique_id = unique_id
+        self.working_dir = working_dir
 
-    # llm
-    tokenizer_instance: Tokenizer = None
-    synthesizer_llm_client: OpenAIClient = None
-    trainee_llm_client: OpenAIClient = None
-
-    # webui
-    progress_bar: gr.Progress = None
-
-    def __post_init__(self):
-        self.tokenizer_instance: Tokenizer = self.tokenizer_instance or Tokenizer(
+        # llm
+        self.tokenizer_instance: Tokenizer = tokenizer_instance or Tokenizer(
             model_name=os.getenv("TOKENIZER_MODEL")
         )
 
         self.synthesizer_llm_client: OpenAIClient = (
-            self.synthesizer_llm_client
+            synthesizer_llm_client
             or OpenAIClient(
                 model_name=os.getenv("SYNTHESIZER_MODEL"),
                 api_key=os.getenv("SYNTHESIZER_API_KEY"),
@@ -59,7 +57,7 @@ class GraphGen:
             )
         )
 
-        self.trainee_llm_client: OpenAIClient = self.trainee_llm_client or OpenAIClient(
+        self.trainee_llm_client: OpenAIClient = trainee_llm_client or OpenAIClient(
             model_name=os.getenv("TRAINEE_MODEL"),
             api_key=os.getenv("TRAINEE_API_KEY"),
             base_url=os.getenv("TRAINEE_BASE_URL"),
@@ -86,6 +84,9 @@ class GraphGen:
             namespace="qa",
         )
 
+        # webui
+        self.progress_bar: gr.Progress = progress_bar
+
     @async_to_sync_method
     async def insert(self, read_config: Dict, split_config: Dict):
         """
@@ -104,109 +105,45 @@ class GraphGen:
         new_docs = {compute_mm_hash(doc, prefix="doc-"): doc for doc in data}
         _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
         new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
-        new_text_docs = {k: v for k, v in new_docs.items() if v.get("type") == "text"}
-        new_mm_docs = {k: v for k, v in new_docs.items() if v.get("type") != "text"}
 
-        await self.full_docs_storage.upsert(new_docs)
+        if len(new_docs) == 0:
+            logger.warning("All documents are already in the storage")
+            return
 
-        async def _insert_text_docs(text_docs):
-            if len(text_docs) == 0:
-                logger.warning("All text docs are already in the storage")
-                return
-            logger.info("[New Docs] inserting %d text docs", len(text_docs))
-            # Step 2.1: Split chunks and filter existing ones
-            inserting_chunks = await chunk_documents(
-                text_docs,
-                split_config["chunk_size"],
-                split_config["chunk_overlap"],
-                self.tokenizer_instance,
-                self.progress_bar,
-            )
+        inserting_chunks = await chunk_documents(
+            new_docs,
+            split_config["chunk_size"],
+            split_config["chunk_overlap"],
+            self.tokenizer_instance,
+            self.progress_bar,
+        )
 
-            _add_chunk_keys = await self.chunks_storage.filter_keys(
-                list(inserting_chunks.keys())
-            )
-            inserting_chunks = {
-                k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
-            }
+        _add_chunk_keys = await self.chunks_storage.filter_keys(
+            list(inserting_chunks.keys())
+        )
+        inserting_chunks = {
+            k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
+        }
 
-            if len(inserting_chunks) == 0:
-                logger.warning("All text chunks are already in the storage")
-                return
+        if len(inserting_chunks) == 0:
+            logger.warning("All chunks are already in the storage")
+            return
 
-            logger.info("[New Chunks] inserting %d text chunks", len(inserting_chunks))
-            await self.chunks_storage.upsert(inserting_chunks)
+        logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
+        await self.chunks_storage.upsert(inserting_chunks)
 
-            # Step 2.2: Extract entities and relations from text chunks
-            logger.info("[Text Entity and Relation Extraction] processing ...")
-            _add_entities_and_relations = await build_text_kg(
-                llm_client=self.synthesizer_llm_client,
-                kg_instance=self.graph_storage,
-                chunks=[
-                    Chunk(id=k, content=v["content"], type="text")
-                    for k, v in inserting_chunks.items()
-                ],
-                progress_bar=self.progress_bar,
-            )
-            if not _add_entities_and_relations:
-                logger.warning("No entities or relations extracted from text chunks")
-                return
+        _add_entities_and_relations = await build_kg(
+            llm_client=self.synthesizer_llm_client,
+            kg_instance=self.graph_storage,
+            chunks=[Chunk.from_dict(k, v) for k, v in inserting_chunks.items()],
+            progress_bar=self.progress_bar,
+        )
+        if not _add_entities_and_relations:
+            logger.warning("No entities or relations extracted from text chunks")
+            return
 
-            await self._insert_done()
-            return _add_entities_and_relations
-
-        async def _insert_multi_modal_docs(mm_docs):
-            if len(mm_docs) == 0:
-                logger.warning("No multi-modal documents to insert")
-                return
-
-            logger.info("[New Docs] inserting %d multi-modal docs", len(mm_docs))
-
-            # Step 3.1: Transform multi-modal documents into chunks and filter existing ones
-            inserting_chunks = await chunk_documents(
-                mm_docs,
-                split_config["chunk_size"],
-                split_config["chunk_overlap"],
-                self.tokenizer_instance,
-                self.progress_bar,
-            )
-
-            _add_chunk_keys = await self.chunks_storage.filter_keys(
-                list(inserting_chunks.keys())
-            )
-            inserting_chunks = {
-                k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
-            }
-
-            if len(inserting_chunks) == 0:
-                logger.warning("All multi-modal chunks are already in the storage")
-                return
-
-            logger.info(
-                "[New Chunks] inserting %d multimodal chunks", len(inserting_chunks)
-            )
-            await self.chunks_storage.upsert(inserting_chunks)
-
-            # Step 3.2: Extract multi-modal entities and relations from chunks
-            logger.info("[Multi-modal Entity and Relation Extraction] processing ...")
-            _add_entities_and_relations = await build_mm_kg(
-                llm_client=self.synthesizer_llm_client,
-                kg_instance=self.graph_storage,
-                chunks=[Chunk.from_dict(k, v) for k, v in inserting_chunks.items()],
-                progress_bar=self.progress_bar,
-            )
-            if not _add_entities_and_relations:
-                logger.warning(
-                    "No entities or relations extracted from multi-modal chunks"
-                )
-                return
-            await self._insert_done()
-            return _add_entities_and_relations
-
-        # Step 2: Insert text documents
-        await _insert_text_docs(new_text_docs)
-        # Step 3: Insert multi-modal documents
-        await _insert_multi_modal_docs(new_mm_docs)
+        await self._insert_done()
+        return _add_entities_and_relations
 
     async def _insert_done(self):
         tasks = []
