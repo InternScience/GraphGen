@@ -2,4 +2,5 @@ from .aggregated_generation import AGGREGATED_GENERATION_PROMPT
 from .atomic_generation import ATOMIC_GENERATION_PROMPT
 from .cot_generation import COT_GENERATION_PROMPT
 from .multi_hop_generation import MULTI_HOP_GENERATION_PROMPT
+from .protein_qa_generation import PROTEIN_QA_GENERATION_PROMPT
 from .vqa_generation import VQA_GENERATION_PROMPT

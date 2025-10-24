@@ -1,3 +1,4 @@
+from .anchor import PROTEIN_ANCHOR_PROMPT
 from .coreference_resolution import COREFERENCE_RESOLUTION_PROMPT
 from .description_rephrasing import DESCRIPTION_REPHRASING_PROMPT
 from .generation import (
@@ -5,9 +6,15 @@ from .generation import (
     ATOMIC_GENERATION_PROMPT,
     COT_GENERATION_PROMPT,
     MULTI_HOP_GENERATION_PROMPT,
+    PROTEIN_QA_GENERATION_PROMPT,
     VQA_GENERATION_PROMPT,
 )
-from .kg import KG_EXTRACTION_PROMPT, KG_SUMMARIZATION_PROMPT, MMKG_EXTRACTION_PROMPT
+from .kg import (
+    KG_EXTRACTION_PROMPT,
+    KG_SUMMARIZATION_PROMPT,
+    MMKG_EXTRACTION_PROMPT,
+    PROTEIN_KG_EXTRACTION_PROMPT,
+)
 from .question_generation import QUESTION_GENERATION_PROMPT
 from .search_judgement import SEARCH_JUDGEMENT_PROMPT
 from .statement_judgement import STATEMENT_JUDGEMENT_PROMPT

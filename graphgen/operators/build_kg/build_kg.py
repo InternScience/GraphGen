@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 import gradio as gr
 
@@ -8,6 +8,7 @@ from graphgen.models import OpenAIClient
 from graphgen.utils import logger
 
 from .build_mm_kg import build_mm_kg
+from .build_mo_kg import build_mo_kg
 from .build_text_kg import build_text_kg
 
 
@@ -15,6 +16,7 @@ async def build_kg(
     llm_client: OpenAIClient,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
+    anchor_type: Optional[str] = None,
     progress_bar: gr.Progress = None,
 ):
     """
@@ -22,6 +24,7 @@ async def build_kg(
     :param llm_client: Synthesizer LLM model to extract entities and relationships
     :param kg_instance
     :param chunks
+    :param anchor_type: get this type of information from chunks
     :param progress_bar: Gradio progress bar to show the progress of the extraction
     :return:
     """
@@ -49,4 +52,17 @@ async def build_kg(
             chunks=mm_chunks,
             progress_bar=progress_bar,
         )
+
+    if anchor_type is not None:
+        logger.info("Anchoring data based on %s ...", anchor_type)
+        if anchor_type == "protein":
+            await build_mo_kg(
+                llm_client=llm_client,
+                kg_instance=kg_instance,
+                chunks=text_chunks,
+                progress_bar=progress_bar,
+            )
+        else:
+            logger.error("Anchor type %s is not supported yet.", anchor_type)
+
     return kg_instance

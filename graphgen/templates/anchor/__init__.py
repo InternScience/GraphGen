@@ -1,0 +1,1 @@
+from .protein_anchor import PROTEIN_ANCHOR_PROMPT
