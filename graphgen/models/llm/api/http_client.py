@@ -17,8 +17,21 @@ from graphgen.models.llm.limitter import RPM, TPM
 
 class HTTPClient(BaseLLMWrapper):
     """
-    最简“通用”实现：远端只要兼容 OpenAI 的 chat/completions 格式即可。
-    用 aiohttp 自行封装 retry、token 计数。
+    A generic async HTTP client for LLMs compatible with OpenAI's chat/completions format.
+    It uses aiohttp for making requests and includes retry logic and token usage tracking.
+    Usage example:
+        client = HTTPClient(
+            model_name="gpt-4o-mini",
+            base_url="http://localhost:8080",
+            api_key="your_api_key",
+            json_mode=True,
+            seed=42,
+            topk_per_token=5,
+            request_limit=True,
+        )
+
+        answer = await client.generate_answer("Hello, world!")
+        tokens = await client.generate_topk_per_token("Hello, world!")
     """
 
     def __init__(
@@ -65,7 +78,6 @@ class HTTPClient(BaseLLMWrapper):
         if self._session and not self._session.closed:
             await self._session.close()
 
-    # ---------------- 内部 ----------------
     def _build_body(self, text: str, history: List[str]) -> Dict[str, Any]:
         messages = []
         if self.system_prompt:
@@ -131,7 +143,6 @@ class HTTPClient(BaseLLMWrapper):
             )
         return self.filter_think_tags(msg)
 
-    # ---------------- generate_topk_per_token ----------------
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -157,7 +168,6 @@ class HTTPClient(BaseLLMWrapper):
             resp.raise_for_status()
             data = await resp.json()
 
-        # 与 openai 格式一致
         token_logprobs = data["choices"][0]["logprobs"]["content"]
         tokens = []
         for item in token_logprobs:
@@ -171,7 +181,6 @@ class HTTPClient(BaseLLMWrapper):
             )
         return tokens
 
-    # ---------------- generate_inputs_prob ----------------
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> List[Token]:
