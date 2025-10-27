@@ -15,19 +15,18 @@ from graphgen.bases.datatypes import Token
 from graphgen.models.llm.limitter import RPM, TPM
 
 
-class OllamaClient(BaseLLMWrapper):
+class HTTPClient(BaseLLMWrapper):
     """
-    要求本地/远端启动 ollama server（默认 11434 端口）。
-    ollama 的 /api/chat 在 0.1.24+ 支持 stream=False + raw=true 时返回 logprobs，
-    但 top_logprobs 字段目前官方未实现，因此 generate_topk_per_token 只能降级到
-    取单个 token 的 logprob；若未来官方支持再补全。
+    最简“通用”实现：远端只要兼容 OpenAI 的 chat/completions 格式即可。
+    用 aiohttp 自行封装 retry、token 计数。
     """
 
     def __init__(
         self,
         *,
-        model_name: str = "llama3.1",
-        base_url: str = "http://localhost:11434",
+        model_name: str,
+        base_url: str,
+        api_key: Optional[str] = None,
         json_mode: bool = False,
         seed: Optional[int] = None,
         topk_per_token: int = 5,
@@ -39,6 +38,7 @@ class OllamaClient(BaseLLMWrapper):
         super().__init__(**kwargs)
         self.model_name = model_name
         self.base_url = base_url.rstrip("/")
+        self.api_key = api_key
         self.json_mode = json_mode
         self.seed = seed
         self.topk_per_token = topk_per_token
@@ -50,21 +50,23 @@ class OllamaClient(BaseLLMWrapper):
         self._session: Optional[aiohttp.ClientSession] = None
 
     def __post_init__(self):
-        # 基类若未调，可手动触发
         pass
 
     @property
     def session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            self._session = aiohttp.ClientSession()
+            headers = {}
+            if self.api_key:
+                headers["Authorization"] = f"Bearer {self.api_key}"
+            self._session = aiohttp.ClientSession(headers=headers)
         return self._session
 
     async def close(self):
         if self._session and not self._session.closed:
             await self._session.close()
 
-    # ---------------- 内部构造 ----------------
-    def _build_payload(self, text: str, history: List[str]) -> Dict[str, Any]:
+    # ---------------- 内部 ----------------
+    def _build_body(self, text: str, history: List[str]) -> Dict[str, Any]:
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
@@ -75,24 +77,18 @@ class OllamaClient(BaseLLMWrapper):
                 messages.append({"role": "assistant", "content": history[i + 1]})
         messages.append({"role": "user", "content": text})
 
-        payload = {
+        body = {
             "model": self.model_name,
             "messages": messages,
-            "stream": False,
-            "options": {
-                "temperature": self.temperature,
-                "top_p": self.top_p,
-                "num_predict": self.max_tokens,
-            },
+            "temperature": self.temperature,
+            "top_p": self.top_p,
+            "max_tokens": self.max_tokens,
         }
-        if self.seed is not None:
-            payload["options"]["seed"] = self.seed
+        if self.seed:
+            body["seed"] = self.seed
         if self.json_mode:
-            payload["format"] = "json"
-        if self.topk_per_token > 0:
-            # ollama 0.1.24+ 支持 logprobs=true，但 top_logprobs 字段暂无
-            payload["options"]["logprobs"] = True
-        return payload
+            body["response_format"] = {"type": "json_object"}
+        return body
 
     # ---------------- generate_answer ----------------
     @retry(
@@ -106,60 +102,73 @@ class OllamaClient(BaseLLMWrapper):
         history: Optional[List[str]] = None,
         **extra: Any,
     ) -> str:
-        payload = self._build_payload(text, history or [])
-        # 简易 token 估算
+        body = self._build_body(text, history or [])
         prompt_tokens = sum(
-            len(self.tokenizer.encode(m["content"])) for m in payload["messages"]
+            len(self.tokenizer.encode(m["content"])) for m in body["messages"]
         )
-        est = prompt_tokens + self.max_tokens
+        est = prompt_tokens + body["max_tokens"]
 
         if self.request_limit:
             await self.rpm.wait(silent=True)
             await self.tpm.wait(est, silent=True)
 
         async with self.session.post(
-            f"{self.base_url}/api/chat",
-            json=payload,
+            f"{self.base_url}/v1/chat/completions",
+            json=body,
             timeout=aiohttp.ClientTimeout(total=60),
         ) as resp:
             resp.raise_for_status()
             data = await resp.json()
 
-        # ollama 返回 {"message":{"content":"..."}, "prompt_eval_count":xx, "eval_count":yy}
-        content = data["message"]["content"]
-        self.token_usage.append(
-            {
-                "prompt_tokens": data.get("prompt_eval_count", 0),
-                "completion_tokens": data.get("eval_count", 0),
-                "total_tokens": data.get("prompt_eval_count", 0)
-                + data.get("eval_count", 0),
-            }
-        )
-        return self.filter_think_tags(content)
+        msg = data["choices"][0]["message"]["content"]
+        if "usage" in data:
+            self.token_usage.append(
+                {
+                    "prompt_tokens": data["usage"]["prompt_tokens"],
+                    "completion_tokens": data["usage"]["completion_tokens"],
+                    "total_tokens": data["usage"]["total_tokens"],
+                }
+            )
+        return self.filter_think_tags(msg)
 
     # ---------------- generate_topk_per_token ----------------
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
+    )
     async def generate_topk_per_token(
         self,
         text: str,
         history: Optional[List[str]] = None,
         **extra: Any,
     ) -> List[Token]:
-        # ollama 目前无 top_logprobs，只能拿到每个 token 的 logprob
-        payload = self._build_payload(text, history or [])
-        payload["options"]["num_predict"] = 5  # 限制长度
+        body = self._build_body(text, history or [])
+        body["max_tokens"] = 5
+        if self.topk_per_token > 0:
+            body["logprobs"] = True
+            body["top_logprobs"] = self.topk_per_token
+
         async with self.session.post(
-            f"{self.base_url}/api/chat",
-            json=payload,
+            f"{self.base_url}/v1/chat/completions",
+            json=body,
             timeout=aiohttp.ClientTimeout(total=60),
         ) as resp:
             resp.raise_for_status()
             data = await resp.json()
 
-        # ollama 返回 logprobs 在 ["message"]["logprobs"]["content"] 列表
-        # 每项 {"token":str, "logprob":float}
+        # 与 openai 格式一致
+        token_logprobs = data["choices"][0]["logprobs"]["content"]
         tokens = []
-        for item in data.get("message", {}).get("logprobs", {}).get("content", []):
-            tokens.append(Token(item["token"], math.exp(item["logprob"])))
+        for item in token_logprobs:
+            candidates = [
+                Token(t["token"], math.exp(t["logprob"])) for t in item["top_logprobs"]
+            ]
+            tokens.append(
+                Token(
+                    item["token"], math.exp(item["logprob"]), top_candidates=candidates
+                )
+            )
         return tokens
 
     # ---------------- generate_inputs_prob ----------------
