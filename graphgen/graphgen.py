@@ -1,7 +1,6 @@
 import asyncio
 import os
 import time
-from dataclasses import dataclass
 from typing import Dict, cast
 
 import gradio as gr
@@ -31,26 +30,26 @@ from graphgen.utils import async_to_sync_method, compute_mm_hash, logger
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
-@dataclass
 class GraphGen:
-    unique_id: int = int(time.time())
-    working_dir: str = os.path.join(sys_path, "cache")
+    def __init__(
+        self,
+        unique_id: int = int(time.time()),
+        working_dir: str = os.path.join(sys_path, "cache"),
+        tokenizer_instance: Tokenizer = None,
+        synthesizer_llm_client: OpenAIClient = None,
+        trainee_llm_client: OpenAIClient = None,
+        progress_bar: gr.Progress = None,
+    ):
+        self.unique_id: int = unique_id
+        self.working_dir: str = working_dir
 
-    # llm
-    tokenizer_instance: Tokenizer = None
-    synthesizer_llm_client: OpenAIClient = None
-    trainee_llm_client: OpenAIClient = None
-
-    # webui
-    progress_bar: gr.Progress = None
-
-    def __post_init__(self):
-        self.tokenizer_instance: Tokenizer = self.tokenizer_instance or Tokenizer(
+        # llm
+        self.tokenizer_instance: Tokenizer = tokenizer_instance or Tokenizer(
             model_name=os.getenv("TOKENIZER_MODEL")
         )
 
         self.synthesizer_llm_client: OpenAIClient = (
-            self.synthesizer_llm_client
+            synthesizer_llm_client
             or OpenAIClient(
                 model_name=os.getenv("SYNTHESIZER_MODEL"),
                 api_key=os.getenv("SYNTHESIZER_API_KEY"),
@@ -59,7 +58,7 @@ class GraphGen:
             )
         )
 
-        self.trainee_llm_client: OpenAIClient = self.trainee_llm_client or OpenAIClient(
+        self.trainee_llm_client: OpenAIClient = trainee_llm_client or OpenAIClient(
             model_name=os.getenv("TRAINEE_MODEL"),
             api_key=os.getenv("TRAINEE_API_KEY"),
             base_url=os.getenv("TRAINEE_BASE_URL"),
@@ -85,6 +84,9 @@ class GraphGen:
             os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
             namespace="qa",
         )
+
+        # webui
+        self.progress_bar: gr.Progress = progress_bar
 
     @async_to_sync_method
     async def insert(self, read_config: Dict, split_config: Dict):
