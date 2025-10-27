@@ -8,6 +8,10 @@ from graphgen.bases.datatypes import Token
 
 
 class HuggingFaceWrapper(BaseLLMWrapper):
+    """
+    Async inference backend based on HuggingFace Transformers
+    """
+
     def __init__(
         self,
         model_path: str,
