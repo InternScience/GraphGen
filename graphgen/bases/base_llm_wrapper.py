@@ -8,7 +8,7 @@ from graphgen.bases.base_tokenizer import BaseTokenizer
 from graphgen.bases.datatypes import Token
 
 
-class BaseLLMClient(abc.ABC):
+class BaseLLMWrapper(abc.ABC):
     """
     LLM client base class, agnostic to specific backends (OpenAI / Ollama / ...).
     """

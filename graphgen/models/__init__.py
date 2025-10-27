@@ -1,3 +1,5 @@
+from graphgen.models.llm.api.openai_client import OpenAIClient
+
 from .evaluator import LengthEvaluator, MTLDEvaluator, RewardEvaluator, UniEvaluator
 from .generator import (
     AggregatedGenerator,
@@ -7,7 +9,6 @@ from .generator import (
     VQAGenerator,
 )
 from .kg_builder import LightRAGKGBuilder, MMKGBuilder
-from .llm.openai_client import OpenAIClient
 from .partitioner import (
     AnchorBFSPartitioner,
     BFSPartitioner,

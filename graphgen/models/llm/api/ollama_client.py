@@ -1,10 +1,10 @@
 # TODO: implement ollama client
 from typing import Any, List, Optional
 
-from graphgen.bases import BaseLLMClient, Token
+from graphgen.bases import BaseLLMWrapper, Token
 
 
-class OllamaClient(BaseLLMClient):
+class OllamaClient(BaseLLMWrapper):
     async def generate_answer(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> str:
