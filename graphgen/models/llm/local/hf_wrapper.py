@@ -1,8 +1,5 @@
 from typing import Any, List, Optional
 
-import torch
-from transformers import AutoModelForCausalLM, AutoTokenizer
-
 from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
 
@@ -14,24 +11,43 @@ class HuggingFaceWrapper(BaseLLMWrapper):
 
     def __init__(
         self,
-        model_path: str,
+        model: str,
         torch_dtype="auto",
         device_map="auto",
         trust_remote_code=True,
         temperature=0.0,
         top_p=1.0,
         topk=5,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(temperature=temperature, top_p=top_p, **kwargs)
+
+        try:
+            import torch
+            from transformers import (
+                AutoModelForCausalLM,
+                AutoTokenizer,
+                GenerationConfig,
+            )
+        except ImportError as exc:
+            raise ImportError(
+                "HuggingFaceWrapper requires torch and transformers. "
+                "Install them with:  pip install torch transformers"
+            ) from exc
+
+        self.torch = torch
+        self.AutoTokenizer = AutoTokenizer
+        self.AutoModelForCausalLM = AutoModelForCausalLM
+        self.GenerationConfig = GenerationConfig
+
         self.tokenizer = AutoTokenizer.from_pretrained(
-            model_path, trust_remote_code=trust_remote_code
+            model, trust_remote_code=trust_remote_code
         )
         if self.tokenizer.pad_token is None:
             self.tokenizer.pad_token = self.tokenizer.eos_token
 
         self.model = AutoModelForCausalLM.from_pretrained(
-            model_path,
+            model,
             torch_dtype=torch_dtype,
             device_map=device_map,
             trust_remote_code=trust_remote_code,
@@ -42,27 +58,28 @@ class HuggingFaceWrapper(BaseLLMWrapper):
         self.topk = topk
 
     @staticmethod
-    def _build_inputs(prompt: str, history: Optional[List[str]] = None):
+    def _build_inputs(prompt: str, history: Optional[List[str]] = None) -> str:
         msgs = history or []
         msgs.append(prompt)
-        full = "\n".join(msgs)
-        return full
+        return "\n".join(msgs)
 
     async def generate_answer(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> str:
         full = self._build_inputs(text, history)
         inputs = self.tokenizer(full, return_tensors="pt").to(self.model.device)
-        max_new = 512
-        with torch.no_grad():
-            out = self.model.generate(
-                **inputs,
-                max_new_tokens=max_new,
-                temperature=self.temperature if self.temperature > 0 else 0.0,
-                top_p=self.top_p if self.temperature > 0 else 1.0,
-                do_sample=self.temperature > 0,
-                pad_token_id=self.tokenizer.eos_token_id,
-            )
+
+        gen_config = self.GenerationConfig(
+            max_new_tokens=extra.get("max_new_tokens", 512),
+            temperature=self.temperature if self.temperature > 0 else 1.0,
+            top_p=self.top_p,
+            do_sample=self.temperature > 0,  # temperature==0 => greedy
+            pad_token_id=self.tokenizer.eos_token_id,
+        )
+
+        with self.torch.no_grad():
+            out = self.model.generate(**inputs, generation_config=gen_config)
+
         gen = out[0, inputs.input_ids.shape[-1] :]
         return self.tokenizer.decode(gen, skip_special_tokens=True)
 
@@ -71,17 +88,21 @@ class HuggingFaceWrapper(BaseLLMWrapper):
     ) -> List[Token]:
         full = self._build_inputs(text, history)
         inputs = self.tokenizer(full, return_tensors="pt").to(self.model.device)
-        with torch.no_grad():
+
+        with self.torch.no_grad():
             out = self.model.generate(
                 **inputs,
                 max_new_tokens=1,
-                temperature=0,
+                temperature=0.0,
                 return_dict_in_generate=True,
                 output_scores=True,
+                pad_token_id=self.tokenizer.eos_token_id,
             )
-        scores = out.scores[0][0]  # vocab
-        probs = torch.softmax(scores, dim=-1)
-        top_probs, top_idx = torch.topk(probs, k=self.topk)
+
+        scores = out.scores[0][0]  # (vocab,)
+        probs = self.torch.softmax(scores, dim=-1)
+        top_probs, top_idx = self.torch.topk(probs, k=self.topk)
+
         tokens = []
         for p, idx in zip(top_probs.cpu().numpy(), top_idx.cpu().numpy()):
             tokens.append(Token(self.tokenizer.decode([idx]), float(p)))
@@ -93,12 +114,15 @@ class HuggingFaceWrapper(BaseLLMWrapper):
         full = self._build_inputs(text, history)
         ids = self.tokenizer.encode(full)
         logprobs = []
+
         for i in range(1, len(ids) + 1):
             trunc = ids[: i - 1] + ids[i:] if i < len(ids) else ids[:-1]
-            inputs = torch.tensor([trunc]).to(self.model.device)
-            with torch.no_grad():
+            inputs = self.torch.tensor([trunc]).to(self.model.device)
+
+            with self.torch.no_grad():
                 logits = self.model(inputs).logits[0, -1, :]
-            probs = torch.softmax(logits, dim=-1)
+            probs = self.torch.softmax(logits, dim=-1)
+
             true_id = ids[i - 1]
             logprobs.append(
                 Token(
