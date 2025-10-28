@@ -62,9 +62,6 @@ class HTTPClient(BaseLLMWrapper):
         self.token_usage: List[Dict[str, int]] = []
         self._session: Optional[aiohttp.ClientSession] = None
 
-    def __post_init__(self):
-        pass
-
     @property
     def session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
@@ -102,7 +99,6 @@ class HTTPClient(BaseLLMWrapper):
             body["response_format"] = {"type": "json_object"}
         return body
 
-    # ---------------- generate_answer ----------------
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -184,4 +180,6 @@ class HTTPClient(BaseLLMWrapper):
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> List[Token]:
-        raise NotImplementedError
+        raise NotImplementedError(
+            "generate_inputs_prob is not implemented in HTTPClient"
+        )
