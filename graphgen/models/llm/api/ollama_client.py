@@ -17,10 +17,9 @@ from graphgen.models.llm.limitter import RPM, TPM
 
 class OllamaClient(BaseLLMWrapper):
     """
-    要求本地/远端启动 ollama server（默认 11434 端口）。
-    ollama 的 /api/chat 在 0.1.24+ 支持 stream=False + raw=true 时返回 logprobs，
-    但 top_logprobs 字段目前官方未实现，因此 generate_topk_per_token 只能降级到
-    取单个 token 的 logprob；若未来官方支持再补全。
+    Requires a local or remote Ollama server to be running (default port 11434).
+    The /api/chat endpoint in Ollama 0.1.24+ supports stream=False
+    and raw=true to return logprobs, but the top_logprobs field is not yet implemented by the official API.
     """
 
     def __init__(
@@ -63,12 +62,10 @@ class OllamaClient(BaseLLMWrapper):
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
-        if history:
-            assert len(history) % 2 == 0
-            for i in range(0, len(history), 2):
-                messages.append({"role": "user", "content": history[i]})
-                messages.append({"role": "assistant", "content": history[i + 1]})
-        messages.append({"role": "user", "content": text})
+
+        # chatml format: alternating user and assistant messages
+        if history and isinstance(history[0], dict):
+            messages.extend(history)
 
         payload = {
             "model": self.model_name,
@@ -85,7 +82,6 @@ class OllamaClient(BaseLLMWrapper):
         if self.json_mode:
             payload["format"] = "json"
         if self.topk_per_token > 0:
-            # ollama 0.1.24+ 支持 logprobs=true，但 top_logprobs 字段暂无
             payload["options"]["logprobs"] = True
         return payload
 
@@ -101,7 +97,6 @@ class OllamaClient(BaseLLMWrapper):
         **extra: Any,
     ) -> str:
         payload = self._build_payload(text, history or [])
-        # 简易 token 估算
         prompt_tokens = sum(
             len(self.tokenizer.encode(m["content"])) for m in payload["messages"]
         )
@@ -119,7 +114,7 @@ class OllamaClient(BaseLLMWrapper):
             resp.raise_for_status()
             data = await resp.json()
 
-        # ollama 返回 {"message":{"content":"..."}, "prompt_eval_count":xx, "eval_count":yy}
+        # {"message":{"content":"..."}, "prompt_eval_count":xx, "eval_count":yy}
         content = data["message"]["content"]
         self.token_usage.append(
             {
@@ -131,16 +126,14 @@ class OllamaClient(BaseLLMWrapper):
         )
         return self.filter_think_tags(content)
 
-    # ---------------- generate_topk_per_token ----------------
     async def generate_topk_per_token(
         self,
         text: str,
         history: Optional[List[str]] = None,
         **extra: Any,
     ) -> List[Token]:
-        # ollama 目前无 top_logprobs，只能拿到每个 token 的 logprob
         payload = self._build_payload(text, history or [])
-        payload["options"]["num_predict"] = 5  # 限制长度
+        payload["options"]["num_predict"] = 5
         async with self.session.post(
             f"{self.base_url}/api/chat",
             json=payload,
@@ -149,15 +142,12 @@ class OllamaClient(BaseLLMWrapper):
             resp.raise_for_status()
             data = await resp.json()
 
-        # ollama 返回 logprobs 在 ["message"]["logprobs"]["content"] 列表
-        # 每项 {"token":str, "logprob":float}
         tokens = []
         for item in data.get("message", {}).get("logprobs", {}).get("content", []):
             tokens.append(Token(item["token"], math.exp(item["logprob"])))
         return tokens
 
-    # ---------------- generate_inputs_prob ----------------
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> List[Token]:
-        raise NotImplementedError
+        raise NotImplementedError("Ollama API does not support per-token logprobs yet.")
