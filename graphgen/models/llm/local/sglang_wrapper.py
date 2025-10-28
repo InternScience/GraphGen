@@ -5,7 +5,7 @@ from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
 
 
-class SGLangBackend(BaseLLMWrapper):
+class SGLangWrapper(BaseLLMWrapper):
     """
     Async inference backend based on SGLang
     """
