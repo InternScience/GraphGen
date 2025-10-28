@@ -1,4 +1,3 @@
-import math
 from typing import Any, Dict, List, Optional
 
 from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
@@ -9,8 +8,7 @@ from graphgen.models.llm.limitter import RPM, TPM
 class OllamaClient(BaseLLMWrapper):
     """
     Requires a local or remote Ollama server to be running (default port 11434).
-    The /api/chat endpoint in Ollama 0.1.24+ supports stream=False
-    and raw=true to return logprobs, but the top_logprobs field is not yet implemented by the official API.
+    The top_logprobs field is not yet implemented by the official API.
     """
 
     def __init__(
@@ -99,29 +97,7 @@ class OllamaClient(BaseLLMWrapper):
         history: Optional[List[Dict[str, str]]] = None,
         **extra: Any,
     ) -> List[Token]:
-        messages = []
-        if self.system_prompt:
-            messages.append({"role": "system", "content": self.system_prompt})
-        if history:
-            messages.extend(history)
-        messages.append({"role": "user", "content": text})
-
-        response = await self.client.chat(
-            model=self.model_name,
-            messages=messages,
-            options={
-                "temperature": self.temperature,
-                "top_p": self.top_p,
-                "num_predict": 5,
-                "logprobs": True,
-            },
-            stream=False,
-        )
-
-        tokens = []
-        for item in response.get("message", {}).get("logprobs", {}).get("content", []):
-            tokens.append(Token(item["token"], math.exp(item["logprob"])))
-        return tokens
+        raise NotImplementedError("Ollama API does not support per-token top-k yet.")
 
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[Dict[str, str]]] = None, **extra: Any
