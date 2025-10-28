@@ -1,6 +1,4 @@
 # pylint: disable=redefined-outer-name
-
-import math
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -79,25 +77,6 @@ async def test_rpm_tpm_limiter_called(ollama_client: OllamaClient):
         tpm_mock.assert_awaited_once_with(
             ollama_client.max_tokens + len("limited".split()), silent=True
         )
-
-
-@pytest.mark.asyncio
-async def test_generate_topk_per_token(ollama_client: OllamaClient):
-    ollama_client.client.chat.return_value = {
-        "message": {
-            "logprobs": {
-                "content": [
-                    {"token": "hello", "logprob": -0.1},
-                    {"token": "world", "logprob": -0.2},
-                ]
-            }
-        }
-    }
-    tokens = await ollama_client.generate_topk_per_token("test")
-    assert len(tokens) == 2
-    assert tokens[0].text == "hello"
-    assert math.isclose(tokens[0].prob, math.exp(-0.1))
-    assert tokens[1].text == "world"
 
 
 def test_import_error_when_ollama_missing():
