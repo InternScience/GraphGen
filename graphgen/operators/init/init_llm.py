@@ -2,7 +2,7 @@ import os
 from typing import Any, Dict
 
 from graphgen.bases import BaseLLMWrapper
-from graphgen.models import HTTPClient, OpenAIClient, Tokenizer
+from graphgen.models import HTTPClient, OllamaClient, OpenAIClient, Tokenizer
 
 
 class LLMFactory:
@@ -31,6 +31,8 @@ class LLMFactory:
             return HTTPClient(**config)
         if backend == "openai_api":
             return OpenAIClient(**config)
+        if backend == "ollama_api":
+            return OllamaClient(**config)
         raise NotImplementedError(f"Backend {backend} is not implemented yet.")
 
 

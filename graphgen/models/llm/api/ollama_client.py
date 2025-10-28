@@ -67,6 +67,8 @@ class OllamaClient(BaseLLMWrapper):
         if history and isinstance(history[0], dict):
             messages.extend(history)
 
+        messages.append({"role": "user", "content": text})
+
         payload = {
             "model": self.model_name,
             "messages": messages,
