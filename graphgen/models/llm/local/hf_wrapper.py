@@ -31,8 +31,8 @@ class HuggingFaceWrapper(BaseLLMWrapper):
             )
         except ImportError as exc:
             raise ImportError(
-                "HuggingFaceWrapper requires torch and transformers. "
-                "Install them with:  pip install torch transformers"
+                "HuggingFaceWrapper requires torch, transformers and accelerate. "
+                "Install them with:  pip install torch transformers accelerate"
             ) from exc
 
         self.torch = torch
@@ -77,13 +77,18 @@ class HuggingFaceWrapper(BaseLLMWrapper):
         full = self._build_inputs(text, history)
         inputs = self.tokenizer(full, return_tensors="pt").to(self.model.device)
 
-        gen_config = self.GenerationConfig(
-            max_new_tokens=extra.get("max_new_tokens", 512),
-            temperature=self.temperature if self.temperature > 0 else 1.0,
-            top_p=self.top_p,
-            do_sample=self.temperature > 0,  # temperature==0 => greedy
-            pad_token_id=self.tokenizer.eos_token_id,
-        )
+        gen_kwargs = {
+            "max_new_tokens": extra.get("max_new_tokens", 512),
+            "do_sample": self.temperature > 0,
+            "temperature": self.temperature if self.temperature > 0 else 1.0,
+            "pad_token_id": self.tokenizer.eos_token_id,
+        }
+
+        # Add top_p and top_k only if temperature > 0
+        if self.temperature > 0:
+            gen_kwargs.update(top_p=self.top_p, top_k=self.topk)
+
+        gen_config = self.GenerationConfig(**gen_kwargs)
 
         with self.torch.no_grad():
             out = self.model.generate(**inputs, generation_config=gen_config)
@@ -101,7 +106,8 @@ class HuggingFaceWrapper(BaseLLMWrapper):
             out = self.model.generate(
                 **inputs,
                 max_new_tokens=1,
-                temperature=0.0,
+                do_sample=False,
+                temperature=1.0,
                 return_dict_in_generate=True,
                 output_scores=True,
                 pad_token_id=self.tokenizer.eos_token_id,
