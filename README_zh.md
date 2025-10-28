@@ -20,7 +20,7 @@
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
-[English](README.md) | [中文](README_zh)
+[English](README.md) | [中文](README_zh.md)
 
 <details close>
 <summary><b>📚 目录</b></summary>
