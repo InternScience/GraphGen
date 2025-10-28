@@ -34,10 +34,18 @@ class HTTPClient(BaseLLMWrapper):
         tokens = await client.generate_topk_per_token("Hello, world!")
     """
 
+    _instance: Optional["HTTPClient"] = None
+    _lock = asyncio.Lock()
+
+    def __new__(cls, **kwargs):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+        return cls._instance
+
     def __init__(
         self,
         *,
-        model_name: str,
+        model: str,
         base_url: str,
         api_key: Optional[str] = None,
         json_mode: bool = False,
@@ -48,8 +56,12 @@ class HTTPClient(BaseLLMWrapper):
         tpm: Optional[TPM] = None,
         **kwargs: Any,
     ):
+        # Initialize only once in the singleton pattern
+        if getattr(self, "_initialized", False):
+            return
+        self._initialized: bool = True
         super().__init__(**kwargs)
-        self.model_name = model_name
+        self.model_name = model
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.json_mode = json_mode
@@ -65,9 +77,9 @@ class HTTPClient(BaseLLMWrapper):
     @property
     def session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
-            headers = {}
-            if self.api_key:
-                headers["Authorization"] = f"Bearer {self.api_key}"
+            headers = (
+                {"Authorization": f"Bearer {self.api_key}"} if self.api_key else {}
+            )
             self._session = aiohttp.ClientSession(headers=headers)
         return self._session
 
@@ -79,11 +91,11 @@ class HTTPClient(BaseLLMWrapper):
         messages = []
         if self.system_prompt:
             messages.append({"role": "system", "content": self.system_prompt})
-        if history:
-            assert len(history) % 2 == 0
-            for i in range(0, len(history), 2):
-                messages.append({"role": "user", "content": history[i]})
-                messages.append({"role": "assistant", "content": history[i + 1]})
+
+        # chatml format: alternating user and assistant messages
+        if history and isinstance(history[0], dict):
+            messages.extend(history)
+
         messages.append({"role": "user", "content": text})
 
         body = {
@@ -121,7 +133,7 @@ class HTTPClient(BaseLLMWrapper):
             await self.tpm.wait(est, silent=True)
 
         async with self.session.post(
-            f"{self.base_url}/v1/chat/completions",
+            f"{self.base_url}/chat/completions",
             json=body,
             timeout=aiohttp.ClientTimeout(total=60),
         ) as resp:
@@ -157,7 +169,7 @@ class HTTPClient(BaseLLMWrapper):
             body["top_logprobs"] = self.topk_per_token
 
         async with self.session.post(
-            f"{self.base_url}/v1/chat/completions",
+            f"{self.base_url}/chat/completions",
             json=body,
             timeout=aiohttp.ClientTimeout(total=60),
         ) as resp:

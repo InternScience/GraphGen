@@ -61,7 +61,7 @@ async def test_generate_answer_records_usage_and_uses_limiters():
         "choices": [{"message": {"content": "Hello <think>world</think>!"}}],
         "usage": {"prompt_tokens": 3, "completion_tokens": 2, "total_tokens": 5},
     }
-    client = HTTPClient(model_name="m", base_url="http://test")
+    client = HTTPClient(model="m", base_url="http://test")
     client._session = MockSession(data)
     client.tokenizer = DummyTokenizer()
     client.system_prompt = "sys"
@@ -121,7 +121,7 @@ async def test_generate_topk_per_token_parses_logprobs():
             }
         ]
     }
-    client = HTTPClient(model_name="m", base_url="http://test")
+    client = HTTPClient(model="m", base_url="http://test")
     client._session = MockSession(data)
     client.tokenizer = DummyTokenizer()
     client.system_prompt = None

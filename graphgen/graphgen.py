@@ -19,6 +19,7 @@ from graphgen.operators import (
     build_text_kg,
     chunk_documents,
     generate_qas,
+    init_llm,
     judge_statement,
     partition_kg,
     quiz,
@@ -48,21 +49,12 @@ class GraphGen:
             model_name=os.getenv("TOKENIZER_MODEL")
         )
 
-        self.synthesizer_llm_client: OpenAIClient = (
-            synthesizer_llm_client
-            or OpenAIClient(
-                model_name=os.getenv("SYNTHESIZER_MODEL"),
-                api_key=os.getenv("SYNTHESIZER_API_KEY"),
-                base_url=os.getenv("SYNTHESIZER_BASE_URL"),
-                tokenizer=self.tokenizer_instance,
-            )
+        self.synthesizer_llm_client: OpenAIClient = synthesizer_llm_client or init_llm(
+            "synthesizer"
         )
 
-        self.trainee_llm_client: OpenAIClient = trainee_llm_client or OpenAIClient(
-            model_name=os.getenv("TRAINEE_MODEL"),
-            api_key=os.getenv("TRAINEE_API_KEY"),
-            base_url=os.getenv("TRAINEE_BASE_URL"),
-            tokenizer=self.tokenizer_instance,
+        self.trainee_llm_client: OpenAIClient = trainee_llm_client or init_llm(
+            "trainee"
         )
 
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(

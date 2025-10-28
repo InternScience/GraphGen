@@ -49,10 +49,6 @@ class OllamaClient(BaseLLMWrapper):
         self.token_usage: List[Dict[str, int]] = []
         self._session: Optional[aiohttp.ClientSession] = None
 
-    def __post_init__(self):
-        # 基类若未调，可手动触发
-        pass
-
     @property
     def session(self) -> aiohttp.ClientSession:
         if self._session is None or self._session.closed:
@@ -63,7 +59,6 @@ class OllamaClient(BaseLLMWrapper):
         if self._session and not self._session.closed:
             await self._session.close()
 
-    # ---------------- 内部构造 ----------------
     def _build_payload(self, text: str, history: List[str]) -> Dict[str, Any]:
         messages = []
         if self.system_prompt:
@@ -94,7 +89,6 @@ class OllamaClient(BaseLLMWrapper):
             payload["options"]["logprobs"] = True
         return payload
 
-    # ---------------- generate_answer ----------------
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=10),
