@@ -60,8 +60,16 @@ class HuggingFaceWrapper(BaseLLMWrapper):
     @staticmethod
     def _build_inputs(prompt: str, history: Optional[List[str]] = None) -> str:
         msgs = history or []
-        msgs.append(prompt)
-        return "\n".join(msgs)
+        lines = []
+        for m in msgs:
+            if isinstance(m, dict):
+                role = m.get("role", "")
+                content = m.get("content", "")
+                lines.append(f"{role}: {content}")
+            else:
+                lines.append(str(m))
+        lines.append(prompt)
+        return "\n".join(lines)
 
     async def generate_answer(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
