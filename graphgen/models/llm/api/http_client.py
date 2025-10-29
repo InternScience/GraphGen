@@ -163,7 +163,7 @@ class HTTPClient(BaseLLMWrapper):
         **extra: Any,
     ) -> List[Token]:
         body = self._build_body(text, history or [])
-        body["max_tokens"] = 5
+        body["max_tokens"] = 1
         if self.topk_per_token > 0:
             body["logprobs"] = True
             body["top_logprobs"] = self.topk_per_token
