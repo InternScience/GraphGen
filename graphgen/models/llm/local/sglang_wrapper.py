@@ -12,7 +12,7 @@ class SGLangWrapper(BaseLLMWrapper):
 
     def __init__(
         self,
-        model_path: str,
+        model: str,
         tp_size: int = 1,
         max_context_len: int = 4096,
         server_url: Optional[str] = None,
@@ -29,7 +29,7 @@ class SGLangWrapper(BaseLLMWrapper):
             raise ImportError(
                 "Please install sglang to use SGLangBackend: pip install sglang[all]>=0.4.4"
             ) from exc
-        self.model_path = model_path
+        self.model_path = model
         self.temperature = temperature
         self.top_p = top_p
         self.topk = topk
@@ -39,9 +39,7 @@ class SGLangWrapper(BaseLLMWrapper):
             self.runtime = RuntimeEndpoint(server_url)
         else:
             sgl.set_default_backend(
-                sgl.Runtime(
-                    model_path, tp_size=tp_size, max_context_len=max_context_len
-                )
+                sgl.Runtime(model, tp_size=tp_size, max_context_len=max_context_len)
             )
             self.runtime = sgl.get_default_backend()
 

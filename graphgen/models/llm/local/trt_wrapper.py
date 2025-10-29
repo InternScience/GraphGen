@@ -7,7 +7,7 @@ from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
 
 
-class TensorRTBackend(BaseLLMWrapper):
+class TensorRTWrapper(BaseLLMWrapper):
     """
     Async inference backend based on TensorRT-LLM
     """

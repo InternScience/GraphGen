@@ -43,6 +43,10 @@ class LLMFactory:
             from graphgen.models.llm.local.hf_wrapper import HuggingFaceWrapper
 
             return HuggingFaceWrapper(**config)
+        if backend == "sglang":
+            from graphgen.models.llm.local.sglang_wrapper import SGLangWrapper
+
+            return SGLangWrapper(**config)
         raise NotImplementedError(f"Backend {backend} is not implemented yet.")
 
 
