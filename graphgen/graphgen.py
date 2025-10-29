@@ -1,11 +1,11 @@
 import asyncio
 import os
 import time
-from dataclasses import dataclass
 from typing import Dict, cast
 
 import gradio as gr
 
+from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.base_storage import StorageNameSpace
 from graphgen.bases.datatypes import Chunk
 from graphgen.models import (
@@ -20,6 +20,7 @@ from graphgen.operators import (
     build_text_kg,
     chunk_documents,
     generate_qas,
+    init_llm,
     judge_statement,
     partition_kg,
     quiz,
@@ -31,40 +32,28 @@ from graphgen.utils import async_to_sync_method, compute_mm_hash, logger
 sys_path = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
-@dataclass
 class GraphGen:
-    unique_id: int = int(time.time())
-    working_dir: str = os.path.join(sys_path, "cache")
+    def __init__(
+        self,
+        unique_id: int = int(time.time()),
+        working_dir: str = os.path.join(sys_path, "cache"),
+        tokenizer_instance: Tokenizer = None,
+        synthesizer_llm_client: OpenAIClient = None,
+        trainee_llm_client: OpenAIClient = None,
+        progress_bar: gr.Progress = None,
+    ):
+        self.unique_id: int = unique_id
+        self.working_dir: str = working_dir
 
-    # llm
-    tokenizer_instance: Tokenizer = None
-    synthesizer_llm_client: OpenAIClient = None
-    trainee_llm_client: OpenAIClient = None
-
-    # webui
-    progress_bar: gr.Progress = None
-
-    def __post_init__(self):
-        self.tokenizer_instance: Tokenizer = self.tokenizer_instance or Tokenizer(
+        # llm
+        self.tokenizer_instance: Tokenizer = tokenizer_instance or Tokenizer(
             model_name=os.getenv("TOKENIZER_MODEL")
         )
 
-        self.synthesizer_llm_client: OpenAIClient = (
-            self.synthesizer_llm_client
-            or OpenAIClient(
-                model_name=os.getenv("SYNTHESIZER_MODEL"),
-                api_key=os.getenv("SYNTHESIZER_API_KEY"),
-                base_url=os.getenv("SYNTHESIZER_BASE_URL"),
-                tokenizer=self.tokenizer_instance,
-            )
+        self.synthesizer_llm_client: BaseLLMWrapper = (
+            synthesizer_llm_client or init_llm("synthesizer")
         )
-
-        self.trainee_llm_client: OpenAIClient = self.trainee_llm_client or OpenAIClient(
-            model_name=os.getenv("TRAINEE_MODEL"),
-            api_key=os.getenv("TRAINEE_API_KEY"),
-            base_url=os.getenv("TRAINEE_BASE_URL"),
-            tokenizer=self.tokenizer_instance,
-        )
+        self.trainee_llm_client: BaseLLMWrapper = trainee_llm_client
 
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="full_docs"
@@ -85,6 +74,9 @@ class GraphGen:
             os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
             namespace="qa",
         )
+
+        # webui
+        self.progress_bar: gr.Progress = progress_bar
 
     @async_to_sync_method
     async def insert(self, read_config: Dict, split_config: Dict):
@@ -272,6 +264,12 @@ class GraphGen:
         )
 
         # TODO： assert trainee_llm_client is valid before judge
+        if not self.trainee_llm_client:
+            # TODO: shutdown existing synthesizer_llm_client properly
+            logger.info("No trainee LLM client provided, initializing a new one.")
+            self.synthesizer_llm_client.shutdown()
+            self.trainee_llm_client = init_llm("trainee")
+
         re_judge = quiz_and_judge_config["re_judge"]
         _update_relations = await judge_statement(
             self.trainee_llm_client,
@@ -279,8 +277,15 @@ class GraphGen:
             self.rephrase_storage,
             re_judge,
         )
+
         await self.rephrase_storage.index_done_callback()
         await _update_relations.index_done_callback()
+
+        logger.info("Shutting down trainee LLM client.")
+        self.trainee_llm_client.shutdown()
+        self.trainee_llm_client = None
+        logger.info("Restarting synthesizer LLM client.")
+        self.synthesizer_llm_client.restart()
 
     @async_to_sync_method
     async def generate(self, partition_config: Dict, generate_config: Dict):
