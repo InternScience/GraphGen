@@ -4,6 +4,7 @@ from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
 
 
+# TODO: implement TGIWrapper methods
 class TGIWrapper(BaseLLMWrapper):
     """
     Async inference backend based on TGI (Text-Generation-Inference)
@@ -18,7 +19,6 @@ class TGIWrapper(BaseLLMWrapper):
         **kwargs: Any
     ):
         super().__init__(temperature=temperature, top_p=top_p, **kwargs)
-        # TODO: implement tgi wrapper
 
     async def generate_answer(
         self, text: str, history: Optional[List[str]] = None, **extra: Any

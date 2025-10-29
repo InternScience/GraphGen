@@ -1,112 +1,175 @@
 import math
-from typing import Any, List, Optional
+from typing import Any, Dict, List, Optional
 
-from graphgen.bases import BaseLLMWrapper
+from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
 
 
+# TODO: implement SGLangWrapper methods
 class SGLangWrapper(BaseLLMWrapper):
     """
-    Async inference backend based on SGLang
+    Async inference backend based on SGLang offline engine.
     """
 
     def __init__(
         self,
         model: str,
-        tp_size: int = 1,
-        max_context_len: int = 4096,
-        server_url: Optional[str] = None,
         temperature: float = 0.0,
         top_p: float = 1.0,
         topk: int = 5,
-        **kwargs: Any
+        **kwargs: Any,
     ):
         super().__init__(temperature=temperature, top_p=top_p, **kwargs)
         try:
             import sglang as sgl
-            from sglang.backend.runtime_endpoint import RuntimeEndpoint
+            from sglang.utils import async_stream_and_merge, stream_and_merge
         except ImportError as exc:
             raise ImportError(
-                "Please install sglang to use SGLangBackend: pip install sglang[all]>=0.4.4"
+                "SGLangWrapper requires sglang. Install it with: "
+                "uv pip install sglang --prerelease=allow"
             ) from exc
-        self.model_path = model
+
+        self.model_path: str = model
         self.temperature = temperature
         self.top_p = top_p
         self.topk = topk
 
-        # if server_url is given, connect to remote server; else launch local runtime
-        if server_url:
-            self.runtime = RuntimeEndpoint(server_url)
-        else:
-            sgl.set_default_backend(
-                sgl.Runtime(model, tp_size=tp_size, max_context_len=max_context_len)
-            )
-            self.runtime = sgl.get_default_backend()
+        # Initialise the offline engine
+        self.engine = sgl.Engine(model_path=self.model_path)
 
-        self.tokenizer = self.runtime.get_tokenizer()
+        # Keep helpers for streaming
+        self.async_stream_and_merge = async_stream_and_merge
+        self.stream_and_merge = stream_and_merge
 
     @staticmethod
-    def _messages_to_str(prompt: str, history: Optional[List[str]] = None) -> str:
-        if not history:
-            return prompt
-        return "\n".join(history) + "\n" + prompt
+    def _build_sampling_params(
+        temperature: float,
+        top_p: float,
+        max_tokens: int,
+        topk: int,
+        logprobs: bool = False,
+    ) -> Dict[str, Any]:
+        """Build SGLang-compatible sampling-params dict."""
+        params = {
+            "temperature": temperature,
+            "top_p": top_p,
+            "max_new_tokens": max_tokens,
+        }
+        if logprobs and topk > 0:
+            params["logprobs"] = topk
+        return params
+
+    def _prep_prompt(self, text: str, history: Optional[List[str]] = None) -> str:
+        """Convert raw text (+ optional history) into a single prompt string."""
+        parts = []
+        if self.system_prompt:
+            parts.append(self.system_prompt)
+        if history:
+            assert len(history) % 2 == 0, "History must have even length (u/a turns)."
+            parts.extend(history)
+        parts.append(text)
+        return "\n".join(parts)
+
+    def _tokens_from_output(self, output: Dict[str, Any]) -> List[Token]:
+        """
+        Convert SGLang logprobs output into List[Token].
+        SGLang returns:
+            output['logprobs'][t] -> {
+                "token": <str>,
+                "logprob": <float>,
+                "top_k_tokens": [...],
+                "top_k_logprobs": [...],
+            }
+        """
+        tokens: List[Token] = []
+        if "logprobs" not in output or not output["logprobs"]:
+            return tokens
+
+        for entry in output["logprobs"]:
+            token_str = entry["token"]
+            logprob = entry["logprob"]
+            prob = math.exp(logprob)
+
+            top_candidates = []
+            if self.topk > 0 and "top_k_tokens" in entry:
+                for tok, lp in zip(entry["top_k_tokens"], entry["top_k_logprobs"]):
+                    top_candidates.append(Token(tok, math.exp(lp)))
+
+            tokens.append(Token(token_str, prob, top_candidates=top_candidates))
+        return tokens
 
     async def generate_answer(
-        self, text: str, history: Optional[List[str]] = None, **extra: Any
+        self,
+        text: str,
+        history: Optional[List[str]] = None,
+        **extra: Any,
     ) -> str:
-        text = self._messages_to_str(text, history)
-
-        output = await self.runtime.generate(
-            text,
-            max_new_tokens=512,
-            temperature=self.temperature if self.temperature > 0 else 0,
+        prompt = self._prep_prompt(text, history)
+        sampling_params = self._build_sampling_params(
+            temperature=self.temperature,
             top_p=self.top_p,
-            stop=None,
+            max_tokens=self.max_tokens,
+            topk=0,  # no logprobs needed for simple generation
         )
-        return output
+
+        outputs = self.engine.generate([prompt], sampling_params)
+        return self.filter_think_tags(outputs[0]["text"])
 
     async def generate_topk_per_token(
-        self, text: str, history: Optional[List[str]] = None, **extra: Any
+        self,
+        text: str,
+        history: Optional[List[str]] = None,
+        **extra: Any,
     ) -> List[Token]:
-        text = self._messages_to_str(text, history)
-
-        output_obj = await self.runtime.generate(
-            text,
-            max_new_tokens=1,
-            temperature=0,
-            return_logprob=True,
-            top_logprobs=self.topk,
-            logprob_start_len=0,
+        prompt = self._prep_prompt(text, history)
+        sampling_params = self._build_sampling_params(
+            temperature=self.temperature,
+            top_p=self.top_p,
+            max_tokens=5,  # keep short for token-level analysis
+            topk=self.topk,
+            logprobs=True,
         )
 
-        topk_list = output_obj["meta_info"]["top_logprobs"][
-            0
-        ]  # List[ (token_str, logprob), ... ]
-        return [Token(tok, math.exp(logprob)) for tok, logprob in topk_list]
+        outputs = self.engine.generate([prompt], sampling_params)
+        return self._tokens_from_output(outputs[0])
 
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> List[Token]:
-        text = self._messages_to_str(text, history)
-        ids = self.tokenizer.encode(text)
-        if not ids:
-            return []
+        """
+        Return per-token probabilities for the *input* sequence.
+        SGLang offline engine does not expose this directly; we emulate by
+        generating 0 new tokens with logprobs enabled (returns prompt logprobs).
+        """
+        prompt = self._prep_prompt(text, history)
+        sampling_params = self._build_sampling_params(
+            temperature=0.0,  # deterministic
+            top_p=1.0,
+            max_tokens=0,  # generate nothing
+            topk=self.topk,
+            logprobs=True,
+        )
 
-        logprob_tokens: List[Token] = []
-
-        for i in range(1, len(ids) + 1):
-            trunc_ids = ids[: i - 1] + ids[i:] if i < len(ids) else ids[:-1]
-            trunc_text = self.tokenizer.decode(trunc_ids)
-
-            output_obj = await self.runtime.generate(
-                trunc_text,
-                max_new_tokens=1,
-                temperature=0,
-                return_logprob=True,
-                top_logprobs=1,
-                logprob_start_len=len(trunc_ids) - 1,
+        outputs = self.engine.generate([prompt], sampling_params)
+        # SGLang returns prompt logprobs under key 'prompt_logprobs' when max_new_tokens=0
+        prompt_logprobs = outputs[0].get("prompt_logprobs", [])
+        tokens: List[Token] = []
+        for entry in prompt_logprobs:
+            tokens.append(
+                Token(
+                    text=entry["token"],
+                    prob=math.exp(entry["logprob"]),
+                    top_candidates=[],  # SGLang does not give top-k for prompt tokens
+                )
             )
-            top1 = output_obj["meta_info"]["top_logprobs"][0][0]
-            logprob_tokens.append(Token(top1[0], math.exp(top1[1])))
+        return tokens
 
-        return logprob_tokens
+    def shutdown(self) -> None:
+        """Gracefully shutdown the SGLang engine."""
+        if hasattr(self, "engine"):
+            self.engine.shutdown()
+
+    def restart(self) -> None:
+        """Restart the SGLang engine."""
+        self.shutdown()
+        self.engine = self.engine.__class__(model_path=self.model_path)

@@ -25,7 +25,7 @@ class VLLMWrapper(BaseLLMWrapper):
             from vllm import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
         except ImportError as exc:
             raise ImportError(
-                "VLLMWrapper requires vllm. Install it with:  pip install vllm"
+                "VLLMWrapper requires vllm. Install it with:  uv pip install vllm --torch-backend=auto"
             ) from exc
 
         self.SamplingParams = SamplingParams
@@ -42,9 +42,6 @@ class VLLMWrapper(BaseLLMWrapper):
         self.top_p = top_p
         self.topk = topk
 
-    # ------------------------------------------------------------------
-    # helper：把 history 拼成多轮格式（与 HFWrapper 保持一致）
-    # ------------------------------------------------------------------
     @staticmethod
     def _build_inputs(prompt: str, history: Optional[List[str]] = None) -> str:
         msgs = history or []
@@ -59,9 +56,6 @@ class VLLMWrapper(BaseLLMWrapper):
         lines.append(prompt)
         return "\n".join(lines)
 
-    # ------------------------------------------------------------------
-    # 1. 常规生成
-    # ------------------------------------------------------------------
     async def generate_answer(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> str:
@@ -73,28 +67,22 @@ class VLLMWrapper(BaseLLMWrapper):
             max_tokens=extra.get("max_new_tokens", 512),
         )
 
-        # vLLM 的异步接口
         results = []
         async for req_output in self.engine.generate(
             full_prompt, sp, request_id="graphgen_req"
         ):
             results = req_output.outputs
-        # 取最后一次返回
         return results[-1].text
 
-    # ------------------------------------------------------------------
-    # 2. 只生成 1 个新 token，返回 top-k 概率
-    # ------------------------------------------------------------------
     async def generate_topk_per_token(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> List[Token]:
         full_prompt = self._build_inputs(text, history)
 
-        # 强制 greedy（temperature=0）并返回 logprobs
         sp = self.SamplingParams(
             temperature=0,
             max_tokens=1,
-            logprobs=self.topk,  # vLLM 会给出 top-k 的 logprob
+            logprobs=self.topk,
         )
 
         results = []
@@ -102,20 +90,16 @@ class VLLMWrapper(BaseLLMWrapper):
             full_prompt, sp, request_id="graphgen_topk"
         ):
             results = req_output.outputs
-        top_logprobs = results[-1].logprobs[0]  # 第 1 个新生成 token 的 top-k
+        top_logprobs = results[-1].logprobs[0]
 
         tokens = []
         for _, logprob_obj in top_logprobs.items():
             tok_str = logprob_obj.decoded_token
             prob = float(logprob_obj.logprob.exp())
             tokens.append(Token(tok_str, prob))
-        # 按概率从高到低排序
         tokens.sort(key=lambda x: -x.prob)
         return tokens
 
-    # ------------------------------------------------------------------
-    # 3. 逐 token 计算“被模型预测到”的概率（与 HFWrapper 语义对齐）
-    # ------------------------------------------------------------------
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> List[Token]:
