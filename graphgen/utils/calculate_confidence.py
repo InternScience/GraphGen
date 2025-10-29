@@ -61,8 +61,8 @@ def _normalize_yes_no(tokens: List[Token]) -> Dict[str, float]:
     {"yes": 0.8, "no": 0.2}
     Among them, "yes" and "yeah" are synonyms for "yes",
     while "no" and "nope" are synonyms for "no".
-    If neither "yes" nor "no" synonyms are present, it returns:
-    {"yes": 0.5, "no": 0.5}
+    If no "yes" or "no" synonyms are present, it will be judged as uncertain.
+    An uncertain result will also be considered as opposite to the ground truth.
     """
     yes_syno = {
         # English yes synonyms
@@ -126,17 +126,23 @@ def _normalize_yes_no(tokens: List[Token]) -> Dict[str, float]:
 
     yes_prob = 0.0
     no_prob = 0.0
+    uncertain_prob = 0.0
     for tok in tokens:
         t = tok.text.lower().strip()
         if t in yes_syno:
             yes_prob += tok.prob
         elif t in no_syno:
             no_prob += tok.prob
+        else:
+            uncertain_prob += tok.prob
 
-    total = yes_prob + no_prob
-    if total == 0:
-        return {"yes": 0.5, "no": 0.5}
-    return {"yes": yes_prob / total, "no": no_prob / total}
+    total = yes_prob + no_prob + uncertain_prob
+
+    return {
+        "yes": yes_prob / total,
+        "no": no_prob / total,
+        "uncertain": uncertain_prob / total,
+    }
 
 
 def yes_no_loss_entropy(
