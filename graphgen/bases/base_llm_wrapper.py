@@ -66,3 +66,9 @@ class BaseLLMWrapper(abc.ABC):
         think_pattern = re.compile(rf"<{think_tag}>.*?</{think_tag}>", re.DOTALL)
         filtered_text = think_pattern.sub("", text).strip()
         return filtered_text if filtered_text else text.strip()
+
+    def shutdown(self) -> None:
+        """Shutdown the LLM engine if applicable."""
+
+    def restart(self) -> None:
+        """Reinitialize the LLM engine if applicable."""

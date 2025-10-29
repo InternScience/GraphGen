@@ -1,5 +1,5 @@
 import os
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 from graphgen.bases import BaseLLMWrapper
 from graphgen.models import Tokenizer
@@ -62,7 +62,7 @@ def _load_env_group(prefix: str) -> Dict[str, Any]:
     }
 
 
-def init_llm(model_type: str) -> BaseLLMWrapper:
+def init_llm(model_type: str) -> Optional[BaseLLMWrapper]:
     if model_type == "synthesizer":
         prefix = "SYNTHESIZER_"
     elif model_type == "trainee":
@@ -70,6 +70,9 @@ def init_llm(model_type: str) -> BaseLLMWrapper:
     else:
         raise NotImplementedError(f"Model type {model_type} is not implemented yet.")
     config = _load_env_group(prefix)
+    # if config is empty, return None
+    if not config:
+        return None
     backend = config.pop("backend")
     llm_wrapper = LLMFactory.create_llm_wrapper(backend, config)
     return llm_wrapper
