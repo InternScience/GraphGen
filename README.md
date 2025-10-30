@@ -84,7 +84,7 @@ We support various LLM inference servers, API servers, inference clients, input 
 
 | Inference Server                               | Api Server                                                                            | Inference Client                                                     | Input File Format                  | Data Modal         | Output Data Format           | Output Data Type                                |
 |------------------------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------|--------------------|------------------------------|-------------------------------------------------|
-| [![hf-icon]][hf] HF<br>[![sg-icon]][sg] SGLang | [![sif-icon]][sif] SiliconFlow<br>[![oai-icon]][oai] OpenAI<br>[![az-icon]][az] Azure | Generic HTTP<br>[![ol-icon]][ol] Ollama<br>[![oai-icon]][oai] OpenAI | CSV<br>JSON<br>JSONL<br>PDF<br>TXT | TEXT<br>TEXT+IMAGE | Alpaca<br>ChatML<br>Sharegpt | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
+| [![hf-icon] HF][hf]<br>[![sg-icon] SGLang][sg] | [![sif-icon] SiliconFlow][sif]<br>[![oai-icon] OpenAI][oai]<br>[![az-icon] Azure][az] | Generic HTTP<br>[![ol-icon] Ollama][ol]<br>[![oai-icon] OpenAI][oai] | CSV<br>JSON<br>JSONL<br>PDF<br>TXT | TEXT<br>TEXT+IMAGE | Alpaca<br>ChatML<br>Sharegpt | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
 
 <!-- links -->
 [hf]: https://huggingface.co/docs/transformers/index
