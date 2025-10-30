@@ -83,7 +83,7 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 We support various LLM inference servers, API servers, inference clients, input file formats, data modalities, output data formats, and output data types.
 Users can flexibly configure according to the needs of synthetic data.
 
-| Inference Server                             | Api Server                                                                     | Inference Client                                           | Input File Format                  | Data Modal    | Output Data Format           | Output Data Type                                |
+| Inference Server                             | Api Server                                                                     | Inference Client                                           | Input File Format                  | Data Modal    | Data Format                  | Data Type                                       |
 |----------------------------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------|------------------------------------|---------------|------------------------------|-------------------------------------------------|
 | [![hf-icon]HF][hf]<br>[![sg-icon]SGLang][sg] | [![sif-icon]Silicon][sif]<br>[![oai-icon]OpenAI][oai]<br>[![az-icon]Azure][az] | HTTP<br>[![ol-icon]Ollama][ol]<br>[![oai-icon]OpenAI][oai] | CSV<br>JSON<br>JSONL<br>PDF<br>TXT | TEXT<br>IMAGE | Alpaca<br>ChatML<br>Sharegpt | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
 
