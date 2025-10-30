@@ -2,9 +2,9 @@ from typing import List, Optional
 
 import gradio as gr
 
+from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.base_storage import BaseGraphStorage
 from graphgen.bases.datatypes import Chunk
-from graphgen.models import OpenAIClient
 from graphgen.utils import logger
 
 from .build_mm_kg import build_mm_kg
@@ -13,7 +13,7 @@ from .build_text_kg import build_text_kg
 
 
 async def build_kg(
-    llm_client: OpenAIClient,
+    llm_client: BaseLLMWrapper,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
     anchor_type: Optional[str] = None,

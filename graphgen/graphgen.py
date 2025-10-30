@@ -108,16 +108,16 @@ class GraphGen:
             self.progress_bar,
         )
 
-        # _add_chunk_keys = await self.chunks_storage.filter_keys(
-        #     list(inserting_chunks.keys())
-        # )
-        # inserting_chunks = {
-        #     k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
-        # }
-        #
-        # if len(inserting_chunks) == 0:
-        #     logger.warning("All chunks are already in the storage")
-        #     return
+        _add_chunk_keys = await self.chunks_storage.filter_keys(
+            list(inserting_chunks.keys())
+        )
+        inserting_chunks = {
+            k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
+        }
+
+        if len(inserting_chunks) == 0:
+            logger.warning("All chunks are already in the storage")
+            return
 
         logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
         await self.chunks_storage.upsert(inserting_chunks)
