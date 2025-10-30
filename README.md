@@ -28,6 +28,7 @@ GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthe
 
 - 📝 [What is GraphGen?](#-what-is-graphgen)
 - 📌 [Latest Updates](#-latest-updates)
+- ⚙️ [Support List](#-support-list)
 - 🚀 [Quick Start](#-quick-start)
 - 🏗️ [System Architecture](#-system-architecture)
 - 🍀 [Acknowledgements](#-acknowledgements)
@@ -47,13 +48,13 @@ GraphGen is a framework for synthetic data generation guided by knowledge graphs
 
 Here is post-training result which **over 50% SFT data** comes from GraphGen and our data clean pipeline.
 
-| Domain | Dataset | Ours | Qwen2.5-7B-Instruct (baseline)	|
-| :-: | :-: | :-: | :-: |
-| Plant| [SeedBench](https://github.com/open-sciencelab/SeedBench) | **65.9** | 51.5 |
-| Common | CMMLU | 73.6 | **75.8** |
-| Knowledge | GPQA-Diamond | **40.0** | 33.3 |
-| Math | AIME24 | **20.6** | 16.7 |
-| | AIME25 | **22.7** | 7.2 |
+|  Domain   |                          Dataset                          |   Ours   | Qwen2.5-7B-Instruct (baseline) |
+|:---------:|:---------------------------------------------------------:|:--------:|:------------------------------:|
+|   Plant   | [SeedBench](https://github.com/open-sciencelab/SeedBench) | **65.9** |              51.5              |
+|  Common   |                           CMMLU                           |   73.6   |            **75.8**            |
+| Knowledge |                       GPQA-Diamond                        | **40.0** |              33.3              |
+|   Math    |                          AIME24                           | **20.6** |              16.7              |
+|           |                          AIME25                           | **22.7** |              7.2               |
 
 It begins by constructing a fine-grained knowledge graph from the source text，then identifies knowledge gaps in LLMs using the expected calibration error metric, prioritizing the generation of QA pairs that target high-value, long-tail knowledge.
 Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture complex relational information and employs style-controlled generation to diversify the resulting QA data.
@@ -75,6 +76,32 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 - **2025.04.21**: We have released the initial version of GraphGen.
 
 </details>
+
+
+## ⚙️ Support List
+
+We support various LLM inference servers, API servers, inference clients, input file formats, data modalities, output data formats, and output data types:
+
+| Inference Server                               | Api Server                                                                            | Inference Client                                                     | Input File Format                  | Data Modal         | Output Data Format           | Output Data Type                                |
+|------------------------------------------------|---------------------------------------------------------------------------------------|----------------------------------------------------------------------|------------------------------------|--------------------|------------------------------|-------------------------------------------------|
+| [![hf-icon]][hf] HF<br>[![sg-icon]][sg] SGLang | [![sif-icon]][sif] SiliconFlow<br>[![oai-icon]][oai] OpenAI<br>[![az-icon]][az] Azure | Generic HTTP<br>[![ol-icon]][ol] Ollama<br>[![oai-icon]][oai] OpenAI | CSV<br>JSON<br>JSONL<br>PDF<br>TXT | TEXT<br>TEXT+IMAGE | Alpaca<br>ChatML<br>Sharegpt | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
+
+<!-- links -->
+[hf]: https://huggingface.co/docs/transformers/index
+[sg]: https://docs.sglang.ai
+[sif]: https://siliconflow.cn
+[oai]: https://openai.com
+[az]: https://azure.microsoft.com/en-us/services/cognitive-services/openai-service/
+[ol]: https://ollama.com
+
+<!-- icons -->
+[hf-icon]: https://www.google.com/s2/favicons?domain=https://huggingface.co
+[sg-icon]: https://www.google.com/s2/favicons?domain=https://docs.sglang.ai
+[sif-icon]: https://www.google.com/s2/favicons?domain=siliconflow.com
+[oai-icon]: https://www.google.com/s2/favicons?domain=https://openai.com
+[az-icon]: https://www.google.com/s2/favicons?domain=https://azure.microsoft.com
+[ol-icon]: https://www.google.com/s2/favicons?domain=https://ollama.com
+
 
 
 ## 🚀 Quick Start
@@ -177,7 +204,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
    Pick the desired format and run the matching script:
    
    | Format       | Script to run                                  | Notes                                                             |
-   | ------------ | ---------------------------------------------- |-------------------------------------------------------------------|
+   |--------------|------------------------------------------------|-------------------------------------------------------------------|
    | `cot`        | `bash scripts/generate/generate_cot.sh`        | Chain-of-Thought Q\&A pairs                                       |
    | `atomic`     | `bash scripts/generate/generate_atomic.sh`     | Atomic Q\&A pairs covering basic knowledge                        |
    | `aggregated` | `bash scripts/generate/generate_aggregated.sh` | Aggregated Q\&A pairs incorporating complex, integrated knowledge |
