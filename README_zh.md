@@ -79,11 +79,12 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 ## ⚙️ 支持列表
 
-我们支持多种 LLM 推理服务器、API 服务器、推理客户端、输入文件格式、数据模态、输出数据格式和输出数据类型：
+我们支持多种 LLM 推理服务器、API 服务器、推理客户端、输入文件格式、数据模态、输出数据格式和输出数据类型。
+可以根据合成数据的需求进行灵活配置。
 
-| 推理服务器                                          | API 服务器                                                                           | 推理客户端                                                        | 输入文件格式                             | 数据模态         | 输出数据格式                       | 输出数据类型                                          |
-|------------------------------------------------|-----------------------------------------------------------------------------------|--------------------------------------------------------------|------------------------------------|--------------|------------------------------|-------------------------------------------------|
-| [![hf-icon] HF][hf]<br>[![sg-icon] SGLang][sg] | [![sif-icon] Silicon][sif]<br>[![oai-icon] OpenAI][oai]<br>[![az-icon] Azure][az] | HTTP<br>[![ol-icon] Ollama][ol]<br>[![oai-icon] OpenAI][oai] | CSV<br>JSON<br>JSONL<br>PDF<br>TXT | TEXT<br>TEXT | Alpaca<br>ChatML<br>Sharegpt | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
+| 推理服务器                                        | API 服务器                                                                        | 推理客户端                                                      | 输入文件格式                             | 数据模态         | 输出数据格式                       | 输出数据类型                                          |
+|----------------------------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------|------------------------------------|--------------|------------------------------|-------------------------------------------------|
+| [![hf-icon]HF][hf]<br>[![sg-icon]SGLang][sg] | [![sif-icon]Silicon][sif]<br>[![oai-icon]OpenAI][oai]<br>[![az-icon]Azure][az] | HTTP<br>[![ol-icon]Ollama][ol]<br>[![oai-icon]OpenAI][oai] | CSV<br>JSON<br>JSONL<br>PDF<br>TXT | TEXT<br>TEXT | Alpaca<br>ChatML<br>Sharegpt | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
 
 <!-- links -->
 [hf]: https://huggingface.co/docs/transformers/index
