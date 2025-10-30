@@ -62,14 +62,14 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 在数据生成后，您可以使用[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) 和 [xtuner](https://github.com/InternLM/xtuner)对大语言模型进行微调。
 
 ## 📌 最新更新
-
+- **2025.10.30** 我们支持多种新的 LLM 客户端和推理后端，包括 [Ollama_client]([Ollama_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/ollama_client.py), [http_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/http_client.py), [HuggingFace Transformers](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/hf_wrapper.py) 和 [SGLang](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/sglang_wrapper.py).
 - **2025.10.23**：我们现在支持视觉问答（VQA）数据生成。运行脚本：`bash scripts/generate/generate_vqa.sh`。
 - **2025.10.21**：我们现在通过 [MinerU](https://github.com/opendatalab/MinerU) 支持 PDF 作为数据生成的输入格式。
-- **2025.09.29**：我们在 [Hugging Face](https://huggingface.co/spaces/chenzihong/GraphGen) 和 [ModelScope](https://modelscope.cn/studios/chenzihong/GraphGen) 上自动更新 Gradio 应用。
 
 <details>
 <summary>历史更新</summary>
 
+- **2025.09.29**：我们在 [Hugging Face](https://huggingface.co/spaces/chenzihong/GraphGen) 和 [ModelScope](https://modelscope.cn/studios/chenzihong/GraphGen) 上自动更新 Gradio 应用。
 - **2025.08.14**：支持利用 Leiden 社区发现算法对知识图谱进行社区划分，合成 CoT 数据。
 - **2025.07.31**：新增 Google、Bing、Wikipedia 和 UniProt 作为搜索后端，帮助填补数据缺口。  
 - **2025.04.21**：发布 GraphGen 初始版本。
