@@ -70,7 +70,12 @@ async def attach_additional_data_to_node(
 ) -> list[
     tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]]
 ]:
-    """入口函数：为所有节点追加额外数据。"""
+    """
+    Attach additional data from chunk_storage to nodes in the batches.
+    :param batches:
+    :param chunk_storage:
+    :return:
+    """
     for batch in batches:
         for node_id, node_data in batch[0]:
             await _attach_by_type(node_id, node_data, chunk_storage)
@@ -82,36 +87,41 @@ async def _attach_by_type(
     node_data: dict,
     chunk_storage: BaseKVStorage,
 ) -> None:
-    """根据 entity_type 给单个节点追加额外数据。"""
+    """
+    Attach additional data to the node based on its entity type.
+    """
     entity_type = (node_data.get("entity_type") or "").lower()
     if not entity_type:
         return
 
-    # 统一取 source_id
     source_ids = [
         sid.strip()
         for sid in node_data.get("source_id", "").split("<SEP>")
         if sid.strip()
     ]
 
-    # 处理图片
+    # Handle images
     if "image" in entity_type:
-        captions = [
-            data["image_caption"]
+        image_chunks = [
+            data
             for sid in source_ids
             if "image" in sid.lower() and (data := await chunk_storage.get_by_id(sid))
         ]
-        if captions:
-            node_data["images"] = captions
+        if image_chunks:
+            # The generator expects a dictionary with an 'img_path' key, not a list of captions.
+            # We'll use the first image chunk found for this node.
+            node_data["images"] = image_chunks[0]
             logger.debug("Attached image data to node %s", node_id)
 
-    # 处理蛋白
+    # Handle protein
     if "protein" in entity_type:
-        captions = [
-            data["protein_caption"]
-            for sid in source_ids
-            if "protein" in sid.lower() and (data := await chunk_storage.get_by_id(sid))
-        ]
+        captions = []
+        for sid in source_ids:
+            if (data := await chunk_storage.get_by_id(sid)) and data.get(
+                "type"
+            ) == "protein":
+                if "protein_caption" in data:
+                    captions.append(data["protein_caption"])
         if captions:
             node_data["protein"] = captions
             logger.debug("Attached protein data to node %s", node_id)
