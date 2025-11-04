@@ -12,6 +12,7 @@ class UniProtSearch:
     UniProt Search client to search with UniProt.
     1) Get the protein by accession number.
     2) Search with keywords or protein names (fuzzy search).
+    3) Search with FASTA sequence (BLAST search).
     """
 
     def get_by_accession(self, accession: str) -> Optional[dict]:
