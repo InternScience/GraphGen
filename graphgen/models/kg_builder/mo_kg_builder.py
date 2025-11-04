@@ -50,9 +50,7 @@ class MOKGBuilder(LightRAGKGBuilder):
 
         # choose different extraction strategies based on chunk type
         if chunk_type == "protein":
-            protein_caption = ""
-            for key, value in metadata["protein_caption"].items():
-                protein_caption += f"{key}: {value}\n"
+            protein_caption = "\n".join(f"{key}: {value}" for key, value in metadata["protein_caption"].items())
             logger.debug("Protein chunk caption: %s", protein_caption)
 
             language = detect_main_language(protein_caption)
