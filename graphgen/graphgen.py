@@ -126,7 +126,6 @@ class GraphGen:
             llm_client=self.synthesizer_llm_client,
             kg_instance=self.graph_storage,
             chunks=[Chunk.from_dict(k, v) for k, v in inserting_chunks.items()],
-            anchor_type=read_config.get("anchor_type", None),
             progress_bar=self.progress_bar,
         )
         if not _add_entities_and_relations:
