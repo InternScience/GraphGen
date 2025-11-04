@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import List
 
 import gradio as gr
 
@@ -16,7 +16,6 @@ async def build_kg(
     llm_client: BaseLLMWrapper,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
-    anchor_type: Optional[str] = None,
     progress_bar: gr.Progress = None,
 ):
     """
