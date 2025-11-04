@@ -40,14 +40,15 @@ class ProteinQAGenerator(BaseGenerator):
         qa_pairs = {}
         qa_list = response.strip().split("\n\n")
         for qa in qa_list:
-            if "Question:" in qa and "Answer:" in qa:
-                question = qa.split("Question:")[1].split("Answer:")[0].strip()
-                answer = qa.split("Answer:")[1].strip()
-            elif "问题：" in qa and "答案：" in qa:
-                question = qa.split("问题：")[1].split("答案：")[0].strip()
-                answer = qa.split("答案：")[1].strip()
+            match = re.search(r"Question:\s*(.*?)\s*Answer:\s*(.*)", qa, re.DOTALL) or \
+                    re.search(r"问题：\s*(.*?)\s*答案：\s*(.*)", qa, re.DOTALL)
+            
+            if match:
+                question = match.group(1).strip()
+                answer = match.group(2).strip()
             else:
-                logger.error("Failed to parse QA pair: %s", qa)
+                if qa:
+                    logger.error("Failed to parse QA pair: %s", qa)
                 continue
             question = question.strip('"')
             answer = answer.strip('"')
