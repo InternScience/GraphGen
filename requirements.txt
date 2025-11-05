@@ -24,6 +24,9 @@ leidenalg
 igraph
 python-louvain
 
+# KG
+rdflib
+
 # Bioinformatics
 biopython
 
