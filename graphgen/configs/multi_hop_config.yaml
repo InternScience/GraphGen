@@ -1,24 +1,22 @@
 read:
-  input_file: resources/input_examples/csv_demo.csv # input file path, support json, jsonl, txt. See resources/input_examples for examples
+  input_file: resources/input_examples/csv_demo.csv # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
 split:
   chunk_size: 1024 # chunk size for text splitting
   chunk_overlap: 100 # chunk overlap for text splitting
 search: # web search configuration
   enabled: false # whether to enable web search
   search_types: ["google"] # search engine types, support: google, bing, uniprot, wikipedia
-output_data_type: multi_hop # atomic, aggregated, multi_hop, cot
-output_data_format: ChatML # Alpaca, Sharegpt, ChatML
-tokenizer: cl100k_base # tokenizer for counting tokens, support tiktoken tokenizer names and local tokenizer path
-quiz_and_judge_strategy: # quiz and test whether the LLM masters the knowledge points
+quiz_and_judge: # quiz and test whether the LLM masters the knowledge points
   enabled: false
   quiz_samples: 2 # number of quiz samples to generate
   re_judge: false # whether to re-judge the existing quiz samples
-traverse_strategy: # strategy for clustering sub-graphs using comprehension loss
-  bidirectional: true # whether to traverse the graph in both directions
-  edge_sampling: max_loss # edge sampling strategy, support: random, max_loss, min_loss
-  expand_method: max_width # expand method, support: max_width, max_depth
-  isolated_node_strategy: ignore # strategy for isolated nodes, support: ignore, add
-  max_depth: 1 # maximum depth for graph traversal
-  max_extra_edges: 2 # max edges per direction (if expand_method="max_width")
-  max_tokens: 256 # restricts input length (if expand_method="max_tokens")
-  loss_strategy: only_edge # defines loss computation focus, support: only_edge, both
+partition: # graph partition configuration
+  method: ece # ece is a custom partition method based on comprehension loss
+  method_params:
+    max_units_per_community: 3 # max nodes and edges per community, for multi-hop, we recommend setting it to 3
+    min_units_per_community: 3 # min nodes and edges per community, for multi-hop, we recommend setting it to 3
+    max_tokens_per_community: 10240 # max tokens per community
+    unit_sampling: random # unit sampling strategy, support: random, max_loss, min_loss
+generate:
+  mode: multi_hop # atomic, aggregated, multi_hop, cot, vqa
+  data_format: ChatML # Alpaca, Sharegpt, ChatML

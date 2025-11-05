@@ -24,5 +24,11 @@ leidenalg
 igraph
 python-louvain
 
+# KG
+rdflib
+
+# Bioinformatics
+biopython
+
 # For visualization
 matplotlib

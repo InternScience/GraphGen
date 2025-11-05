@@ -8,7 +8,7 @@ from typing import List
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import OpenAIModel
+from graphgen.models import OpenAIClient
 from graphgen.utils import compute_content_hash, create_event_loop
 
 PROMPT_TEMPLATE = """Instruction: X
@@ -20,7 +20,7 @@ X:"""
 
 @dataclass
 class LongForm:
-    llm_client: OpenAIModel = None
+    llm_client: OpenAIClient = None
     max_concurrent: int = 1000
 
     def generate(self, docs: List[List[dict]]) -> List[dict]:
@@ -85,7 +85,7 @@ if __name__ == "__main__":
 
     load_dotenv()
 
-    llm_client = OpenAIModel(
+    llm_client = OpenAIClient(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
         base_url=os.getenv("SYNTHESIZER_BASE_URL"),
