@@ -19,6 +19,7 @@ from graphgen.models import (
 from graphgen.operators import (
     build_kg,
     chunk_documents,
+    extract_info,
     generate_qas,
     init_llm,
     judge_statement,
@@ -239,6 +240,22 @@ class GraphGen:
         )
         await self.partition_storage.upsert(batches)
         return batches
+
+    @op("extract", deps=["insert"])
+    @async_to_sync_method
+    async def extract(self, extract_config: Dict):
+        logger.info("Extracting information from given chunks...")
+
+        results = await extract_info(
+            self.synthesizer_llm_client,
+            self.chunks_storage,
+            extract_config,
+            progress_bar=self.progress_bar,
+        )
+        if not results:
+            logger.warning("No information extracted")
+            return
+        print(results)
 
     @op("generate", deps=["insert", "partition"])
     @async_to_sync_method

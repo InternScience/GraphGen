@@ -37,5 +37,5 @@ class SchemaGuidedExtractor(BaseExtractor):
     def build_prompt(self, text: str) -> str:
         pass
 
-    def extract(self, text_or_documents: str) -> dict:
-        pass
+    async def extract(self, chunk: dict) -> dict:
+        print(chunk)
