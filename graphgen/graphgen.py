@@ -8,6 +8,7 @@ import gradio as gr
 from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.base_storage import StorageNameSpace
 from graphgen.bases.datatypes import Chunk
+from graphgen.engine import op
 from graphgen.models import (
     JsonKVStorage,
     JsonListStorage,
@@ -69,6 +70,9 @@ class GraphGen:
         self.rephrase_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="rephrase"
         )
+        self.partition_storage: JsonListStorage = JsonListStorage(
+            self.working_dir, namespace="partition"
+        )
         self.qa_storage: JsonListStorage = JsonListStorage(
             os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
             namespace="qa",
@@ -77,13 +81,14 @@ class GraphGen:
         # webui
         self.progress_bar: gr.Progress = progress_bar
 
+    @op("insert", deps=[])
     @async_to_sync_method
-    async def insert(self, read_config: Dict, split_config: Dict):
+    async def insert(self, insert_config: Dict):
         """
         insert chunks into the graph
         """
         # Step 1: Read files
-        data = read_files(read_config["input_file"], self.working_dir)
+        data = read_files(insert_config["input_file"], self.working_dir)
         if len(data) == 0:
             logger.warning("No data to process")
             return
@@ -102,8 +107,8 @@ class GraphGen:
 
         inserting_chunks = await chunk_documents(
             new_docs,
-            split_config["chunk_size"],
-            split_config["chunk_overlap"],
+            insert_config["chunk_size"],
+            insert_config["chunk_overlap"],
             self.tokenizer_instance,
             self.progress_bar,
         )
@@ -148,6 +153,7 @@ class GraphGen:
             tasks.append(cast(StorageNameSpace, storage_instance).index_done_callback())
         await asyncio.gather(*tasks)
 
+    @op("search", deps=["insert"])
     @async_to_sync_method
     async def search(self, search_config: Dict):
         logger.info(
@@ -183,13 +189,13 @@ class GraphGen:
                 # TODO: fix insert after search
                 await self.insert()
 
+    @op("quiz_and_judge", deps=["insert"])
     @async_to_sync_method
     async def quiz_and_judge(self, quiz_and_judge_config: Dict):
-        if quiz_and_judge_config is None or not quiz_and_judge_config.get(
-            "enabled", False
-        ):
-            logger.warning("Quiz and Judge is not used in this pipeline.")
-            return
+        logger.warning(
+            "Quiz and Judge operation needs trainee LLM client."
+            " Make sure to provide one."
+        )
         max_samples = quiz_and_judge_config["quiz_samples"]
         await quiz(
             self.synthesizer_llm_client,
@@ -222,15 +228,26 @@ class GraphGen:
         logger.info("Restarting synthesizer LLM client.")
         self.synthesizer_llm_client.restart()
 
+    @op("partition", deps=["insert"])
     @async_to_sync_method
-    async def generate(self, partition_config: Dict, generate_config: Dict):
-        # Step 1: partition the graph
+    async def partition(self, partition_config: Dict):
         batches = await partition_kg(
             self.graph_storage,
             self.chunks_storage,
             self.tokenizer_instance,
             partition_config,
         )
+        await self.partition_storage.upsert(batches)
+        return batches
+
+    @op("generate", deps=["insert", "partition"])
+    @async_to_sync_method
+    async def generate(self, generate_config: Dict):
+
+        batches = self.partition_storage.data
+        if not batches:
+            logger.warning("No partitions found for QA generation")
+            return
 
         # Step 2： generate QA pairs
         results = await generate_qas(
@@ -258,3 +275,6 @@ class GraphGen:
         await self.qa_storage.drop()
 
         logger.info("All caches are cleared")
+
+    # TODO: add data filtering step here in the future
+    # graph_gen.filter(filter_config=config["filter"])

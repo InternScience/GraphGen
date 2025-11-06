@@ -3,7 +3,11 @@ orchestration engine for GraphGen
 """
 
 import threading
+import traceback
+from functools import wraps
 from typing import Any, Callable, List
+
+from graphgen.utils import logger
 
 
 class Context(dict):
@@ -25,9 +29,16 @@ class OpNode:
         self.name, self.deps, self.func = name, deps, func
 
 
-def op(name: str, deps: List[str] = None):
-    def decorator(f: Callable[["OpNode", Context], Any]):
-        return OpNode(name, deps or [], f)
+def op(name: str, deps=None):
+    deps = deps or []
+
+    def decorator(func):
+        @wraps(func)
+        def _wrapper(*args, **kwargs):
+            return func(*args, **kwargs)
+
+        _wrapper.op_node = OpNode(name, deps, lambda self, ctx: func(self, **ctx))
+        return _wrapper
 
     return decorator
 
@@ -73,7 +84,8 @@ class Engine:
                 try:
                     name2op[n].func(name2op[n], ctx)
                 except Exception as e:  # pylint: disable=broad-except
-                    exc[n] = e
+                    logger.error("Operation %s failed: %s", n, e)
+                    exc[n] = traceback.format_exc()
                 done[n].set()
 
         ts = [threading.Thread(target=_exec, args=(n,), daemon=True) for n in topo]
@@ -82,4 +94,28 @@ class Engine:
         for t in ts:
             t.join()
         if exc:
-            raise RuntimeError(f"Some operations failed: {exc}")
+            raise RuntimeError(
+                "Some operations failed:\n"
+                + "\n".join(f"---- {op} ----\n{tb}" for op, tb in exc.items())
+            )
+
+
+def collect_ops(config: dict, graph_gen) -> List[OpNode]:
+    """
+    build operation nodes from yaml config
+    :param config
+    :param graph_gen
+    """
+    ops: List[OpNode] = []
+    for stage in config["pipeline"]:
+        name = stage["name"]
+        method = getattr(graph_gen, name)
+        op_node = method.op_node
+
+        # if there are runtime dependencies, override them
+        runtime_deps = stage.get("deps", op_node.deps)
+        op_node.deps = runtime_deps
+
+        op_node.func = lambda self, ctx, m=method, sc=stage: m(sc.get("params"))
+        ops.append(op_node)
+    return ops
