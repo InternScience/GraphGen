@@ -7,8 +7,6 @@ import traceback
 from functools import wraps
 from typing import Any, Callable, List
 
-from graphgen.utils import logger
-
 
 class Context(dict):
     _lock = threading.Lock()
@@ -83,8 +81,7 @@ class Engine:
                     return
                 try:
                     name2op[n].func(name2op[n], ctx)
-                except Exception as e:  # pylint: disable=broad-except
-                    logger.error("Operation %s failed: %s", n, e)
+                except Exception:  # pylint: disable=broad-except
                     exc[n] = traceback.format_exc()
                 done[n].set()
 
