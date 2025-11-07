@@ -113,6 +113,9 @@ def collect_ops(config: dict, graph_gen) -> List[OpNode]:
         runtime_deps = stage.get("deps", op_node.deps)
         op_node.deps = runtime_deps
 
-        op_node.func = lambda self, ctx, m=method, sc=stage: m(sc.get("params"))
+        if "params" in stage:
+            op_node.func = lambda self, ctx, m=method, sc=stage: m(sc.get("params", {}))
+        else:
+            op_node.func = lambda self, ctx, m=method: m()
         ops.append(op_node)
     return ops
