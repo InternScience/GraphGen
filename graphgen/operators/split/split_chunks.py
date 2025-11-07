@@ -64,7 +64,7 @@ async def chunk_documents(
                 compute_content_hash(txt, prefix="chunk-"): {
                     "content": txt,
                     "type": "text",
-                    "full_doc_id": doc_key,
+                    "_full_docs_id": doc_key,
                     "length": len(tokenizer_instance.encode(txt))
                     if tokenizer_instance
                     else len(txt),

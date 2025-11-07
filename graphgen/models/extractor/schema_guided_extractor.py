@@ -60,7 +60,9 @@ class SchemaGuidedExtractor(BaseExtractor):
         return prompt
 
     async def extract(self, chunk: dict) -> dict:
-        text = chunk.get("text", "")
+        _chunk_id = list(chunk.keys())[0]
+        text = chunk[_chunk_id].get("content", "")
+
         prompt = self.build_prompt(text)
         response = await self.llm_client.generate_answer(prompt)
         try:
@@ -74,13 +76,20 @@ class SchemaGuidedExtractor(BaseExtractor):
                 return {}
             main_keys_info = {key: extracted_info[key] for key in self.required_keys}
             logger.debug("Extracted info: %s", extracted_info)
-            return {compute_dict_hash(main_keys_info, prefix="extract"): extracted_info}
+
+            # add chunk metadata
+            extracted_info["_chunk_id"] = _chunk_id
+
+            return {
+                compute_dict_hash(main_keys_info, prefix="extract-"): extracted_info
+            }
         except json.JSONDecodeError:
             logger.error("Failed to parse extraction response: %s", response)
             return {}
 
+    @staticmethod
     async def merge_extractions(
-        self, extraction_list: List[Dict[str, dict]]
+        extraction_list: List[Dict[str, dict]]
     ) -> Dict[str, dict]:
         """
         Merge multiple extraction results based on their hashes.
