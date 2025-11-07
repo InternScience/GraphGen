@@ -3,7 +3,6 @@ import json
 import gradio as gr
 
 from graphgen.bases import BaseKVStorage, BaseLLMWrapper
-from graphgen.bases.datatypes import Chunk
 from graphgen.models.extractor import SchemaGuidedExtractor
 from graphgen.utils import logger, run_concurrent
 
@@ -34,7 +33,7 @@ async def extract_info(
 
     chunks = await chunk_storage.get_all()
     chunks = [{k: v} for k, v in chunks.items()]
-    logger.info(f"Start extracting information from {len(chunks)} chunks")
+    logger.info("Start extracting information from %d chunks", len(chunks))
 
     results = await run_concurrent(
         extractor.extract,
@@ -43,8 +42,6 @@ async def extract_info(
         unit="chunk",
         progress_bar=progress_bar,
     )
-    print(results)
 
-    # TODO: 对results合并，去重
-
-    return []
+    results = await extractor.merge_extractions(results)
+    return results

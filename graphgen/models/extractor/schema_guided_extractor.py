@@ -1,8 +1,9 @@
 import json
+from typing import Dict, List
 
 from graphgen.bases import BaseExtractor, BaseLLMWrapper
 from graphgen.templates import SCHEMA_GUIDED_EXTRACTION_PROMPT
-from graphgen.utils import compute_dict_hash, detect_main_language
+from graphgen.utils import compute_dict_hash, detect_main_language, logger
 
 
 class SchemaGuidedExtractor(BaseExtractor):
@@ -69,10 +70,32 @@ class SchemaGuidedExtractor(BaseExtractor):
                 if key not in extracted_info:
                     extracted_info[key] = ""
             if any(extracted_info[key] == "" for key in self.required_keys):
+                logger.debug("Missing required keys in extraction: %s", extracted_info)
                 return {}
             main_keys_info = {key: extracted_info[key] for key in self.required_keys}
-            return {compute_dict_hash(main_keys_info): extracted_info}
+            logger.debug("Extracted info: %s", extracted_info)
+            return {compute_dict_hash(main_keys_info, prefix="extract"): extracted_info}
         except json.JSONDecodeError:
+            logger.error("Failed to parse extraction response: %s", response)
             return {}
 
-    # async def merge_extractions(self):
+    async def merge_extractions(
+        self, extraction_list: List[Dict[str, dict]]
+    ) -> Dict[str, dict]:
+        """
+        Merge multiple extraction results based on their hashes.
+        :param extraction_list: List of extraction results, each is a dict with hash as key and record as value.
+        :return: Merged extraction results.
+        """
+        merged: Dict[str, dict] = {}
+        for ext in extraction_list:
+            for h, rec in ext.items():
+                if h not in merged:
+                    merged[h] = rec.copy()
+                else:
+                    for k, v in rec.items():
+                        if k not in merged[h] or merged[h][k] == v:
+                            merged[h][k] = v
+                        else:
+                            merged[h][k] = f"{merged[h][k]}<SEP>{v}"
+        return merged
