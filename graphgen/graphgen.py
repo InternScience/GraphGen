@@ -295,3 +295,6 @@ class GraphGen:
 
     # TODO: add data filtering step here in the future
     # graph_gen.filter(filter_config=config["filter"])
+
+
+# TODO: 把insert拆成两个: read + build_kg，这样更合理
