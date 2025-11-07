@@ -18,6 +18,7 @@ _MAPPING = {
     "json": JSONReader,
     "txt": TXTReader,
     "csv": CSVReader,
+    "md": TXTReader,
     "pdf": PDFReader,
     "parquet": ParquetReader,
     "pickle": PickleReader,
