@@ -3,11 +3,6 @@
   "name": "legal contract",
   "description": "A legal contract for leasing property.",
   "properties": {
-      "end_date": {
-          "type": "array",
-          "items": {"type": "string"},
-          "description": "The end date of the lease."
-      },
       "leased_space": {
           "type": "array",
           "items": {"type": "string"},
@@ -32,6 +27,11 @@
           "type": "array",
           "items": {"type": "string"},
           "description": "The start date of the lease."
+      },
+      "end_date": {
+          "type": "array",
+          "items": {"type": "string"},
+          "description": "The end date of the lease."
       },
       "term_of_payment": {
           "type": "array",
