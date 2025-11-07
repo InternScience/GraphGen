@@ -1,17 +1,16 @@
-import asyncio
 import os
 import time
-from typing import Dict, cast
+from typing import Dict
 
 import gradio as gr
 
 from graphgen.bases import BaseLLMWrapper
-from graphgen.bases.base_storage import StorageNameSpace
 from graphgen.bases.datatypes import Chunk
 from graphgen.engine import op
 from graphgen.models import (
     JsonKVStorage,
     JsonListStorage,
+    MetaJsonKVStorage,
     NetworkXStorage,
     OpenAIClient,
     Tokenizer,
@@ -56,6 +55,10 @@ class GraphGen:
         )
         self.trainee_llm_client: BaseLLMWrapper = trainee_llm_client
 
+        self.meta_storage: MetaJsonKVStorage = MetaJsonKVStorage(
+            self.working_dir, namespace="_meta"
+        )
+
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="full_docs"
         )
@@ -82,14 +85,13 @@ class GraphGen:
         # webui
         self.progress_bar: gr.Progress = progress_bar
 
-    @op("insert", deps=[])
+    @op("read", deps=[])
     @async_to_sync_method
-    async def insert(self, insert_config: Dict):
+    async def read(self, read_config: Dict):
         """
-        insert chunks into the graph
+        read files from input sources
         """
-        # Step 1: Read files
-        data = read_files(insert_config["input_file"], self.working_dir)
+        data = read_files(read_config["input_file"], self.working_dir)
         if len(data) == 0:
             logger.warning("No data to process")
             return
@@ -108,8 +110,8 @@ class GraphGen:
 
         inserting_chunks = await chunk_documents(
             new_docs,
-            insert_config["chunk_size"],
-            insert_config["chunk_overlap"],
+            read_config["chunk_size"],
+            read_config["chunk_overlap"],
             self.tokenizer_instance,
             self.progress_bar,
         )
@@ -125,9 +127,25 @@ class GraphGen:
             logger.warning("All chunks are already in the storage")
             return
 
-        logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
+        await self.full_docs_storage.upsert(new_docs)
+        await self.full_docs_storage.index_done_callback()
         await self.chunks_storage.upsert(inserting_chunks)
+        await self.chunks_storage.index_done_callback()
 
+    @op("build_kg", deps=["read"])
+    @async_to_sync_method
+    async def build_kg(self):
+        """
+        build knowledge graph from text chunks
+        """
+        # Step 1: get new chunks according to meta and chunks storage
+        inserting_chunks = await self.meta_storage.get_new_data(self.chunks_storage)
+        if len(inserting_chunks) == 0:
+            logger.warning("All chunks are already in the storage")
+            return
+
+        logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
+        # Step 2: build knowledge graph from new chunks
         _add_entities_and_relations = await build_kg(
             llm_client=self.synthesizer_llm_client,
             kg_instance=self.graph_storage,
@@ -138,23 +156,13 @@ class GraphGen:
             logger.warning("No entities or relations extracted from text chunks")
             return
 
-        await self._insert_done()
+        # Step 3: mark meta
+        await self.meta_storage.mark_done(self.chunks_storage)
+        await self.meta_storage.index_done_callback()
+
         return _add_entities_and_relations
 
-    async def _insert_done(self):
-        tasks = []
-        for storage_instance in [
-            self.full_docs_storage,
-            self.chunks_storage,
-            self.graph_storage,
-            self.search_storage,
-        ]:
-            if storage_instance is None:
-                continue
-            tasks.append(cast(StorageNameSpace, storage_instance).index_done_callback())
-        await asyncio.gather(*tasks)
-
-    @op("search", deps=["insert"])
+    @op("search", deps=["read"])
     @async_to_sync_method
     async def search(self, search_config: Dict):
         logger.info(
@@ -188,9 +196,9 @@ class GraphGen:
                         ]
                     )
                 # TODO: fix insert after search
-                await self.insert()
+                # await self.insert()
 
-    @op("quiz_and_judge", deps=["insert"])
+    @op("quiz_and_judge", deps=["build_kg"])
     @async_to_sync_method
     async def quiz_and_judge(self, quiz_and_judge_config: Dict):
         logger.warning(
@@ -229,7 +237,7 @@ class GraphGen:
         logger.info("Restarting synthesizer LLM client.")
         self.synthesizer_llm_client.restart()
 
-    @op("partition", deps=["insert"])
+    @op("partition", deps=["build_kg"])
     @async_to_sync_method
     async def partition(self, partition_config: Dict):
         batches = await partition_kg(
@@ -257,7 +265,7 @@ class GraphGen:
             return
         print(results)
 
-    @op("generate", deps=["insert", "partition"])
+    @op("generate", deps=["partition"])
     @async_to_sync_method
     async def generate(self, generate_config: Dict):
 
@@ -295,6 +303,3 @@ class GraphGen:
 
     # TODO: add data filtering step here in the future
     # graph_gen.filter(filter_config=config["filter"])
-
-
-# TODO: 把insert拆成两个: read + build_kg，这样更合理

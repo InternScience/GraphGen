@@ -1,9 +1,11 @@
 pipeline:
-  - name: insert
+  - name: read
     params:
       input_file: resources/input_examples/jsonl_demo.jsonl # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
       chunk_size: 1024 # chunk size for text splitting
       chunk_overlap: 100 # chunk overlap for text splitting
+
+  - name: build_kg
 
   - name: quiz_and_judge
     params:
@@ -11,7 +13,7 @@ pipeline:
       re_judge: false # whether to re-judge the existing quiz samples
 
   - name: partition
-    deps: [insert, quiz_and_judge] # ece depends on both insert and quiz_and_judge steps
+    deps: [quiz_and_judge] # ece depends on quiz_and_judge steps
     params:
       method: ece # ece is a custom partition method based on comprehension loss
       method_params:
