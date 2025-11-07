@@ -18,6 +18,7 @@ from graphgen.models import (
 from graphgen.operators import (
     build_kg,
     chunk_documents,
+    extract_info,
     generate_qas,
     init_llm,
     judge_statement,
@@ -70,6 +71,7 @@ class GraphGen:
         self.search_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="search"
         )
+
         self.rephrase_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="rephrase"
         )
@@ -79,6 +81,10 @@ class GraphGen:
         self.qa_storage: JsonListStorage = JsonListStorage(
             os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
             namespace="qa",
+        )
+        self.extract_storage: JsonKVStorage = JsonKVStorage(
+            os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
+            namespace="extraction",
         )
 
         # webui
@@ -107,12 +113,26 @@ class GraphGen:
             logger.warning("All documents are already in the storage")
             return
 
+        await self.full_docs_storage.upsert(new_docs)
+        await self.full_docs_storage.index_done_callback()
+
+    @op("chunk", deps=["read"])
+    @async_to_sync_method
+    async def chunk(self, chunk_config: Dict):
+        """
+        chunk documents into smaller pieces from full_docs_storage if not already present
+        """
+
+        new_docs = await self.meta_storage.get_new_data(self.full_docs_storage)
+        if len(new_docs) == 0:
+            logger.warning("All documents are already in the storage")
+            return
+
         inserting_chunks = await chunk_documents(
             new_docs,
-            read_config["chunk_size"],
-            read_config["chunk_overlap"],
             self.tokenizer_instance,
             self.progress_bar,
+            **chunk_config,
         )
 
         _add_chunk_keys = await self.chunks_storage.filter_keys(
@@ -126,12 +146,12 @@ class GraphGen:
             logger.warning("All chunks are already in the storage")
             return
 
-        await self.full_docs_storage.upsert(new_docs)
-        await self.full_docs_storage.index_done_callback()
         await self.chunks_storage.upsert(inserting_chunks)
         await self.chunks_storage.index_done_callback()
+        await self.meta_storage.mark_done(self.full_docs_storage)
+        await self.meta_storage.index_done_callback()
 
-    @op("build_kg", deps=["read"])
+    @op("build_kg", deps=["chunk"])
     @async_to_sync_method
     async def build_kg(self):
         """
@@ -161,7 +181,7 @@ class GraphGen:
 
         return _add_entities_and_relations
 
-    @op("search", deps=["read"])
+    @op("search", deps=["chunk"])
     @async_to_sync_method
     async def search(self, search_config: Dict):
         logger.info(
@@ -247,6 +267,26 @@ class GraphGen:
         )
         await self.partition_storage.upsert(batches)
         return batches
+
+    @op("extract", deps=["chunk"])
+    @async_to_sync_method
+    async def extract(self, extract_config: Dict):
+        logger.info("Extracting information from given chunks...")
+
+        results = await extract_info(
+            self.synthesizer_llm_client,
+            self.chunks_storage,
+            extract_config,
+            progress_bar=self.progress_bar,
+        )
+        if not results:
+            logger.warning("No information extracted")
+            return
+
+        await self.extract_storage.upsert(results)
+        await self.extract_storage.index_done_callback()
+        await self.meta_storage.mark_done(self.chunks_storage)
+        await self.meta_storage.index_done_callback()
 
     @op("generate", deps=["partition"])
     @async_to_sync_method
