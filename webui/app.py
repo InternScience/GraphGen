@@ -103,6 +103,11 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
             "name": "read",
             "params": {
                 "input_file": params.upload_file,
+            },
+        },
+        {
+            "name": "chunk",
+            "params": {
                 "chunk_size": params.chunk_size,
                 "chunk_overlap": params.chunk_overlap,
             },
