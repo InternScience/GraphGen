@@ -1,4 +1,4 @@
-from typing import List
+import json
 
 import gradio as gr
 
@@ -25,7 +25,9 @@ async def extract_info(
 
     method = extract_config.get("method")
     if method == "schema_guided":
-        schema = extract_config.get("schema")
+        schema_file = extract_config.get("schema_file")
+        with open(schema_file, "r", encoding="utf-8") as f:
+            schema = json.load(f)
         extractor = SchemaGuidedExtractor(llm_client, schema)
     else:
         raise ValueError(f"Unsupported extraction method: {method}")
@@ -41,6 +43,7 @@ async def extract_info(
         unit="chunk",
         progress_bar=progress_bar,
     )
+    print(results)
 
     # TODO: 对results合并，去重
 

@@ -1,11 +1,11 @@
 pipeline:
-  - name: insert
+  - name: read
     params:
-      input_file: resources/input_examples/jsonl_demo.jsonl # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
-      chunk_size: 10240 # chunk size for text splitting
+      input_file: resources/input_examples/extract_demo.txt # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
+      chunk_size: 20480 # chunk size for text splitting
       chunk_overlap: 100 # chunk overlap for text splitting
 
   - name: extract
     params:
       method: schema_guided # extraction method, support: schema_guided
-      schema_file: resources/schemas/legal_contract.json # schema file path for schema_guided method
+      schema_file: graphgen/templates/extraction/schemas/legal_contract.json # schema file path for schema_guided method

@@ -14,7 +14,7 @@ class BaseExtractor(ABC):
         self.llm_client = llm_client
 
     @abstractmethod
-    def extract(self, text_or_documents: str) -> Any:
+    async def extract(self, chunk: dict) -> Any:
         """Extract information from the given text"""
 
     @abstractmethod

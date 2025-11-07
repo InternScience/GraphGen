@@ -1,4 +1,8 @@
+import json
+
 from graphgen.bases import BaseExtractor, BaseLLMWrapper
+from graphgen.templates import SCHEMA_GUIDED_EXTRACTION_PROMPT
+from graphgen.utils import compute_dict_hash, detect_main_language
 
 
 class SchemaGuidedExtractor(BaseExtractor):
@@ -33,9 +37,42 @@ class SchemaGuidedExtractor(BaseExtractor):
     def __init__(self, llm_client: BaseLLMWrapper, schema: dict):
         super().__init__(llm_client)
         self.schema = schema
+        self.required_keys = self.schema.get("required")
+        if not self.required_keys:
+            # If no required keys are specified, use all keys from the schema as default
+            self.required_keys = list(self.schema.get("properties", {}).keys())
 
     def build_prompt(self, text: str) -> str:
-        pass
+        schema_explanation = ""
+        for field, details in self.schema.get("properties", {}).items():
+            description = details.get("description", "No description provided.")
+            schema_explanation += f'- "{field}": {description}\n'
+
+        lang = detect_main_language(text)
+
+        prompt = SCHEMA_GUIDED_EXTRACTION_PROMPT[lang].format(
+            field=self.schema.get("name", "the document"),
+            schema_explanation=schema_explanation,
+            examples="",
+            text=text,
+        )
+        return prompt
 
     async def extract(self, chunk: dict) -> dict:
-        print(chunk)
+        text = chunk.get("text", "")
+        prompt = self.build_prompt(text)
+        response = await self.llm_client.generate_answer(prompt)
+        try:
+            extracted_info = json.loads(response)
+            # Ensure all required keys are present
+            for key in self.required_keys:
+                if key not in extracted_info:
+                    extracted_info[key] = ""
+            if any(extracted_info[key] == "" for key in self.required_keys):
+                return {}
+            main_keys_info = {key: extracted_info[key] for key in self.required_keys}
+            return {compute_dict_hash(main_keys_info): extracted_info}
+        except json.JSONDecodeError:
+            return {}
+
+    # async def merge_extractions(self):

@@ -249,7 +249,7 @@ class GraphGen:
         await self.partition_storage.upsert(batches)
         return batches
 
-    @op("extract", deps=["insert"])
+    @op("extract", deps=["read"])
     @async_to_sync_method
     async def extract(self, extract_config: Dict):
         logger.info("Extracting information from given chunks...")
