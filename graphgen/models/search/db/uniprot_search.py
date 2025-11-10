@@ -1,3 +1,4 @@
+import re
 from io import StringIO
 from typing import Dict, Optional
 
@@ -116,3 +117,30 @@ class UniProtSearch:
         # like sp|P01308.1|INS_HUMAN
         accession = hit_id.split("|")[1].split(".")[0] if "|" in hit_id else hit_id
         return self.get_by_accession(accession)
+
+    def get_any(self, query: str, threshold: float = 1e-5) -> Optional[Dict]:
+        """
+        Search UniProt with either an accession number, keyword, or FASTA sequence.
+        :param query: The search query (accession number, keyword, or FASTA sequence).
+        :param threshold: E-value threshold for BLAST search.
+        :return: A dictionary containing the best hit information or None if not found.
+        """
+
+        # auto detect query type
+        if not query or not isinstance(query, str):
+            logger.error("Empty or non-string input.")
+            return None
+        query = query.strip()
+
+        # check if fasta sequence
+        if query.startswith(">") or re.fullmatch(
+            r"[ACDEFGHIKLMNPQRSTVWY\s]+", query, re.I
+        ):
+            return self.get_by_fasta(query, threshold)
+
+        # check if accession number
+        if re.fullmatch(r"[A-NR-Z0-9]{6,10}", query, re.I):
+            return self.get_by_accession(query)
+
+        # otherwise treat as keyword
+        return self.get_best_hit(query)
