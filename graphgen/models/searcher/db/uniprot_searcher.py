@@ -1,7 +1,10 @@
+import asyncio
 import os
 import re
 import subprocess
 import tempfile
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
 from io import StringIO
 from typing import Dict, Optional
 
@@ -17,6 +20,11 @@ from tenacity import (
 
 from graphgen.bases import BaseSearcher
 from graphgen.utils import logger
+
+
+@lru_cache(maxsize=None)
+def _get_pool():
+    return ThreadPoolExecutor(max_workers=10)
 
 
 class UniProtSearch(BaseSearcher):
@@ -215,20 +223,26 @@ class UniProtSearch(BaseSearcher):
         query = query.strip()
 
         logger.debug("UniProt searcher query: %s", query)
+
+        loop = asyncio.get_running_loop()
+
         # check if fasta sequence
         if query.startswith(">") or re.fullmatch(
             r"[ACDEFGHIKLMNPQRSTVWY\s]+", query, re.I
         ):
-            result = self.get_by_fasta(query, threshold)
+            coro = loop.run_in_executor(
+                _get_pool(), self.get_by_fasta, query, threshold
+            )
 
         # check if accession number
         elif re.fullmatch(r"[A-NR-Z0-9]{6,10}", query, re.I):
-            result = self.get_by_accession(query)
+            coro = loop.run_in_executor(_get_pool(), self.get_by_accession, query)
 
         else:
             # otherwise treat as keyword
-            result = self.get_best_hit(query)
+            coro = loop.run_in_executor(_get_pool(), self.get_best_hit, query)
 
+        result = await coro
         if result:
             result["_search_query"] = query
         return result
