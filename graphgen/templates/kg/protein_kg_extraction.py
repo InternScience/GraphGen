@@ -8,7 +8,7 @@ Given free-text that discusses one or more proteins, identify:
 2. All entities that are **directly related** to this central protein.  
 3. All relationships that **directly link** those entities to the central protein (star edges).  
 
-Use English as the output language.
+Use English as the output language. Please provide only the result without any extra explanations.
 
 -Steps-  
 1. Identify the **central protein entity** and all **directly-related entities** from the text.  
@@ -76,7 +76,7 @@ TEMPLATE_ZH: str = """您是蛋白质科学与知识图谱构建专家。
 2. 识别所有与中心蛋白**直接相关**的实体。  
 3. 仅保留**中心蛋白→相关实体**的直接关系（星型边）。  
 
-使用中文输出。
+使用中文输出。请直接给出结果，不要增加额外说明。
 
 -步骤-  
 1. 确定**中心蛋白质实体**及所有**直接相关实体**。  
