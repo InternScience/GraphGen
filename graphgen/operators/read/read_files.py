@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Iterator, List, Optional
 
 from graphgen.models import (
     CSVReader,
@@ -39,10 +39,10 @@ def read_files(
     input_file: str,
     allowed_suffix: Optional[List[str]] = None,
     cache_dir: Optional[str] = None,
-) -> list[dict]:
+) -> Iterator[list[dict]]:
     path = Path(input_file).expanduser()
     if not path.exists():
-        raise FileNotFoundError(f"input_path not found: {input_file}")
+        raise FileNotFoundError(f"[Reader] input_path not found: {input_file}")
 
     if allowed_suffix is None:
         support_suffix = set(_MAPPING.keys())
@@ -54,33 +54,27 @@ def read_files(
         suffix = path.suffix.lstrip(".").lower()
         if suffix not in support_suffix:
             logger.warning(
-                "Skip file %s (suffix '%s' not in allowed_suffix %s)",
+                "[Reader] Skip file %s (suffix '%s' not in allowed_suffix %s)",
                 path,
                 suffix,
                 support_suffix,
             )
-            return []
+            return
         reader = _build_reader(suffix, cache_dir)
-        return reader.read(str(path))
+        logger.info("[Reader] Reading file %s", path)
+        yield reader.read(str(path))
+        return
 
     # folder
-    files_to_read = [
-        p for p in path.rglob("*") if p.suffix.lstrip(".").lower() in support_suffix
-    ]
-    logger.info(
-        "Found %d eligible file(s) under folder %s (allowed_suffix=%s)",
-        len(files_to_read),
-        input_file,
-        support_suffix,
-    )
-
-    all_docs: List[Dict[str, Any]] = []
-    for p in files_to_read:
-        try:
-            suffix = p.suffix.lstrip(".").lower()
-            reader = _build_reader(suffix, cache_dir)
-            all_docs.extend(reader.read(str(p)))
-        except Exception as e:  # pylint: disable=broad-except
-            logger.exception("Error reading %s: %s", p, e)
-
-    return all_docs
+    logger.info("[Reader] Streaming directory %s", path)
+    for p in path.rglob("*"):
+        if p.is_file() and p.suffix.lstrip(".").lower() in support_suffix:
+            try:
+                suffix = p.suffix.lstrip(".").lower()
+                reader = _build_reader(suffix, cache_dir)
+                logger.info("[Reader] Reading file %s", p)
+                docs = reader.read(str(p))
+                if docs:
+                    yield docs
+            except Exception:  # pylint: disable=broad-except
+                logger.exception("[Reader] Error reading %s", p)
