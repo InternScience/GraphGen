@@ -1,4 +1,5 @@
 from .build_kg import build_kg
+from .extract import extract_info
 from .generate import generate_qas
 from .init import init_llm
 from .partition import partition_kg
