@@ -42,7 +42,7 @@ def read_files(
 ) -> Iterator[list[dict]]:
     path = Path(input_file).expanduser()
     if not path.exists():
-        raise FileNotFoundError(f"[Reader] input_path not found: {input_file}")
+        raise FileNotFoundError(f"[Read] input_path not found: {input_file}")
 
     if allowed_suffix is None:
         support_suffix = set(_MAPPING.keys())
@@ -54,19 +54,19 @@ def read_files(
         suffix = path.suffix.lstrip(".").lower()
         if suffix not in support_suffix:
             logger.warning(
-                "[Reader] Skip file %s (suffix '%s' not in allowed_suffix %s)",
+                "[Read] Skip file %s (suffix '%s' not in allowed_suffix %s)",
                 path,
                 suffix,
                 support_suffix,
             )
             return
         reader = _build_reader(suffix, cache_dir)
-        logger.info("[Reader] Reading file %s", path)
+        logger.info("[Read] Reading file %s", path)
         yield reader.read(str(path))
         return
 
     # folder
-    logger.info("[Reader] Streaming directory %s", path)
+    logger.info("[Read] Streaming directory %s", path)
     for p in path.rglob("*"):
         if p.is_file() and p.suffix.lstrip(".").lower() in support_suffix:
             try:

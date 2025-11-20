@@ -125,6 +125,8 @@ class GraphGen:
     async def chunk(self, chunk_config: Dict, input_stream: Iterator):
         """
         chunk documents into smaller pieces from full_docs_storage if not already present
+        input_stream: document IDs from full_docs_storage
+        yield: chunk IDs inserted into chunks_storage
         """
         count = 0
         for doc_id in input_stream:
@@ -174,15 +176,22 @@ class GraphGen:
     async def build_kg(self, inputs: List):
         """
         build knowledge graph from text chunks
+        inputs: chunk IDs from chunks_storage
+        return: None
         """
+        count = 0
         # Step 1: get chunks
+        inserting_chunks: Dict[str, Dict] = {}
+        for _chunk_id in inputs:
+            chunk = await self.chunks_storage.get_by_id(_chunk_id)
+            if chunk:
+                inserting_chunks[_chunk_id] = chunk
 
-        inserting_chunks = await self.meta_storage.get_new_data(self.chunks_storage)
-        if len(inserting_chunks) == 0:
-            logger.warning("All chunks are already in the storage")
-            return
+        count += len(inserting_chunks)
+        logger.info(
+            "[Build KG] Inserting %d chunks, total %d", len(inserting_chunks), count
+        )
 
-        logger.info("[New Chunks] inserting %d chunks", len(inserting_chunks))
         # Step 2: build knowledge graph from new chunks
         _add_entities_and_relations = await build_kg(
             llm_client=self.synthesizer_llm_client,
@@ -194,12 +203,8 @@ class GraphGen:
             logger.warning("No entities or relations extracted from text chunks")
             return
 
-        # Step 3: mark meta
+        # Step 3: store the new entities and relations
         await self.graph_storage.index_done_callback()
-        await self.meta_storage.mark_done(self.chunks_storage)
-        await self.meta_storage.index_done_callback()
-
-        return _add_entities_and_relations
 
     @op("search", deps=["read"], op_type=OpType.STREAMING)
     @async_to_sync_method
@@ -231,7 +236,7 @@ class GraphGen:
 
     @op("quiz_and_judge", deps=["build_kg"], op_type=OpType.BARRIER)
     @async_to_sync_method
-    async def quiz_and_judge(self, quiz_and_judge_config: Dict, inputs: None):
+    async def quiz_and_judge(self, quiz_and_judge_config: Dict):
         logger.warning(
             "Quiz and Judge operation needs trainee LLM client."
             " Make sure to provide one."
@@ -270,7 +275,7 @@ class GraphGen:
 
     @op("partition", deps=["build_kg"], op_type=OpType.BARRIER)
     @async_to_sync_method
-    async def partition(self, partition_config: Dict, inputs: None):
+    async def partition(self, partition_config: Dict):
         batches = await partition_kg(
             self.graph_storage,
             self.chunks_storage,
@@ -283,8 +288,11 @@ class GraphGen:
     @op("extract", deps=["chunk"], op_type=OpType.STREAMING)
     @async_to_sync_method
     async def extract(self, extract_config: Dict, input_stream: Iterator):
-        logger.info("Extracting information from given chunks...")
-
+        """
+        Extract information from chunks in chunks_storage
+        input_stream: chunk IDs from chunks_storage
+        return: None
+        """
         results = await extract_info(
             self.synthesizer_llm_client,
             self.chunks_storage,

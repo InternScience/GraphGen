@@ -24,7 +24,7 @@ class JsonKVStorage(BaseKVStorage):
     async def index_done_callback(self):
         write_json(self._data, self._file_name)
 
-    async def get_by_id(self, id):
+    async def get_by_id(self, id) -> dict | None:
         return self._data.get(id, None)
 
     async def get_by_ids(self, ids, fields=None) -> list:
