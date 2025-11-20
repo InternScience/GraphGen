@@ -4,9 +4,8 @@ from collections import defaultdict
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.bases import BaseLLMWrapper
-from graphgen.models import JsonKVStorage, NetworkXStorage
-from graphgen.templates import DESCRIPTION_REPHRASING_PROMPT
-from graphgen.utils import detect_main_language, logger
+from graphgen.models import JsonKVStorage, NetworkXStorage, QuizGenerator
+from graphgen.utils import logger
 
 
 async def quiz(
@@ -17,7 +16,7 @@ async def quiz(
     max_concurrent: int = 1000,
 ) -> JsonKVStorage:
     """
-    Get all edges and quiz them
+    Get all edges and quiz them using QuizGenerator.
 
     :param synth_llm_client: generate statements
     :param graph_storage: graph storage instance
@@ -28,22 +27,25 @@ async def quiz(
     """
 
     semaphore = asyncio.Semaphore(max_concurrent)
+    generator = QuizGenerator(synth_llm_client)
 
-    async def _process_single_quiz(des: str, prompt: str, gt: str):
+    async def _process_single_quiz(description: str, template_type: str, gt: str):
         async with semaphore:
             try:
-                # 如果在rephrase_storage中已经存在，直接取出
-                descriptions = await rephrase_storage.get_by_id(des)
+                # if rephrase_storage exists already, directly get it
+                descriptions = await rephrase_storage.get_by_id(description)
                 if descriptions:
                     return None
 
+                prompt = generator.build_prompt_for_description(description, template_type)
                 new_description = await synth_llm_client.generate_answer(
                     prompt, temperature=1
                 )
-                return {des: [(new_description, gt)]}
+                rephrased_text = generator.parse_rephrased_text(new_description)
+                return {description: [(rephrased_text, gt)]}
 
             except Exception as e:  # pylint: disable=broad-except
-                logger.error("Error when quizzing description %s: %s", des, e)
+                logger.error("Error when quizzing description %s: %s", description, e)
                 return None
 
     edges = await graph_storage.get_all_edges()
@@ -53,59 +55,32 @@ async def quiz(
     tasks = []
     for edge in edges:
         edge_data = edge[2]
-
         description = edge_data["description"]
-        language = "English" if detect_main_language(description) == "en" else "Chinese"
 
         results[description] = [(description, "yes")]
 
         for i in range(max_samples):
             if i > 0:
                 tasks.append(
-                    _process_single_quiz(
-                        description,
-                        DESCRIPTION_REPHRASING_PROMPT[language]["TEMPLATE"].format(
-                            input_sentence=description
-                        ),
-                        "yes",
-                    )
+                    _process_single_quiz(description, "TEMPLATE", "yes")
                 )
             tasks.append(
-                _process_single_quiz(
-                    description,
-                    DESCRIPTION_REPHRASING_PROMPT[language]["ANTI_TEMPLATE"].format(
-                        input_sentence=description
-                    ),
-                    "no",
-                )
+                _process_single_quiz(description, "ANTI_TEMPLATE", "no")
             )
 
     for node in nodes:
         node_data = node[1]
         description = node_data["description"]
-        language = "English" if detect_main_language(description) == "en" else "Chinese"
 
         results[description] = [(description, "yes")]
 
         for i in range(max_samples):
             if i > 0:
                 tasks.append(
-                    _process_single_quiz(
-                        description,
-                        DESCRIPTION_REPHRASING_PROMPT[language]["TEMPLATE"].format(
-                            input_sentence=description
-                        ),
-                        "yes",
-                    )
+                    _process_single_quiz(description, "TEMPLATE", "yes")
                 )
             tasks.append(
-                _process_single_quiz(
-                    description,
-                    DESCRIPTION_REPHRASING_PROMPT[language]["ANTI_TEMPLATE"].format(
-                        input_sentence=description
-                    ),
-                    "no",
-                )
+                _process_single_quiz(description, "ANTI_TEMPLATE", "no")
             )
 
     for result in tqdm_async(

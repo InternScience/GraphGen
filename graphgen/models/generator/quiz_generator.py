@@ -1,7 +1,7 @@
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import AGGREGATED_GENERATION_PROMPT
+from graphgen.templates import DESCRIPTION_REPHRASING_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
@@ -11,16 +11,42 @@ class QuizGenerator(BaseGenerator):
     """
 
     @staticmethod
-    def build_prompt(description: str) -> str:
+    def build_prompt(
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+    ) -> str:
         """
         Build prompt for rephrasing the description.
-        :param description:
-        :return:
+        :param batch: A tuple containing (nodes, edges) where nodes/edges
+                      contain description information
+        :return: Prompt string
         """
-        language = detect_main_language(description)
-        prompt = AGGREGATED_GENERATION_PROMPT[language][
-            "DESCRIPTION_REPHRASING"
-        ].format(description=description)
+        # Extract description from batch
+        # For quiz generator, we expect a special format where
+        # the description is passed as the first node's description
+        nodes, edges = batch
+        if nodes:
+            description = nodes[0][1].get("description", "")
+            template_type = nodes[0][1].get("template_type", "TEMPLATE")
+        elif edges:
+            description = edges[0][2].get("description", "")
+            template_type = edges[0][2].get("template_type", "TEMPLATE")
+        else:
+            raise ValueError("Batch must contain at least one node or edge with description")
+
+        return QuizGenerator.build_prompt_for_description(description, template_type)
+
+    @staticmethod
+    def build_prompt_for_description(description: str, template_type: str = "TEMPLATE") -> str:
+        """
+        Build prompt for rephrasing a single description.
+        :param description: The description to rephrase
+        :param template_type: Either "TEMPLATE" (same meaning) or "ANTI_TEMPLATE" (opposite meaning)
+        :return: Prompt string
+        """
+        language = "English" if detect_main_language(description) == "en" else "Chinese"
+        prompt = DESCRIPTION_REPHRASING_PROMPT[language][template_type].format(
+            input_sentence=description
+        )
         return prompt
 
     @staticmethod
@@ -36,4 +62,9 @@ class QuizGenerator(BaseGenerator):
 
     @staticmethod
     def parse_response(response: str) -> Any:
-        pass
+        """
+        Parse the LLM response. For quiz generator, this returns the rephrased text.
+        :param response: LLM response
+        :return: Rephrased text
+        """
+        return QuizGenerator.parse_rephrased_text(response)
