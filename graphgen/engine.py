@@ -42,7 +42,7 @@ class OpNode:
         self.agg_mode = agg_mode
 
 
-def op(name: str, deps=None):
+def op(name: str, deps=None, agg_mode: AggMode = AggMode.ALL_REDUCE):
     deps = deps or []
 
     def decorator(func):
@@ -50,7 +50,13 @@ def op(name: str, deps=None):
         def _wrapper(*args, **kwargs):
             return func(*args, **kwargs)
 
-        _wrapper.op_node = OpNode(name, deps, lambda self, ctx: func(self, **ctx))
+        _wrapper.op_node = OpNode(
+            name=name,
+            deps=deps,
+            compute_func=lambda self, ctx: func(self),
+            callback_func=lambda self, ctx, results: None,
+            agg_mode=agg_mode,
+        )
         return _wrapper
 
     return decorator
@@ -59,17 +65,71 @@ def op(name: str, deps=None):
 class Engine:
     def __init__(self, max_workers: int = 4):
         self.max_workers = max_workers
+        self.bucket_mgr = BucketManager()
 
     def run(self, ops: List[OpNode], ctx: Context):
-        name2op = {operation.name: operation for operation in ops}
+        name2op = {op.name: op for op in ops}
+        topo_names = [op.name for op in self._topo_sort(ops)]
 
-        # topological sort
+        sem = threading.Semaphore(self.max_workers)
+        done = {n: threading.Event() for n in name2op}
+        exc = {}
+
+        for node in ops:
+            bucket_size = ctx.get(f"_bucket_size_{node.name}", 1)
+            self.bucket_mgr.register(
+                node.name,
+                bucket_size,
+                node.agg_mode,
+                lambda results, n=node: self._callback_wrapper(n, ctx, results),
+            )
+
+        def _exec(n: str):
+            with sem:
+                for d in name2op[n].deps:
+                    done[d].wait()
+                if any(d in exc for d in name2op[n].deps):
+                    exc[n] = "Skipped due to failed dependencies"
+                    done[n].set()
+                    return
+
+                try:
+                    name2op[n].compute_func(name2op[n], ctx)
+                except Exception:  # pylint: disable=broad-except
+                    exc[n] = traceback.format_exc()
+                finally:
+                    done[n].set()
+
+        ts = [
+            threading.Thread(target=_exec, args=(name,), daemon=True)
+            for name in topo_names
+        ]
+        for t in ts:
+            t.start()
+        for t in ts:
+            t.join()
+        if exc:
+            raise RuntimeError(
+                "Some operations failed:\n"
+                + "\n".join(f"---- {op} ----\n{tb}" for op, tb in exc.items())
+            )
+
+    @staticmethod
+    def _callback_wrapper(node: OpNode, ctx: Context, results: List[Any]):
+        try:
+            node.callback_func(node, ctx, results)
+        except Exception:  # pylint: disable=broad-except
+            traceback.print_exc()
+
+    @staticmethod
+    def _topo_sort(ops: List[OpNode]) -> List[OpNode]:
+        name2op = {operation.name: operation for operation in ops}
         graph = {n: set(name2op[n].deps) for n in name2op}
         topo = []
         q = [n for n, d in graph.items() if not d]
         while q:
             cur = q.pop(0)
-            topo.append(cur)
+            topo.append(name2op[cur])
             for child in [c for c, d in graph.items() if cur in d]:
                 graph[child].remove(cur)
                 if not graph[child]:
@@ -80,36 +140,7 @@ class Engine:
                 "Cyclic dependencies detected among operations."
                 "Please check your configuration."
             )
-
-        # semaphore for max_workers
-        sem = threading.Semaphore(self.max_workers)
-        done = {n: threading.Event() for n in name2op}
-        exc = {}
-
-        def _exec(n: str):
-            with sem:
-                for d in name2op[n].deps:
-                    done[d].wait()
-                if any(d in exc for d in name2op[n].deps):
-                    exc[n] = Exception("Skipped due to failed dependencies")
-                    done[n].set()
-                    return
-                try:
-                    name2op[n].func(name2op[n], ctx)
-                except Exception:  # pylint: disable=broad-except
-                    exc[n] = traceback.format_exc()
-                done[n].set()
-
-        ts = [threading.Thread(target=_exec, args=(n,), daemon=True) for n in topo]
-        for t in ts:
-            t.start()
-        for t in ts:
-            t.join()
-        if exc:
-            raise RuntimeError(
-                "Some operations failed:\n"
-                + "\n".join(f"---- {op} ----\n{tb}" for op, tb in exc.items())
-            )
+        return topo
 
 
 class Bucket:
@@ -190,8 +221,9 @@ def collect_ops(config: dict, graph_gen) -> List[OpNode]:
         op_node.deps = runtime_deps
 
         if "params" in stage:
-            op_node.func = lambda self, ctx, m=method, sc=stage: m(sc.get("params", {}))
+            params = stage["params"]
+            op_node.compute_func = lambda self, ctx, m=method, p=params: m(p)
         else:
-            op_node.func = lambda self, ctx, m=method: m()
+            op_node.compute_func = lambda self, ctx, m=method: m()
         ops.append(op_node)
     return ops
