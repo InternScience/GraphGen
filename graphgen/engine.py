@@ -13,9 +13,7 @@ from typing import Callable, Dict, List
 class OpType(Enum):
     STREAMING = auto()  # once data from upstream arrives, process it immediately
     BARRIER = auto()  # wait for all upstream data to arrive before processing
-
-    # TODO: implement batch processing
-    # BATCH = auto()  # process data in batches
+    BATCH = auto()  # process data in batches when threshold is reached
 
 
 # signals the end of a data stream
@@ -42,14 +40,16 @@ class OpNode:
         deps: List[str],
         func: Callable,
         op_type: OpType = OpType.BARRIER,  # use barrier by default
+        batch_size: int = 32,  # default batch size for BATCH operations
     ):
         self.name = name
         self.deps = deps
         self.func = func
         self.op_type = op_type
+        self.batch_size = batch_size
 
 
-def op(name: str, deps=None, op_type: OpType = OpType.BARRIER):
+def op(name: str, deps=None, op_type: OpType = OpType.BARRIER, batch_size: int = 32):
     deps = deps or []
 
     def decorator(func):
@@ -62,6 +62,7 @@ def op(name: str, deps=None, op_type: OpType = OpType.BARRIER):
             deps,
             func,
             op_type=op_type,
+            batch_size=batch_size,
         )
         return _wrapper
 
@@ -185,6 +186,27 @@ class Engine:
                 res = node.func(self, ctx, input_stream=in_stream)
                 if res is not None:
                     result_iter = res
+
+            elif node.op_type == OpType.BATCH:
+                # accumulate inputs into batches and process
+                batch = []
+                for item in in_stream:
+                    batch.append(item)
+                    if len(batch) >= node.batch_size:
+                        res = node.func(self, ctx, inputs=batch)
+                        if res is not None:
+                            result_iter.extend(
+                                res if isinstance(res, (list, tuple)) else [res]
+                            )
+                        batch = []
+                # process remaining items
+                if batch:
+                    res = node.func(self, ctx, inputs=batch)
+                    if res is not None:
+                        result_iter.extend(
+                            res if isinstance(res, (list, tuple)) else [res]
+                        )
+
             else:
                 raise ValueError(f"Unknown OpType {node.op_type} for {op_name}")
 
@@ -243,6 +265,7 @@ def collect_ops(config: dict, graph_gen) -> List[OpNode]:
         # if there are runtime dependencies, override them
         deps = stage.get("deps", op_node.deps)
         op_type = op_node.op_type
+        batch_size = stage.get("batch_size", op_node.batch_size)
 
         sig = inspect.signature(method)
         accepts_input_stream = "input_stream" in sig.parameters
@@ -281,6 +304,17 @@ def collect_ops(config: dict, graph_gen) -> List[OpNode]:
                     def func(self, ctx, input_stream, m=method):
                         return m()
 
+        elif op_type == OpType.BATCH:
+            if "params" in stage:
+
+                def func(self, ctx, inputs, m=method, sc=stage):
+                    return m(sc.get("params", {}), inputs=inputs)
+
+            else:
+
+                def func(self, ctx, inputs, m=method):
+                    return m(inputs=inputs)
+
         else:
             raise ValueError(f"Unknown OpType {op_type} for operation {name}")
 
@@ -289,6 +323,7 @@ def collect_ops(config: dict, graph_gen) -> List[OpNode]:
             deps=deps,
             func=func,
             op_type=op_type,
+            batch_size=batch_size,
         )
         ops.append(new_node)
     return ops

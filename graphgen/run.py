@@ -73,7 +73,7 @@ def main():
     ops = collect_ops(config, graph_gen)
 
     # run operations
-    Engine(max_workers=config.get("max_workers", 4)).run(ops, ctx)
+    Engine(queue_size=config.get("queue_size", 100)).run(ops, ctx)
 
     save_config(os.path.join(output_path, "config.yaml"), config)
     logger.info("GraphGen completed successfully. Data saved to %s", output_path)

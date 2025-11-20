@@ -1,12 +1,12 @@
 import os
 import time
-from typing import Dict
+from typing import Dict, Iterator, List
 
 import gradio as gr
 
 from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
-from graphgen.engine import op
+from graphgen.engine import OpType, op
 from graphgen.models import (
     JsonKVStorage,
     JsonListStorage,
@@ -88,74 +88,95 @@ class GraphGen:
         # webui
         self.progress_bar: gr.Progress = progress_bar
 
-    @op("read", deps=[])
+    @op("read", deps=[], op_type=OpType.STREAMING)
     @async_to_sync_method
     async def read(self, read_config: Dict):
         """
         read files from input sources
         """
-        data = read_files(**read_config, cache_dir=self.working_dir)
-        if len(data) == 0:
-            logger.warning("No data to process")
-            return
+        count = 0
+        for docs in read_files(**read_config, cache_dir=self.working_dir):
+            if not docs:
+                continue
+            new_docs = {compute_mm_hash(d, prefix="doc-"): d for d in docs}
+            _add_doc_keys = await self.full_docs_storage.filter_keys(
+                list(new_docs.keys())
+            )
+            new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
 
-        assert isinstance(data, list) and isinstance(data[0], dict)
+            if new_docs:
+                await self.full_docs_storage.upsert(new_docs)
+                await self.full_docs_storage.index_done_callback()
+                for doc_id in new_docs.keys():
+                    yield doc_id
+
+            count += len(new_docs)
+            logger.info(
+                "[Read] Yielded %d new documents, total %d", len(new_docs), count
+            )
+
+        if count == 0:
+            logger.warning("[Read] No new documents to process")
 
         # TODO: configurable whether to use coreference resolution
 
-        new_docs = {compute_mm_hash(doc, prefix="doc-"): doc for doc in data}
-        _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
-        new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
-
-        if len(new_docs) == 0:
-            logger.warning("All documents are already in the storage")
-            return
-
-        await self.full_docs_storage.upsert(new_docs)
-        await self.full_docs_storage.index_done_callback()
-
-    @op("chunk", deps=["read"])
+    @op("chunk", deps=["read"], op_type=OpType.STREAMING)
     @async_to_sync_method
-    async def chunk(self, chunk_config: Dict):
+    async def chunk(self, chunk_config: Dict, input_stream: Iterator):
         """
         chunk documents into smaller pieces from full_docs_storage if not already present
         """
+        count = 0
+        for doc_id in input_stream:
+            doc = await self.full_docs_storage.get_by_id(doc_id)
+            if not doc:
+                logger.warning(
+                    "[Chunk] Document %s not found in full_docs_storage", doc_id
+                )
+                continue
 
-        new_docs = await self.meta_storage.get_new_data(self.full_docs_storage)
-        if len(new_docs) == 0:
-            logger.warning("All documents are already in the storage")
-            return
+            inserting_chunks = chunk_documents(
+                {doc_id: doc},
+                self.tokenizer_instance,
+                self.progress_bar,
+                **chunk_config,
+            )
 
-        inserting_chunks = await chunk_documents(
-            new_docs,
-            self.tokenizer_instance,
-            self.progress_bar,
-            **chunk_config,
-        )
+            _add_chunk_keys = await self.chunks_storage.filter_keys(
+                list(inserting_chunks.keys())
+            )
+            inserting_chunks = {
+                k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
+            }
 
-        _add_chunk_keys = await self.chunks_storage.filter_keys(
-            list(inserting_chunks.keys())
-        )
-        inserting_chunks = {
-            k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
-        }
+            if inserting_chunks:
+                await self.chunks_storage.upsert(inserting_chunks)
+                await self.chunks_storage.index_done_callback()
+                count += len(inserting_chunks)
+                logger.info(
+                    "[Chunk] Yielded %d new chunks for document %s, total %d",
+                    len(inserting_chunks),
+                    doc_id,
+                    count,
+                )
+                for _chunk_id in inserting_chunks.keys():
+                    yield _chunk_id
+            else:
+                logger.info(
+                    "[Chunk] All chunks for document %s are already in the storage",
+                    doc_id,
+                )
+        if count == 0:
+            logger.warning("[Chunk] No new chunks to process")
 
-        if len(inserting_chunks) == 0:
-            logger.warning("All chunks are already in the storage")
-            return
-
-        await self.chunks_storage.upsert(inserting_chunks)
-        await self.chunks_storage.index_done_callback()
-        await self.meta_storage.mark_done(self.full_docs_storage)
-        await self.meta_storage.index_done_callback()
-
-    @op("build_kg", deps=["chunk"])
+    @op("build_kg", deps=["chunk"], op_type=OpType.BATCH, batch_size=32)
     @async_to_sync_method
-    async def build_kg(self):
+    async def build_kg(self, inputs: List):
         """
         build knowledge graph from text chunks
         """
-        # Step 1: get new chunks according to meta and chunks storage
+        # Step 1: get chunks
+
         inserting_chunks = await self.meta_storage.get_new_data(self.chunks_storage)
         if len(inserting_chunks) == 0:
             logger.warning("All chunks are already in the storage")
@@ -180,9 +201,9 @@ class GraphGen:
 
         return _add_entities_and_relations
 
-    @op("search", deps=["read"])
+    @op("search", deps=["read"], op_type=OpType.STREAMING)
     @async_to_sync_method
-    async def search(self, search_config: Dict):
+    async def search(self, search_config: Dict, input_stream: Iterator):
         logger.info("[Search] %s ...", ", ".join(search_config["data_sources"]))
 
         seeds = await self.meta_storage.get_new_data(self.full_docs_storage)
@@ -208,9 +229,9 @@ class GraphGen:
         await self.meta_storage.mark_done(self.full_docs_storage)
         await self.meta_storage.index_done_callback()
 
-    @op("quiz_and_judge", deps=["build_kg"])
+    @op("quiz_and_judge", deps=["build_kg"], op_type=OpType.BARRIER)
     @async_to_sync_method
-    async def quiz_and_judge(self, quiz_and_judge_config: Dict):
+    async def quiz_and_judge(self, quiz_and_judge_config: Dict, inputs: None):
         logger.warning(
             "Quiz and Judge operation needs trainee LLM client."
             " Make sure to provide one."
@@ -247,9 +268,9 @@ class GraphGen:
         logger.info("Restarting synthesizer LLM client.")
         self.synthesizer_llm_client.restart()
 
-    @op("partition", deps=["build_kg"])
+    @op("partition", deps=["build_kg"], op_type=OpType.BARRIER)
     @async_to_sync_method
-    async def partition(self, partition_config: Dict):
+    async def partition(self, partition_config: Dict, inputs: None):
         batches = await partition_kg(
             self.graph_storage,
             self.chunks_storage,
@@ -259,9 +280,9 @@ class GraphGen:
         await self.partition_storage.upsert(batches)
         return batches
 
-    @op("extract", deps=["chunk"])
+    @op("extract", deps=["chunk"], op_type=OpType.STREAMING)
     @async_to_sync_method
-    async def extract(self, extract_config: Dict):
+    async def extract(self, extract_config: Dict, input_stream: Iterator):
         logger.info("Extracting information from given chunks...")
 
         results = await extract_info(
@@ -279,9 +300,9 @@ class GraphGen:
         await self.meta_storage.mark_done(self.chunks_storage)
         await self.meta_storage.index_done_callback()
 
-    @op("generate", deps=["partition"])
+    @op("generate", deps=["partition"], op_type=OpType.BARRIER)
     @async_to_sync_method
-    async def generate(self, generate_config: Dict):
+    async def generate(self, generate_config: Dict, inputs: None):
 
         batches = self.partition_storage.data
         if not batches:
