@@ -43,7 +43,7 @@ class QuizGenerator(BaseGenerator):
         :param template_type: Either "TEMPLATE" (same meaning) or "ANTI_TEMPLATE" (opposite meaning)
         :return: Prompt string
         """
-        language = "English" if detect_main_language(description) == "en" else "Chinese"
+        language = detect_main_language(description)
         prompt = DESCRIPTION_REPHRASING_PROMPT[language][template_type].format(
             input_sentence=description
         )
