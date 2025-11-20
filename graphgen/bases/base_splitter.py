@@ -33,7 +33,7 @@ class BaseSplitter(ABC):
         """
         Split the input text into smaller chunks.
 
-        :param text: The input text to be split.
+        :param text: The input text to be chunk.
         :return: A list of text chunks.
         """
 
@@ -111,7 +111,7 @@ class BaseSplitter(ABC):
     def _split_text_with_regex(
         text: str, separator: str, keep_separator: Union[bool, Literal["start", "end"]]
     ) -> List[str]:
-        # Now that we have the separator, split the text
+        # Now that we have the separator, chunk the text
         if separator:
             if keep_separator:
                 # The parentheses in the pattern keep the delimiters in the result.

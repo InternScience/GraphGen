@@ -1,8 +1,6 @@
 from functools import lru_cache
 from typing import Union
 
-from tqdm.asyncio import tqdm as tqdm_async
-
 from graphgen.models import (
     ChineseRecursiveTextSplitter,
     RecursiveCharacterSplitter,
@@ -38,7 +36,7 @@ def split_chunks(text: str, language: str = "en", **kwargs) -> list:
     return splitter.split_text(text)
 
 
-async def chunk_documents(
+def chunk_documents(
     new_docs: dict,
     tokenizer_instance: Tokenizer = None,
     progress_bar=None,
@@ -47,9 +45,8 @@ async def chunk_documents(
     inserting_chunks = {}
     cur_index = 1
     doc_number = len(new_docs)
-    async for doc_key, doc in tqdm_async(
-        new_docs.items(), desc="[1/4]Chunking documents", unit="doc"
-    ):
+
+    for doc_key, doc in new_docs.items():
         doc_type = doc.get("type")
         if doc_type == "text":
             doc_language = detect_main_language(doc["content"])
