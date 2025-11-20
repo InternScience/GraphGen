@@ -1,11 +1,10 @@
-import asyncio
 from collections import defaultdict
 
-from tqdm.asyncio import tqdm as tqdm_async
+import gradio as gr
 
 from graphgen.bases import BaseLLMWrapper
 from graphgen.models import JsonKVStorage, NetworkXStorage, QuizGenerator
-from graphgen.utils import logger
+from graphgen.utils import logger, run_concurrent
 
 
 async def quiz(
@@ -13,7 +12,7 @@ async def quiz(
     graph_storage: NetworkXStorage,
     rephrase_storage: JsonKVStorage,
     max_samples: int = 1,
-    max_concurrent: int = 1000,
+    progress_bar: gr.Progress = None,
 ) -> JsonKVStorage:
     """
     Get all edges and quiz them using QuizGenerator.
@@ -22,37 +21,36 @@ async def quiz(
     :param graph_storage: graph storage instance
     :param rephrase_storage: rephrase storage instance
     :param max_samples: max samples for each edge
-    :param max_concurrent: max concurrent
+    :param progress_bar
     :return:
     """
 
-    semaphore = asyncio.Semaphore(max_concurrent)
     generator = QuizGenerator(synth_llm_client)
 
-    async def _process_single_quiz(description: str, template_type: str, gt: str):
-        async with semaphore:
-            try:
-                # if rephrase_storage exists already, directly get it
-                descriptions = await rephrase_storage.get_by_id(description)
-                if descriptions:
-                    return None
-
-                prompt = generator.build_prompt_for_description(description, template_type)
-                new_description = await synth_llm_client.generate_answer(
-                    prompt, temperature=1
-                )
-                rephrased_text = generator.parse_rephrased_text(new_description)
-                return {description: [(rephrased_text, gt)]}
-
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("Error when quizzing description %s: %s", description, e)
+    async def _process_single_quiz(item: tuple[str, str, str]):
+        description, template_type, gt = item
+        try:
+            # if rephrase_storage exists already, directly get it
+            descriptions = await rephrase_storage.get_by_id(description)
+            if descriptions:
                 return None
+
+            prompt = generator.build_prompt_for_description(description, template_type)
+            new_description = await synth_llm_client.generate_answer(
+                prompt, temperature=1
+            )
+            rephrased_text = generator.parse_rephrased_text(new_description)
+            return {description: [(rephrased_text, gt)]}
+
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error when quizzing description %s: %s", description, e)
+            return None
 
     edges = await graph_storage.get_all_edges()
     nodes = await graph_storage.get_all_nodes()
 
     results = defaultdict(list)
-    tasks = []
+    items = []
     for edge in edges:
         edge_data = edge[2]
         description = edge_data["description"]
@@ -61,12 +59,8 @@ async def quiz(
 
         for i in range(max_samples):
             if i > 0:
-                tasks.append(
-                    _process_single_quiz(description, "TEMPLATE", "yes")
-                )
-            tasks.append(
-                _process_single_quiz(description, "ANTI_TEMPLATE", "no")
-            )
+                items.append((description, "TEMPLATE", "yes"))
+            items.append((description, "ANTI_TEMPLATE", "no"))
 
     for node in nodes:
         node_data = node[1]
@@ -76,17 +70,18 @@ async def quiz(
 
         for i in range(max_samples):
             if i > 0:
-                tasks.append(
-                    _process_single_quiz(description, "TEMPLATE", "yes")
-                )
-            tasks.append(
-                _process_single_quiz(description, "ANTI_TEMPLATE", "no")
-            )
+                items.append((description, "TEMPLATE", "yes"))
+            items.append((description, "ANTI_TEMPLATE", "no"))
 
-    for result in tqdm_async(
-        asyncio.as_completed(tasks), total=len(tasks), desc="Quizzing descriptions"
-    ):
-        new_result = await result
+    quiz_results = await run_concurrent(
+        _process_single_quiz,
+        items,
+        desc="Quizzing descriptions",
+        unit="description",
+        progress_bar=progress_bar,
+    )
+
+    for new_result in quiz_results:
         if new_result:
             for key, value in new_result.items():
                 results[key].extend(value)
