@@ -29,7 +29,7 @@ class LLMFactory:
             return HTTPClient(**config)
         if backend in ("openai_api", "azure_openai_api"):
             from graphgen.models.llm.api.openai_client import OpenAIClient
-            # pass in concrete backend to the OpenAIClient so that internally we can distinguish 
+            # pass in concrete backend to the OpenAIClient so that internally we can distinguish
             # between OpenAI and Azure OpenAI
             return OpenAIClient(**config, backend=backend)
         if backend == "ollama_api":

@@ -68,9 +68,9 @@ class OpenAIClient(BaseLLMWrapper):
 
     def __post_init__(self):
 
-        api_name = self.backend.replace("_", " ") 
+        api_name = self.backend.replace("_", " ")
         assert self.api_key is not None, f"Please provide api key to access {api_name}."
-        if self.backend == "openai_api":    
+        if self.backend == "openai_api":
             self.client = AsyncOpenAI(
                 api_key=self.api_key or "dummy", base_url=self.base_url
             )
