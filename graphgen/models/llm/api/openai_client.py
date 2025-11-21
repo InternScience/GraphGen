@@ -59,7 +59,9 @@ class OpenAIClient(BaseLLMWrapper):
         self.rpm = rpm or RPM()
         self.tpm = tpm or TPM()
 
-        assert backend in ["openai_api", "azure_openai_api"], f"Unsupported backend {backend}. Use 'openai_api' or 'azure_openai_api'."
+        assert (
+            backend in ("openai_api", "azure_openai_api")
+        ), f"Unsupported backend '{backend}'. Use 'openai_api' or 'azure_openai_api'."
         self.backend = backend
 
         self.__post_init__()
@@ -68,7 +70,6 @@ class OpenAIClient(BaseLLMWrapper):
 
         api_name = self.backend.replace("_", " ") 
         assert self.api_key is not None, f"Please provide api key to access {api_name}."
-
         if self.backend == "openai_api":    
             self.client = AsyncOpenAI(
                 api_key=self.api_key or "dummy", base_url=self.base_url
