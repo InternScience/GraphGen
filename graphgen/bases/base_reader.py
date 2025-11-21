@@ -2,6 +2,7 @@ import os
 from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Union
 
+import pandas as pd
 import requests
 from ray.data import Dataset
 
@@ -42,6 +43,21 @@ class BaseReader(ABC):
             content = item.get(self.text_column, "").strip()
             return bool(content)
         return True
+
+    def _validate_batch(self, batch: pd.DataFrame) -> pd.DataFrame:
+        """
+        Validate data format.
+        """
+        if "type" not in batch.columns:
+            raise ValueError(f"Missing 'type' column. Found: {list(batch.columns)}")
+
+        if "text" in batch["type"].values:
+            if self.text_column not in batch.columns:
+                raise ValueError(
+                    f"Missing '{self.text_column}' column for text documents"
+                )
+
+        return batch
 
     @staticmethod
     def _image_exists(path_or_url: str, timeout: int = 3) -> bool:

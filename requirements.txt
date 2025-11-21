@@ -20,6 +20,8 @@ requests
 fastapi
 trafilatura
 aiohttp
+ray
+diskcache
 
 leidenalg
 igraph
