@@ -8,7 +8,7 @@ from graphgen.bases.base_reader import BaseReader
 
 class JSONReader(BaseReader):
     """
-    Reader for JSON files.
+    Reader for JSON and JSONL files.
     Columns:
         - type: The type of the document (e.g., "text", "image", etc.)
         - if type is "text", "content" column must be present.
@@ -21,7 +21,7 @@ class JSONReader(BaseReader):
     ) -> Dataset:
         """
         Read JSON file and return Ray Dataset.
-        :param input_path: Path to JSON file or list of JSON files.
+        :param input_path: Path to JSON/JSONL file or list of JSON/JSONL files.
         :param parallelism: Number of parallel workers for reading files.
         :return: Ray Dataset containing validated and filtered data.
         """
