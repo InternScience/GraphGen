@@ -255,6 +255,7 @@ class GraphGen:
             self.graph_storage,
             self.rephrase_storage,
             max_samples,
+            progress_bar=self.progress_bar,
         )
 
         # TODO： assert trainee_llm_client is valid before judge
@@ -270,6 +271,7 @@ class GraphGen:
             self.graph_storage,
             self.rephrase_storage,
             re_judge,
+            progress_bar=self.progress_bar,
         )
 
         await self.rephrase_storage.index_done_callback()
