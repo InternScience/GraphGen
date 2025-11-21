@@ -3,7 +3,6 @@ from typing import Any, Dict, List, Optional
 
 import openai
 from openai import APIConnectionError, APITimeoutError, AsyncOpenAI, AsyncAzureOpenAI, RateLimitError
-from pyparsing import Literal
 from tenacity import (
     retry,
     retry_if_exception_type,
