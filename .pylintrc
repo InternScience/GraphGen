@@ -452,6 +452,7 @@ disable=raw-checker-failed,
         R0917,  # Too many positional arguments (6/5) (too-many-positional-arguments)
         C0103,
         E0401,
+        W0703,  # Catching too general exception Exception
 
 # Enable the message, report, category or checker with the given id(s). You can
 # either give multiple identifier separated by comma (,) or put this option
