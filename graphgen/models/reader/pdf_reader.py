@@ -247,22 +247,3 @@ class MinerUParser:
                 "MinerU is not installed or not found in PATH. Please install it from pip: \n"
                 "pip install -U 'mineru[core]'"
             ) from exc
-
-
-if __name__ == "__main__":
-    reader = PDFReader(
-        output_dir="./output",
-        method="auto",
-        backend="pipeline",
-        device="cpu",
-        lang="en",
-        formula=True,
-        table=True,
-    )
-    dataset = reader.read(
-        "/home/PJLAB/chenzihong/Project/graphgen/resources/input_examples/pdf_demo.pdf",
-        parallelism=2,
-    )
-
-    for item in dataset.take_all():
-        print(item)
