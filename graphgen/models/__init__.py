@@ -5,6 +5,7 @@ from .generator import (
     CoTGenerator,
     MultiHopGenerator,
     ProteinQAGenerator,
+    QuizGenerator,
     VQAGenerator,
 )
 from .kg_builder import LightRAGKGBuilder, MMKGBuilder, MOKGBuilder

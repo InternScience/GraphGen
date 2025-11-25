@@ -16,7 +16,6 @@
 
 [![Hugging Face](https://img.shields.io/badge/Demo-on%20HF-blue?logo=huggingface&logoColor=yellow)](https://huggingface.co/spaces/chenzihong/GraphGen)
 [![Model Scope](https://img.shields.io/badge/%F0%9F%A4%96%20Demo-on%20MS-green)](https://modelscope.cn/studios/chenzihong/GraphGen)
-[![OpenXLab](https://img.shields.io/badge/Demo-on%20OpenXLab-blue?logo=openxlab&logoColor=yellow)](https://g-app-center-120612-6433-jpdvmvp.openxlab.space)
 
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
@@ -107,7 +106,7 @@ Users can flexibly configure according to the needs of synthetic data.
 
 ## 🚀 Quick Start
 
-Experience GraphGen through [Web](https://g-app-center-120612-6433-jpdvmvp.openxlab.space) or [Backup Web Entrance](https://openxlab.org.cn/apps/detail/chenzihonga/GraphGen)
+Experience GraphGen Demo through [Huggingface](https://huggingface.co/spaces/chenzihong/GraphGen) or [Modelscope](https://modelscope.cn/studios/chenzihong/GraphGen).
 
 For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10), open new [issue](https://github.com/open-sciencelab/GraphGen/issues) or join our [wechat group](https://cdn.vansin.top/internlm/dou.jpg) and ask.
 

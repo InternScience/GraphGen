@@ -16,7 +16,6 @@
 
 [![Hugging Face](https://img.shields.io/badge/Demo-on%20HF-blue?logo=huggingface&logoColor=yellow)](https://huggingface.co/spaces/chenzihong/GraphGen)
 [![Model Scope](https://img.shields.io/badge/%F0%9F%A4%96%20Demo-on%20MS-green)](https://modelscope.cn/studios/chenzihong/GraphGen)
-[![OpenXLab](https://img.shields.io/badge/Demo-on%20OpenXLab-blue?logo=openxlab&logoColor=yellow)](https://g-app-center-120612-6433-jpdvmvp.openxlab.space)
 
 GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation
 
@@ -105,7 +104,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 ## 🚀 快速开始
 
-通过 [Web](https://g-app-center-120612-6433-jpdvmvp.openxlab.space) 或 [备用 Web 入口](https://openxlab.org.cn/apps/detail/chenzihonga/GraphGen) 体验 GraphGen。
+通过 [Huggingface](https://huggingface.co/spaces/chenzihong/GraphGen) 或 [Modelscope](https://modelscope.cn/studios/chenzihong/GraphGen) 体验 GraphGen。
 
 如有任何问题，请查看 [FAQ](https://github.com/open-sciencelab/GraphGen/issues/10)、提交新的 [issue](https://github.com/open-sciencelab/GraphGen/issues) 或加入我们的[微信群](https://cdn.vansin.top/internlm/dou.jpg)咨询。
 
