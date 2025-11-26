@@ -2,7 +2,7 @@ pipeline:
   - name: read_step
     op_key: read
     params:
-      input_file:  resources/input_examples/search_demo.jsonl # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
+      input_file:  resources/input_examples/search_protein_demo.jsonl # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
 
   - name: search_step
     op_key: search

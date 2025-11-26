@@ -26,6 +26,8 @@ from .reader import (
     RDFReader,
     TXTReader,
 )
+from .searcher.db.ncbi_searcher import NCBISearch
+from .searcher.db.rnacentral_searcher import RNACentralSearch
 from .searcher.db.uniprot_searcher import UniProtSearch
 from .searcher.kg.wiki_search import WikiSearch
 from .searcher.web.bing_search import BingSearch
