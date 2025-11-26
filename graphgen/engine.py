@@ -4,7 +4,6 @@ orchestration engine for GraphGen
 
 import threading
 import traceback
-from functools import wraps
 from typing import Any, Callable, List
 
 
@@ -27,25 +26,12 @@ class OpNode:
         self.name, self.deps, self.func = name, deps, func
 
 
-def op(name: str, deps=None):
-    deps = deps or []
-
-    def decorator(func):
-        @wraps(func)
-        def _wrapper(*args, **kwargs):
-            return func(*args, **kwargs)
-
-        _wrapper.op_node = OpNode(name, deps, lambda self, ctx: func(self, **ctx))
-        return _wrapper
-
-    return decorator
-
-
 class Engine:
     def __init__(self, max_workers: int = 4):
         self.max_workers = max_workers
 
     def run(self, ops: List[OpNode], ctx: Context):
+        self._validate(ops)
         name2op = {operation.name: operation for operation in ops}
 
         # topological sort
@@ -81,7 +67,7 @@ class Engine:
                     return
                 try:
                     name2op[n].func(name2op[n], ctx)
-                except Exception:  # pylint: disable=broad-except
+                except Exception:
                     exc[n] = traceback.format_exc()
                 done[n].set()
 
@@ -96,6 +82,20 @@ class Engine:
                 + "\n".join(f"---- {op} ----\n{tb}" for op, tb in exc.items())
             )
 
+    @staticmethod
+    def _validate(ops: List[OpNode]):
+        name_set = set()
+        for op in ops:
+            if op.name in name_set:
+                raise ValueError(f"Duplicate operation name: {op.name}")
+            name_set.add(op.name)
+        for op in ops:
+            for dep in op.deps:
+                if dep not in name_set:
+                    raise ValueError(
+                        f"Operation {op.name} has unknown dependency: {dep}"
+                    )
+
 
 def collect_ops(config: dict, graph_gen) -> List[OpNode]:
     """
@@ -106,16 +106,20 @@ def collect_ops(config: dict, graph_gen) -> List[OpNode]:
     ops: List[OpNode] = []
     for stage in config["pipeline"]:
         name = stage["name"]
-        method = getattr(graph_gen, name)
-        op_node = method.op_node
-
-        # if there are runtime dependencies, override them
-        runtime_deps = stage.get("deps", op_node.deps)
-        op_node.deps = runtime_deps
+        method_name = stage.get("op_key")
+        method = getattr(graph_gen, method_name)
+        deps = stage.get("deps", [])
 
         if "params" in stage:
-            op_node.func = lambda self, ctx, m=method, sc=stage: m(sc.get("params", {}))
+
+            def func(self, ctx, _method=method, _params=stage.get("params", {})):
+                return _method(_params)
+
         else:
-            op_node.func = lambda self, ctx, m=method: m()
+
+            def func(self, ctx, _method=method):
+                return _method()
+
+        op_node = OpNode(name=name, deps=deps, func=func)
         ops.append(op_node)
     return ops

@@ -6,7 +6,6 @@ import gradio as gr
 
 from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
-from graphgen.engine import op
 from graphgen.models import (
     JsonKVStorage,
     JsonListStorage,
@@ -89,7 +88,6 @@ class GraphGen:
         # webui
         self.progress_bar: gr.Progress = progress_bar
 
-    @op("read", deps=[])
     @async_to_sync_method
     async def read(self, read_config: Dict):
         """
@@ -116,7 +114,6 @@ class GraphGen:
         self.full_docs_storage.upsert(new_docs)
         self.full_docs_storage.index_done_callback()
 
-    @op("chunk", deps=["read"])
     @async_to_sync_method
     async def chunk(self, chunk_config: Dict):
         """
@@ -149,7 +146,6 @@ class GraphGen:
         self.meta_storage.mark_done(self.full_docs_storage)
         self.meta_storage.index_done_callback()
 
-    @op("build_kg", deps=["chunk"])
     @async_to_sync_method
     async def build_kg(self):
         """
@@ -180,7 +176,6 @@ class GraphGen:
 
         return _add_entities_and_relations
 
-    @op("search", deps=["read"])
     @async_to_sync_method
     async def search(self, search_config: Dict):
         logger.info("[Search] %s ...", ", ".join(search_config["data_sources"]))
@@ -206,7 +201,6 @@ class GraphGen:
         self.meta_storage.mark_done(self.full_docs_storage)
         self.meta_storage.index_done_callback()
 
-    @op("quiz_and_judge", deps=["build_kg"])
     @async_to_sync_method
     async def quiz_and_judge(self, quiz_and_judge_config: Dict):
         logger.warning(
@@ -247,7 +241,6 @@ class GraphGen:
         logger.info("Restarting synthesizer LLM client.")
         self.synthesizer_llm_client.restart()
 
-    @op("partition", deps=["build_kg"])
     @async_to_sync_method
     async def partition(self, partition_config: Dict):
         batches = await partition_kg(
@@ -259,7 +252,6 @@ class GraphGen:
         self.partition_storage.upsert(batches)
         return batches
 
-    @op("extract", deps=["chunk"])
     @async_to_sync_method
     async def extract(self, extract_config: Dict):
         logger.info("Extracting information from given chunks...")
@@ -279,7 +271,6 @@ class GraphGen:
         self.meta_storage.mark_done(self.chunks_storage)
         self.meta_storage.index_done_callback()
 
-    @op("generate", deps=["partition"])
     @async_to_sync_method
     async def generate(self, generate_config: Dict):
 
