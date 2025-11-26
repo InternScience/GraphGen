@@ -1,22 +1,30 @@
 pipeline:
-  - name: read
+  - name: read_step # step name is unique in the pipeline, and can be referenced by other steps
+    op_key: read
     params:
       input_file: resources/input_examples/jsonl_demo.jsonl # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
 
-  - name: chunk
+  - name: chunk_step
+    op_key: chunk
+    deps: [read_step] # chunk_step depends on read_step
     params:
         chunk_size: 1024 # chunk size for text splitting
         chunk_overlap: 100 # chunk overlap for text splitting
 
-  - name: build_kg
+  - name: build_kg_step
+    op_key: build_kg
+    deps: [chunk_step] # build_kg_step depends on chunk_step
 
-  - name: quiz_and_judge
+  - name: quiz_and_judge_step
+    op_key: quiz_and_judge
+    deps: [build_kg_step] # quiz_and_judge depends on build_kg_step
     params:
       quiz_samples: 2 # number of quiz samples to generate
       re_judge: false # whether to re-judge the existing quiz samples
 
-  - name: partition
-    deps: [quiz_and_judge] # ece depends on quiz_and_judge steps
+  - name: partition_step
+    op_key: partition
+    deps: [quiz_and_judge_step] # partition_step depends on quiz_and_judge_step
     params:
       method: ece # ece is a custom partition method based on comprehension loss
       method_params:
@@ -25,7 +33,9 @@ pipeline:
         max_tokens_per_community: 10240 # max tokens per community
         unit_sampling: max_loss # unit sampling strategy, support: random, max_loss, min_loss
 
-  - name: generate
+  - name: generate_step
+    op_key: generate
+    deps: [partition_step] # generate_step depends on partition_step
     params:
       method: aggregated # atomic, aggregated, multi_hop, cot, vqa
       data_format: ChatML # Alpaca, Sharegpt, ChatML

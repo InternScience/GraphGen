@@ -31,7 +31,7 @@ async def extract_info(
     else:
         raise ValueError(f"Unsupported extraction method: {method}")
 
-    chunks = await chunk_storage.get_all()
+    chunks = chunk_storage.get_all()
     chunks = [{k: v} for k, v in chunks.items()]
     logger.info("Start extracting information from %d chunks", len(chunks))
 
