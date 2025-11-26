@@ -177,6 +177,3 @@ cache
 *.pyc
 *.html
 .gradio
-
-# Local test scripts
-test_database_access.py
