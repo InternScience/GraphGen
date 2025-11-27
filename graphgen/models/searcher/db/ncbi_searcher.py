@@ -56,6 +56,168 @@ class NCBISearch(BaseSearcher):
         return default
 
     @staticmethod
+    def _extract_gene_ref(entrezgene_gene):
+        """Extract gene_ref from entrezgene_gene."""
+        if isinstance(entrezgene_gene, dict):
+            return entrezgene_gene.get("Gene-ref", {})
+        if hasattr(entrezgene_gene, "get"):
+            return entrezgene_gene.get("Gene-ref", {})
+        try:
+            if hasattr(entrezgene_gene, "Gene-ref"):
+                return getattr(entrezgene_gene, "Gene-ref", {})
+        except Exception:
+            pass
+        return {}
+
+    @staticmethod
+    def _extract_organism(entrezgene_source):
+        """Extract organism from entrezgene_source."""
+        try:
+            biosource = NCBISearch._safe_get(entrezgene_source, "BioSource", {})
+            biosource_org = NCBISearch._safe_get(biosource, "BioSource_org", {})
+            org_ref = NCBISearch._safe_get(biosource_org, "Org-ref", {})
+            return NCBISearch._safe_get(org_ref, "Org-ref_taxname", "N/A")
+        except Exception as e:
+            logger.debug("Error extracting organism: %s", e)
+            return "N/A"
+
+    @staticmethod
+    def _extract_synonyms(gene_ref):
+        """Extract gene synonyms from gene_ref."""
+        gene_synonyms = []
+        try:
+            gene_syn = gene_ref.get("Gene-ref_syn", []) if isinstance(gene_ref, dict) else []
+            if isinstance(gene_syn, list):
+                for syn in gene_syn:
+                    if isinstance(syn, dict):
+                        gene_synonyms.append(syn.get("Gene-ref_syn_E", "N/A"))
+                    elif isinstance(syn, str):
+                        gene_synonyms.append(syn)
+                    else:
+                        gene_synonyms.append(str(syn))
+            elif isinstance(gene_syn, str):
+                gene_synonyms.append(gene_syn)
+            elif gene_syn:
+                gene_synonyms.append(str(gene_syn))
+        except Exception as e:
+            logger.debug("Error extracting gene synonyms: %s", e)
+        return gene_synonyms
+
+    @staticmethod
+    def _extract_gene_type(gene_data):
+        """Extract gene type from gene_data."""
+        try:
+            gene_type_data = gene_data.get("Entrezgene_type")
+            if not gene_type_data:
+                return None
+            type_value = str(gene_type_data)
+            type_mapping = {
+                "1": "protein-coding",
+                "2": "pseudo",
+                "3": "rRNA",
+                "4": "tRNA",
+                "5": "snRNA",
+                "6": "ncRNA",
+                "7": "other",
+            }
+            return type_mapping.get(type_value, f"type_{type_value}")
+        except Exception as e:
+            logger.debug("Error extracting gene type: %s", e)
+            return None
+
+    @staticmethod
+    def _extract_chromosome(first_locus):
+        """Extract chromosome from first_locus."""
+        label = NCBISearch._safe_get(first_locus, "Gene-commentary_label", "")
+        if not label or "Chromosome" not in str(label):
+            return None
+        match = re.search(r'Chromosome\s+(\S+)', str(label))
+        return match.group(1) if match else None
+
+    @staticmethod
+    def _extract_genomic_location(first_locus):
+        """Extract genomic location from first_locus."""
+        seqs = NCBISearch._safe_get(first_locus, "Gene-commentary_seqs", [])
+        if not seqs or not isinstance(seqs, list) or not seqs:
+            return None
+        first_seq = seqs[0]
+        if not isinstance(first_seq, dict):
+            return None
+        seq_loc_int = NCBISearch._safe_get(first_seq, "Seq-loc_int", {})
+        if not seq_loc_int:
+            return None
+        seq_interval = NCBISearch._safe_get(seq_loc_int, "Seq-interval", {})
+        if not seq_interval:
+            return None
+        seq_from = NCBISearch._safe_get(seq_interval, "Seq-interval_from", "")
+        seq_to = NCBISearch._safe_get(seq_interval, "Seq-interval_to", "")
+        if seq_from and seq_to:
+            return f"{seq_from}-{seq_to}"
+        return None
+
+    @staticmethod
+    def _extract_location_info(locus_data):
+        """Extract chromosome and genomic location from locus data."""
+        if not locus_data or not isinstance(locus_data, list) or not locus_data:
+            return None, None
+        first_locus = locus_data[0]
+        if not isinstance(first_locus, dict):
+            return None, None
+        chromosome = NCBISearch._extract_chromosome(first_locus)
+        genomic_location = NCBISearch._extract_genomic_location(first_locus)
+        return chromosome, genomic_location
+
+    @staticmethod
+    def _extract_function_info(gene_data):
+        """Extract gene functional description."""
+        try:
+            summary = gene_data.get("Entrezgene_summary")
+            if summary:
+                return str(summary)
+            comments_data = gene_data.get("Entrezgene_comments")
+            if not comments_data or not isinstance(comments_data, list):
+                return None
+            for comment in comments_data:
+                if not isinstance(comment, dict):
+                    continue
+                heading = NCBISearch._safe_get(comment, "Gene-commentary_heading", "")
+                heading_lower = str(heading).lower()
+                if "function" not in heading_lower and "summary" not in heading_lower:
+                    continue
+                comment_text = NCBISearch._safe_get(comment, "Gene-commentary_comment", "")
+                if comment_text:
+                    return str(comment_text)
+            return None
+        except Exception as e:
+            logger.debug("Error extracting function: %s", e)
+            return None
+
+    @staticmethod
+    def _extract_accession(locus_data):
+        """Extract representative mRNA accession from locus data."""
+        if not locus_data or not isinstance(locus_data, list) or not locus_data:
+            return None
+        first_locus = locus_data[0]
+        if not isinstance(first_locus, dict):
+            return None
+        products = NCBISearch._safe_get(first_locus, "Gene-commentary_products", [])
+        if not products or not isinstance(products, list):
+            return None
+        representative_accession = None
+        for product in products:
+            if not isinstance(product, dict):
+                continue
+            product_type = NCBISearch._safe_get(product, "Gene-commentary_type", "")
+            product_type_str = str(product_type)
+            if product_type_str == "3" or (not representative_accession and product_type_str):
+                accession = NCBISearch._safe_get(product, "Gene-commentary_accession", "")
+                if accession:
+                    representative_accession = str(accession)
+                    if product_type_str == "3":
+                        break
+        return representative_accession
+
+    @staticmethod
     def _gene_record_to_dict(gene_record, gene_id: str) -> dict:
         """
         Convert an Entrez gene record to a dictionary.
@@ -67,164 +229,19 @@ class NCBISearch(BaseSearcher):
             raise ValueError("Empty gene record")
 
         gene_data = gene_record[0]
+        locus_data = gene_data.get("Entrezgene_locus")
 
-        # Safely extract gene_ref, handling both dict and StringElement types
-        gene_ref = {}
+        # Extract information using helper methods
         entrezgene_gene = gene_data.get("Entrezgene_gene")
-        if isinstance(entrezgene_gene, dict):
-            gene_ref = entrezgene_gene.get("Gene-ref", {})
-        elif hasattr(entrezgene_gene, "get"):
-            gene_ref = entrezgene_gene.get("Gene-ref", {})
-        else:
-            # If it's a StringElement or other type, try to access as dict
-            try:
-                if hasattr(entrezgene_gene, "Gene-ref"):
-                    gene_ref = getattr(entrezgene_gene, "Gene-ref", {})
-            except Exception:
-                pass
-
-        # Safely extract organism
-        organism = "N/A"
-        try:
-            entrezgene_source = gene_data.get("Entrezgene_source")
-            if isinstance(entrezgene_source, dict):
-                biosource = entrezgene_source.get("BioSource", {})
-                if isinstance(biosource, dict):
-                    biosource_org = biosource.get("BioSource_org", {})
-                    if isinstance(biosource_org, dict):
-                        org_ref = biosource_org.get("Org-ref", {})
-                        if isinstance(org_ref, dict):
-                            organism = org_ref.get("Org-ref_taxname", "N/A")
-                        elif hasattr(org_ref, "Org-ref_taxname"):
-                            organism = getattr(org_ref, "Org-ref_taxname", "N/A")
-        except Exception as e:
-            logger.debug("Error extracting organism: %s", e)
-
-        # Extract gene synonyms - safely handle StringElement types
-        gene_synonyms = []
-        try:
-            gene_syn = gene_ref.get("Gene-ref_syn", []) if isinstance(gene_ref, dict) else []
-            if isinstance(gene_syn, list):
-                for syn in gene_syn:
-                    if isinstance(syn, dict):
-                        gene_synonyms.append(syn.get("Gene-ref_syn_E", "N/A"))
-                    elif isinstance(syn, str):
-                        gene_synonyms.append(syn)
-                    else:
-                        # Handle StringElement or other types
-                        gene_synonyms.append(str(syn))
-            elif isinstance(gene_syn, str):
-                gene_synonyms.append(gene_syn)
-            elif gene_syn:  # Handle StringElement
-                gene_synonyms.append(str(gene_syn))
-        except Exception as e:
-            logger.debug("Error extracting gene synonyms: %s", e)
-
-        # Extract gene type - safely handle StringElement types
-        # Note: Entrezgene_type is a StringElement with numeric value (e.g., "6" for ncRNA)
-        gene_type = None
-        try:
-            gene_type_data = gene_data.get("Entrezgene_type")
-            if gene_type_data:
-                type_value = str(gene_type_data)
-                # Map numeric values to type names (NCBI gene type codes)
-                type_mapping = {
-                    "1": "protein-coding",
-                    "2": "pseudo",
-                    "3": "rRNA",
-                    "4": "tRNA",
-                    "5": "snRNA",
-                    "6": "ncRNA",
-                    "7": "other",
-                }
-                gene_type = type_mapping.get(type_value, f"type_{type_value}")
-        except Exception as e:
-            logger.debug("Error extracting gene type: %s", e)
-
-        # Extract chromosome and genomic location from Entrezgene_locus
-        # Note: Entrezgene_location doesn't exist, but Entrezgene_locus contains location info
-        chromosome = None
-        genomic_location = None
-
-        try:
-            locus_data = gene_data.get("Entrezgene_locus")
-            if locus_data and isinstance(locus_data, list) and locus_data:
-                first_locus = locus_data[0]
-                if isinstance(first_locus, dict):
-                    # Extract chromosome from Gene-commentary_label
-                    # Example: "Chromosome 13 Reference RoL_Sarg_1.0" -> "13"
-                    label = NCBISearch._safe_get(first_locus, "Gene-commentary_label", "")
-                    if label and "Chromosome" in str(label):
-                        match = re.search(r'Chromosome\s+(\S+)', str(label))
-                        if match:
-                            chromosome = match.group(1)
-
-                    # Extract genomic location from Gene-commentary_seqs
-                    seqs = NCBISearch._safe_get(first_locus, "Gene-commentary_seqs", [])
-                    if seqs and isinstance(seqs, list) and seqs:
-                        first_seq = seqs[0]
-                        if isinstance(first_seq, dict):
-                            seq_loc_int = NCBISearch._safe_get(first_seq, "Seq-loc_int", {})
-                            if seq_loc_int:
-                                seq_interval = NCBISearch._safe_get(seq_loc_int, "Seq-interval", {})
-                                if seq_interval:
-                                    seq_from = NCBISearch._safe_get(seq_interval, "Seq-interval_from", "")
-                                    seq_to = NCBISearch._safe_get(seq_interval, "Seq-interval_to", "")
-                                    if seq_from and seq_to:
-                                        genomic_location = f"{seq_from}-{seq_to}"
-        except Exception as e:
-            logger.debug("Error extracting chromosome/location from gene record: %s", e)
-
-        # Extract gene functional description
-        # Note: Entrezgene_summary doesn't exist for most genes
-        # Try to extract from Entrezgene_comments if available
-        function = None
-        try:
-            # First try Entrezgene_summary (if exists)
-            summary = gene_data.get("Entrezgene_summary")
-            if summary:
-                function = str(summary)
-            else:
-                # Try to extract from Entrezgene_comments
-                comments_data = gene_data.get("Entrezgene_comments")
-                if comments_data and isinstance(comments_data, list):
-                    for comment in comments_data:
-                        if isinstance(comment, dict):
-                            heading = NCBISearch._safe_get(comment, "Gene-commentary_heading", "")
-                            # Look for function-related comments
-                            if "function" in str(heading).lower() or "summary" in str(heading).lower():
-                                comment_text = NCBISearch._safe_get(comment, "Gene-commentary_comment", "")
-                                if comment_text:
-                                    function = str(comment_text)
-                                    break
-        except Exception as e:
-            logger.debug("Error extracting function: %s", e)
-
-        # Try to extract representative mRNA accession from Entrezgene_locus for sequence retrieval
-        representative_accession = None
-        try:
-            if locus_data and isinstance(locus_data, list) and locus_data:
-                first_locus = locus_data[0]
-                if isinstance(first_locus, dict):
-                    products = NCBISearch._safe_get(first_locus, "Gene-commentary_products", [])
-                    if products and isinstance(products, list):
-                        # Look for mRNA (type 3) or the first product
-                        for product in products:
-                            if isinstance(product, dict):
-                                product_type = NCBISearch._safe_get(product, "Gene-commentary_type", "")
-                                product_type_str = str(product_type)
-                                # Type 3 is mRNA, prefer mRNA over other types
-                                if product_type_str == "3" or (not representative_accession and product_type_str):
-                                    accession = NCBISearch._safe_get(product, "Gene-commentary_accession", "")
-                                    if accession:
-                                        representative_accession = str(accession)
-                                        if product_type_str == "3":  # Found mRNA, use it
-                                            break
-        except Exception as e:
-            logger.debug("Error extracting representative accession: %s", e)
+        gene_ref = NCBISearch._extract_gene_ref(entrezgene_gene)
+        organism = NCBISearch._extract_organism(gene_data.get("Entrezgene_source"))
+        gene_synonyms = NCBISearch._extract_synonyms(gene_ref)
+        gene_type = NCBISearch._extract_gene_type(gene_data)
+        chromosome, genomic_location = NCBISearch._extract_location_info(locus_data)
+        function = NCBISearch._extract_function_info(gene_data)
+        representative_accession = NCBISearch._extract_accession(locus_data)
 
         # Build result dictionary with all fields
-        # Include all fields that might be present in accession-based queries
         return {
             "molecule_type": "DNA",
             "database": "NCBI",
@@ -247,6 +264,128 @@ class NCBISearch(BaseSearcher):
             "_representative_accession": representative_accession,
         }
 
+    def _fetch_sequence(self, accession: str):
+        """Fetch sequence from nuccore database using efetch."""
+        time.sleep(0.35)  # Comply with rate limit
+        seq_handle = Entrez.efetch(
+            db="nuccore",
+            id=accession,
+            rettype="fasta",
+            retmode="text",
+        )
+        try:
+            sequence_data = seq_handle.read()
+            if not sequence_data:
+                return None, None
+            seq_lines = sequence_data.strip().split("\n")
+            header = seq_lines[0] if seq_lines else ""
+            sequence = "".join(seq_lines[1:])
+            return sequence, header
+        finally:
+            seq_handle.close()
+
+    def _fetch_summary(self, accession: str, default_header: str = ""):
+        """Fetch summary from nuccore database using esummary."""
+        time.sleep(0.35)  # Comply with rate limit
+        summary_handle = Entrez.esummary(db="nuccore", id=accession)
+        try:
+            summary = Entrez.read(summary_handle)
+            if not summary:
+                return None
+            summary_data = summary[0]
+
+            # Determine molecule type detail
+            molecule_type_detail = "N/A"
+            if accession.startswith("NM_") or accession.startswith("XM_"):
+                molecule_type_detail = "mRNA"
+            elif accession.startswith("NC_") or accession.startswith("NT_"):
+                molecule_type_detail = "genomic DNA"
+            elif accession.startswith("NR_") or accession.startswith("XR_"):
+                molecule_type_detail = "RNA"
+            elif accession.startswith("NG_"):
+                molecule_type_detail = "genomic region"
+
+            title = summary_data.get("Title", default_header)
+            chromosome = summary_data.get("ChrLoc") or summary_data.get("ChrAccVer")
+            chr_start = summary_data.get("ChrStart")
+            chr_stop = summary_data.get("ChrStop")
+            genomic_location = None
+            if chr_start and chr_stop:
+                genomic_location = f"{chr_start}-{chr_stop}"
+
+            return {
+                "title": title,
+                "molecule_type_detail": molecule_type_detail,
+                "chromosome": chromosome,
+                "genomic_location": genomic_location,
+            }
+        finally:
+            summary_handle.close()
+
+    def _extract_gene_id(self, link_handle):
+        """Extract GeneID from elink results."""
+        try:
+            links = Entrez.read(link_handle)
+            if not links or len(links) == 0:
+                return None
+
+            first_link = links[0]
+            if "LinkSetDb" not in first_link:
+                return None
+
+            for link_set in first_link["LinkSetDb"]:
+                if link_set.get("DbTo") != "gene":
+                    continue
+
+                # Try Link structure first (most common)
+                links_in_set = link_set.get("Link", [])
+                if links_in_set and len(links_in_set) > 0:
+                    first_link_item = links_in_set[0]
+                    if isinstance(first_link_item, dict):
+                        gene_id = str(first_link_item.get("Id", ""))
+                    elif hasattr(first_link_item, "Id"):
+                        gene_id = str(getattr(first_link_item, "Id", ""))
+                    else:
+                        gene_id = str(first_link_item)
+                    if gene_id:
+                        return gene_id
+
+                # Fallback: Try IdList (if Link is not available)
+                id_list = link_set.get("IdList", [])
+                if id_list:
+                    return str(id_list[0])
+
+            return None
+        except Exception as e:
+            logger.error("Error parsing elink result: %s", e)
+            import traceback
+            logger.debug(traceback.format_exc())
+            return None
+
+    def _extract_sequence(self, result: dict, accession: str):
+        """Enrich result dictionary with sequence and summary information from accession."""
+        try:
+            sequence, header = self._fetch_sequence(accession)
+            if sequence:
+                result["sequence"] = sequence
+                result["sequence_length"] = len(sequence)
+
+            summary_info = self._fetch_summary(accession, header or "")
+            if not summary_info:
+                return
+
+            result["title"] = summary_info.get("title")
+            result["molecule_type_detail"] = summary_info.get("molecule_type_detail")
+            # Update chromosome and genomic_location if not already set
+            if not result.get("chromosome") and summary_info.get("chromosome"):
+                result["chromosome"] = summary_info["chromosome"]
+            if not result.get("genomic_location") and summary_info.get("genomic_location"):
+                result["genomic_location"] = summary_info["genomic_location"]
+        except (RequestException, IncompleteRead):
+            raise
+        except Exception as e:
+            logger.debug("Failed to get sequence for accession %s: %s", accession, e)
+
     @retry(
         stop=stop_after_attempt(5),
         wait=wait_exponential(multiplier=1, min=4, max=10),
@@ -260,7 +399,7 @@ class NCBISearch(BaseSearcher):
         Get gene information by Gene ID.
         This is the unified data source - all search methods eventually call this.
         :param gene_id: NCBI Gene ID.
-        :param preferred_accession: Optional accession to use for sequence retrieval if representative mRNA is not available.
+        :param preferred_accession: Optional accession to use for sequence retrieval.
         :return: A dictionary containing gene information or None if not found.
         """
         try:
@@ -273,71 +412,9 @@ class NCBISearch(BaseSearcher):
                 result = self._gene_record_to_dict(gene_record, gene_id)
 
                 # Try to get sequence from accession
-                # Priority: 1) preferred_accession (if provided), 2) representative mRNA accession
                 accession_to_use = preferred_accession or result.get("_representative_accession")
                 if accession_to_use:
-                    try:
-                        # Get sequence info directly from nuccore database
-                        time.sleep(0.35)
-                        seq_handle = Entrez.efetch(
-                            db="nuccore",
-                            id=accession_to_use,
-                            rettype="fasta",
-                            retmode="text",
-                        )
-                        try:
-                            sequence_data = seq_handle.read()
-                            if sequence_data:
-                                seq_lines = sequence_data.strip().split("\n")
-                                header = seq_lines[0] if seq_lines else ""
-                                sequence = "".join(seq_lines[1:])
-
-                                # Get summary for additional info
-                                time.sleep(0.35)
-                                summary_handle = Entrez.esummary(db="nuccore", id=accession_to_use)
-                                try:
-                                    summary = Entrez.read(summary_handle)
-                                    if summary:
-                                        summary_data = summary[0]
-                                        title = summary_data.get("Title", header)
-
-                                        # Determine molecule type detail
-                                        molecule_type_detail = "N/A"
-                                        if accession_to_use.startswith("NM_") or accession_to_use.startswith("XM_"):
-                                            molecule_type_detail = "mRNA"
-                                        elif accession_to_use.startswith("NC_") or accession_to_use.startswith("NT_"):
-                                            molecule_type_detail = "genomic DNA"
-                                        elif accession_to_use.startswith("NR_") or accession_to_use.startswith("XR_"):
-                                            molecule_type_detail = "RNA"
-                                        elif accession_to_use.startswith("NG_"):
-                                            molecule_type_detail = "genomic region"
-
-                                        # Merge sequence information into result
-                                        result["sequence"] = sequence
-                                        result["sequence_length"] = len(sequence)
-                                        result["title"] = title
-                                        result["molecule_type_detail"] = molecule_type_detail
-
-                                        # Update chromosome and genomic_location if not already set
-                                        if not result.get("chromosome"):
-                                            chromosome = summary_data.get("ChrLoc") or summary_data.get("ChrAccVer")
-                                            if chromosome:
-                                                result["chromosome"] = chromosome
-                                        if not result.get("genomic_location"):
-                                            chr_start = summary_data.get("ChrStart")
-                                            chr_stop = summary_data.get("ChrStop")
-                                            if chr_start and chr_stop:
-                                                result["genomic_location"] = f"{chr_start}-{chr_stop}"
-                                finally:
-                                    summary_handle.close()
-                        finally:
-                            seq_handle.close()
-                    except (RequestException, IncompleteRead):
-                        # Re-raise to allow retry mechanism
-                        raise
-                    except Exception as e:
-                        logger.debug("Failed to get sequence for accession %s: %s",
-                                   accession_to_use, e)
+                    self._extract_sequence(result, accession_to_use)
 
                 # Remove internal field
                 result.pop("_representative_accession", None)
@@ -364,58 +441,24 @@ class NCBISearch(BaseSearcher):
             # Note: esummary for nuccore doesn't include GeneID, so we use elink instead
             time.sleep(0.35)
             link_handle = Entrez.elink(dbfrom="nuccore", db="gene", id=accession)
-            gene_id = None
             try:
-                links = Entrez.read(link_handle)
-
-                # Extract GeneID from elink results
-                # Structure: links[0]["LinkSetDb"][0]["Link"][0]["Id"]
-                if links and len(links) > 0:
-                    first_link = links[0]
-                    if "LinkSetDb" in first_link:
-                        for link_set in first_link["LinkSetDb"]:
-                            if link_set.get("DbTo") == "gene":
-                                # Try Link structure first (most common)
-                                links_in_set = link_set.get("Link", [])
-                                if links_in_set and len(links_in_set) > 0:
-                                    first_link_item = links_in_set[0]
-                                    if isinstance(first_link_item, dict):
-                                        gene_id = str(first_link_item.get("Id", ""))
-                                    elif hasattr(first_link_item, "Id"):
-                                        gene_id = str(getattr(first_link_item, "Id", ""))
-                                    else:
-                                        # Handle StringElement or other types
-                                        gene_id = str(first_link_item)
-                                    if gene_id:
-                                        break
-                                # Fallback: Try IdList (if Link is not available)
-                                id_list = link_set.get("IdList", [])
-                                if id_list and not gene_id:
-                                    gene_id = str(id_list[0])
-                                    break
-            except Exception as e:
-                logger.error("Error parsing elink result for accession %s: %s", accession, e)
-                import traceback
-                logger.debug(traceback.format_exc())
-                # Continue to check if we got gene_id before the error
+                gene_id = self._extract_gene_id(link_handle)
             finally:
                 link_handle.close()
 
             # Step 2: If we have a GeneID, get complete information from Gene database
-            # Pass the accession as preferred_accession so get_by_gene_id can use it for sequence
             if gene_id:
                 result = self.get_by_gene_id(gene_id, preferred_accession=accession)
-
-                # Update id to accession for consistency (user searched by accession)
                 if result:
                     result["id"] = accession
                     result["url"] = f"https://www.ncbi.nlm.nih.gov/nuccore/{accession}"
-
                 return result
 
             # Step 3: If no GeneID, this is a rare case (accession without associated gene)
-            # Return None - we can't provide complete information without Gene ID
-            logger.warning("Accession %s has no associated GeneID, cannot provide complete information", accession)
+            logger.warning(
+                "Accession %s has no associated GeneID, cannot provide complete information",
+                accession
+            )
             return None
         except (RequestException, IncompleteRead):
             raise
@@ -491,13 +534,12 @@ class NCBISearch(BaseSearcher):
             else:
                 seq = sequence.strip().replace(" ", "").replace("\n", "")
 
-            # Validate if it's a DNA sequence
-            if not re.fullmatch(r"[ATCGN\s]+", seq, re.I):
-                logger.error("Invalid DNA sequence provided.")
-                return None
-
-            if not seq:
-                logger.error("Empty DNA sequence provided.")
+            # Validate sequence
+            if not seq or not re.fullmatch(r"[ATCGN\s]+", seq, re.I):
+                if not seq:
+                    logger.error("Empty DNA sequence provided.")
+                else:
+                    logger.error("Invalid DNA sequence provided.")
                 return None
 
             # Use BLAST search (Note: requires network connection, may be slow)
