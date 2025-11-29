@@ -339,6 +339,49 @@ class RNACentralSearch(BaseSearcher):
             logger.error("Local blastn failed: %s", exc)
             return None
 
+    @staticmethod
+    def _extract_and_normalize_sequence(sequence: str) -> Optional[str]:
+        """Extract and normalize RNA sequence from input."""
+        if sequence.startswith(">"):
+            seq_lines = sequence.strip().split("\n")
+            seq = "".join(seq_lines[1:])
+        else:
+            seq = sequence.strip().replace(" ", "").replace("\n", "")
+        return seq if seq and re.fullmatch(r"[AUCGN\s]+", seq, re.I) else None
+
+    def _find_best_match_from_results(self, results: List[Dict], seq: str) -> Optional[Dict]:
+        """Find best match from search results, preferring exact match."""
+        exact_match = None
+        for result_item in results:
+            result_seq = result_item.get("sequence", "")
+            if result_seq == seq:
+                exact_match = result_item
+                break
+        return exact_match if exact_match else (results[0] if results else None)
+
+    async def _process_api_search_results(
+        self, results: List[Dict], seq: str
+    ) -> Optional[dict]:
+        """Process API search results and return dictionary or None."""
+        if not results:
+            logger.info("No results found for sequence.")
+            return None
+
+        target_result = self._find_best_match_from_results(results, seq)
+        if not target_result:
+            return None
+
+        rna_id = target_result.get("rnacentral_id")
+        if not rna_id:
+            return None
+
+        # Try to get complete information
+        result = await self.get_by_rna_id(rna_id)
+        if not result:
+            logger.debug("get_by_rna_id() failed for %s, using search result data", rna_id)
+            result = self._rna_data_to_dict(rna_id, target_result)
+        return result
+
     async def search_by_sequence(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:
         """
         Search RNAcentral with an RNA sequence.
@@ -348,21 +391,11 @@ class RNACentralSearch(BaseSearcher):
         :param threshold: E-value threshold for BLAST search.
         :return: A dictionary containing complete RNA information or None if not found.
         """
+        result = None
         try:
-            # Extract sequence (if in FASTA format)
-            if sequence.startswith(">"):
-                seq_lines = sequence.strip().split("\n")
-                seq = "".join(seq_lines[1:])
-            else:
-                seq = sequence.strip().replace(" ", "").replace("\n", "")
-
-            # Validate if it's an RNA sequence (contains U instead of T)
-            if not re.fullmatch(r"[AUCGN\s]+", seq, re.I):
-                logger.error("Invalid RNA sequence provided.")
-                return None
-
+            seq = self._extract_and_normalize_sequence(sequence)
             if not seq:
-                logger.error("Empty RNA sequence provided.")
+                logger.error("Empty or invalid RNA sequence provided.")
                 return None
 
             # Try local BLAST first if enabled
@@ -370,64 +403,35 @@ class RNACentralSearch(BaseSearcher):
                 accession = self._local_blast(seq, threshold)
                 if accession:
                     logger.debug("Local BLAST found accession: %s", accession)
-                    # Try to get RNA ID from accession (may need conversion)
-                    # For now, try using accession as RNA ID or search by it
                     result = await self.get_by_rna_id(accession)
-                    if result:
-                        return result
-                    # If not found by ID, try keyword search
-                    result = await self.get_best_hit(accession)
-                    if result:
-                        return result
+                    if not result:
+                        result = await self.get_best_hit(accession)
 
-            # Fall back to RNAcentral API
-            logger.debug("Falling back to RNAcentral API.")
-            async with aiohttp.ClientSession() as session:
-                search_url = f"{self.base_url}/rna"
-                params = {"sequence": seq, "format": "json"}
-                async with session.get(
-                    search_url,
-                    params=params,
-                    headers=self.headers,
-                    timeout=aiohttp.ClientTimeout(total=60),  # Sequence search may take longer
-                ) as resp:
-                    if resp.status == 200:
-                        search_results = await resp.json()
-                        results = search_results.get("results", [])
-                        if results:
-                            # Step 1: Find best match (prefer exact match)
-                            exact_match = None
-                            for result in results:
-                                result_seq = result.get("sequence", "")
-                                if result_seq == seq:
-                                    exact_match = result
-                                    break
-
-                            # Use exact match if found, otherwise use first result
-                            target_result = exact_match if exact_match else results[0]
-                            rna_id = target_result.get("rnacentral_id")
-
-                            if rna_id:
-                                # Step 2: Unified call to get_by_rna_id() for complete information
-                                result = await self.get_by_rna_id(rna_id)
-
-                                # Step 3: If get_by_rna_id() failed, use search result data as fallback
-                                if not result:
-                                    logger.debug("get_by_rna_id() failed for %s, using search result data", rna_id)
-                                    result = self._rna_data_to_dict(rna_id, target_result)
-
-                                return result
-                        logger.info("No results found for sequence.")
-                        return None
-                    error_text = await resp.text()
-                    logger.error("HTTP %d error for sequence search: %s", resp.status, error_text[:200])
-                    raise Exception(f"HTTP {resp.status}: {error_text}")
+            # Fall back to RNAcentral API if local BLAST didn't find result
+            if not result:
+                logger.debug("Falling back to RNAcentral API.")
+                async with aiohttp.ClientSession() as session:
+                    search_url = f"{self.base_url}/rna"
+                    params = {"sequence": seq, "format": "json"}
+                    async with session.get(
+                        search_url,
+                        params=params,
+                        headers=self.headers,
+                        timeout=aiohttp.ClientTimeout(total=60),  # Sequence search may take longer
+                    ) as resp:
+                        if resp.status == 200:
+                            search_results = await resp.json()
+                            results = search_results.get("results", [])
+                            result = await self._process_api_search_results(results, seq)
+                        else:
+                            error_text = await resp.text()
+                            logger.error("HTTP %d error for sequence search: %s", resp.status, error_text[:200])
+                            raise Exception(f"HTTP {resp.status}: {error_text}")
         except aiohttp.ClientError as e:
             logger.error("Network error searching for sequence: %s", e)
-            return None
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Sequence search failed: %s", e)
-            return None
+        return result
 
     @retry(
         stop=stop_after_attempt(3),

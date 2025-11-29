@@ -569,6 +569,45 @@ class NCBISearch(BaseSearcher):
             logger.error("Local blastn failed: %s", exc)
             return None
 
+    def _extract_and_normalize_sequence(self, sequence: str) -> Optional[str]:
+        """Extract and normalize DNA sequence from input."""
+        if sequence.startswith(">"):
+            seq_lines = sequence.strip().split("\n")
+            seq = "".join(seq_lines[1:])
+        else:
+            seq = sequence.strip().replace(" ", "").replace("\n", "")
+        return seq if seq and re.fullmatch(r"[ATCGN\s]+", seq, re.I) else None
+
+    def _process_network_blast_result(self, blast_record, seq: str, threshold: float) -> Optional[dict]:
+        """Process network BLAST result and return dictionary or None."""
+        if not blast_record.alignments:
+            logger.info("No BLAST hits found for the given sequence.")
+            return None
+
+        best_alignment = blast_record.alignments[0]
+        best_hsp = best_alignment.hsps[0]
+        if best_hsp.expect > threshold:
+            logger.info("No BLAST hits below the threshold E-value.")
+            return None
+
+        hit_id = best_alignment.hit_id
+        accession_match = re.search(r"ref\|([^|]+)", hit_id)
+        if accession_match:
+            accession = accession_match.group(1).split(".")[0]
+            return self.get_by_accession(accession)
+
+        # If unable to extract accession, return basic information
+        return {
+            "molecule_type": "DNA",
+            "database": "NCBI",
+            "id": hit_id,
+            "title": best_alignment.title,
+            "sequence_length": len(seq),
+            "e_value": best_hsp.expect,
+            "identity": best_hsp.identities / best_hsp.align_length if best_hsp.align_length > 0 else 0,
+            "url": f"https://www.ncbi.nlm.nih.gov/nuccore/{hit_id}",
+        }
+
     def search_by_sequence(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:
         """
         Search NCBI with a DNA sequence using BLAST.
@@ -577,77 +616,40 @@ class NCBISearch(BaseSearcher):
         :param threshold: E-value threshold for BLAST search.
         :return: A dictionary containing the best hit information or None if not found.
         """
+        result = None
         try:
-            # Extract sequence (if in FASTA format)
-            if sequence.startswith(">"):
-                seq_lines = sequence.strip().split("\n")
-                seq = "".join(seq_lines[1:])
-            else:
-                seq = sequence.strip().replace(" ", "").replace("\n", "")
-
-            # Validate sequence
-            if not seq or not re.fullmatch(r"[ATCGN\s]+", seq, re.I):
-                if not seq:
-                    logger.error("Empty DNA sequence provided.")
-                else:
-                    logger.error("Invalid DNA sequence provided.")
+            seq = self._extract_and_normalize_sequence(sequence)
+            if not seq:
+                logger.error("Empty or invalid DNA sequence provided.")
                 return None
 
             # Try local BLAST first if enabled
-            accession = None
             if self.use_local_blast:
                 accession = self._local_blast(seq, threshold)
                 if accession:
                     logger.debug("Local BLAST found accession: %s", accession)
-                    return self.get_by_accession(accession)
+                    result = self.get_by_accession(accession)
 
-            # Fall back to network BLAST
-            logger.debug("Falling back to NCBIWWW.qblast.")
-            logger.debug("Performing BLAST search for DNA sequence...")
-            time.sleep(0.35)
+            # Fall back to network BLAST if local BLAST didn't find result
+            if not result:
+                logger.debug("Falling back to NCBIWWW.qblast.")
+                logger.debug("Performing BLAST search for DNA sequence...")
+                time.sleep(0.35)
 
-            result_handle = NCBIWWW.qblast(
-                program="blastn",
-                database="nr",
-                sequence=seq,
-                hitlist_size=1,
-                expect=threshold,
-            )
-            blast_record = NCBIXML.read(result_handle)
-
-            if not blast_record.alignments:
-                logger.info("No BLAST hits found for the given sequence.")
-                return None
-
-            best_alignment = blast_record.alignments[0]
-            best_hsp = best_alignment.hsps[0]
-            if best_hsp.expect > threshold:
-                logger.info("No BLAST hits below the threshold E-value.")
-                return None
-            hit_id = best_alignment.hit_id
-
-            # Extract accession number
-            # Format may be: gi|123456|ref|NM_000546.5|
-            accession_match = re.search(r"ref\|([^|]+)", hit_id)
-            if accession_match:
-                accession = accession_match.group(1).split(".")[0]
-                return self.get_by_accession(accession)
-            # If unable to extract accession, return basic information
-            return {
-                "molecule_type": "DNA",
-                "database": "NCBI",
-                "id": hit_id,
-                "title": best_alignment.title,
-                "sequence_length": len(seq),
-                "e_value": best_hsp.expect,
-                "identity": best_hsp.identities / best_hsp.align_length if best_hsp.align_length > 0 else 0,
-                "url": f"https://www.ncbi.nlm.nih.gov/nuccore/{hit_id}",
-            }
+                result_handle = NCBIWWW.qblast(
+                    program="blastn",
+                    database="nr",
+                    sequence=seq,
+                    hitlist_size=1,
+                    expect=threshold,
+                )
+                blast_record = NCBIXML.read(result_handle)
+                result = self._process_network_blast_result(blast_record, seq, threshold)
         except RequestException:
             raise
         except Exception as e:  # pylint: disable=broad-except
             logger.error("BLAST search failed: %s", e)
-            return None
+        return result
 
     @retry(
         stop=stop_after_attempt(5),
