@@ -264,7 +264,6 @@ class NCBISearch(BaseSearcher):
                     if search_results := Entrez.read(search_handle):
                         if gene_id := search_results["IdList"][0]:
                             return self.get_by_gene_id(gene_id)
-                self.rate_limiter.wait()
         except (RequestException, IncompleteRead):
             raise
         except Exception as e:
