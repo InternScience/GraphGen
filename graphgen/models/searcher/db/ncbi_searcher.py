@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from http.client import IncompleteRead
 from typing import Dict, Optional
-from graphgen.models.searcher.limitter import RateLimiter
 
 from Bio import Entrez, SeqIO
 from Bio.Blast import NCBIWWW, NCBIXML
@@ -67,7 +66,6 @@ class NCBISearch(BaseSearcher):
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
             logger.error("Local BLAST database files not found. Please check the path.")
             self.use_local_blast = False
-        self.rate_limiter = RateLimiter()
 
     @staticmethod
     def _nested_get(data: dict, *keys, default=None):
