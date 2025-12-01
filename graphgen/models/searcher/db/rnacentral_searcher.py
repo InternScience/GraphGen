@@ -46,12 +46,24 @@ class RNACentralSearch(BaseSearcher):
             self.use_local_blast = False
 
     @staticmethod
-    def _extract_info_from_xrefs(xrefs: List[Dict[str, Any]]) -> Dict[str, Any]:
-        organisms: Set[str] = set()
-        gene_names: Set[str] = set()
+    def _rna_data_to_dict(
+        rna_id: str,
+        rna_data: Dict[str, Any], 
+        xrefs_data: Optional[List[Dict[str, Any]]] = None
+    ) -> Dict[str, Any]:
+        organisms, gene_names, so_terms = set(), set(), set()
         modifications: List[Any] = []
-        so_terms: Set[str] = set()
-        xrefs_list: List[Dict[str, Any]] = []
+
+        for xref in xrefs_data or []:
+            acc = xref.get("accession", {})
+            if s := acc.get("species"):
+                organisms.add(s)
+            if g := acc.get("gene", "").strip():
+                gene_names.add(g)
+            if m := xref.get("modifications"):
+                modifications.extend(m)
+            if b := acc.get("biotype"):
+                so_terms.add(b)
 
         def format_unique_values(values: Set[str]) -> Optional[str]:
             if not values:
@@ -60,44 +72,14 @@ class RNACentralSearch(BaseSearcher):
                 return next(iter(values))
             return ", ".join(sorted(values))
 
-        for xref in xrefs:
-            accession = xref.get("accession", {})
-            species = accession.get("species")
-            gene = accession.get("gene")
-            stripped_gene = gene.strip() if gene else None
-            if species:
-                organisms.add(species)
-            if stripped_gene:
-                gene_names.add(stripped_gene)
-            if mods := xref.get("modifications"):
-                modifications.extend(mods)
-            if biotype := accession.get("biotype"):
-                so_terms.add(biotype)
-
-            xrefs_list.append({
-                "database": xref.get("database"),
-                "accession_id": accession.get("id"),
-                "external_id": accession.get("external_id"),
-                "description": accession.get("description"),
-                "species": species,
-                "gene": stripped_gene,
-            })
-
-        return {
+        xrefs_info = {
             "organism": format_unique_values(organisms),
             "gene_name": format_unique_values(gene_names),
             "related_genes": list(gene_names) if gene_names else None,
             "modifications": modifications or None,
             "so_term": format_unique_values(so_terms),
-            "xrefs": xrefs_list or None,
         }
 
-    @staticmethod
-    def _rna_data_to_dict(
-        rna_id: str, 
-        rna_data: Dict[str, Any], 
-        xrefs_data: Optional[List[Dict[str, Any]]] = None
-    ) -> Dict[str, Any]:
         fallback_rules = {
             "organism": ["organism", "species"],
             "related_genes": ["related_genes", "genes"],
@@ -106,10 +88,8 @@ class RNACentralSearch(BaseSearcher):
             "modifications": ["modifications"],
         }
 
-        xrefs_info = RNACentralSearch._extract_info_from_xrefs(xrefs_data) if xrefs_data else {}
-
         def resolve_field(field_name: str) -> Any:
-            if value := xrefs_info.get(field_name):
+            if (value := xrefs_info.get(field_name)) is not None:
                 return value
 
             for key in fallback_rules[field_name]:
@@ -128,7 +108,6 @@ class RNACentralSearch(BaseSearcher):
             related_genes = [single_gene]
 
         sequence = rna_data.get("sequence", "")
-        extracted_info = RNACentralSearch._extract_info_from_xrefs(xrefs_data) if xrefs_data else {}
 
         return {
             "molecule_type": "RNA",
@@ -172,13 +151,12 @@ class RNACentralSearch(BaseSearcher):
             url = f"{self.base_url}/rna/{rna_id}"
             url += "?flat=true"
 
-            resp = requests.get(url, headers=self.headers, timeout=30)
-            if resp.status_code == 200:
-                rna_data = resp.json()
-                xrefs_data = rna_data.get("xrefs", [])
-                return self._rna_data_to_dict(rna_id, rna_data, xrefs_data)
-            logger.error("Failed to fetch RNA ID %s: HTTP %s", rna_id, resp.status_code)
-            return None
+            resp = requests.get(url, headers=self.headers)
+            resp.raise_for_status()
+
+            rna_data = resp.json()
+            xrefs_data = rna_data.get("xrefs", [])
+            return self._rna_data_to_dict(rna_id, rna_data, xrefs_data)
         except requests.RequestException as e:
             logger.error("Network error getting RNA ID %s: %s", rna_id, e)
             return None
@@ -189,44 +167,42 @@ class RNACentralSearch(BaseSearcher):
     def get_best_hit(self, keyword: str) -> Optional[dict]:
         """
         Search RNAcentral with a keyword and return the best hit.
-        Unified approach: Find RNA ID from search, then call get_by_rna_id() for complete information.
         :param keyword: The search keyword (e.g., miRNA name, RNA name).
-        :return: A dictionary containing complete RNA information or None if not found.
+        :return: Dictionary with RNA information or None.
         """
-        if not keyword.strip():
+        keyword = keyword.strip()
+        if not keyword:
+            logger.warning("Empty keyword provided to get_best_hit")
             return None
 
         try:
-            search_url = f"{self.base_url}/rna"
+            url = f"{self.base_url}/rna"
             params = {"search": keyword, "format": "json"}
+            resp = requests.get(url, params=params, headers=self.headers)
+            resp.raise_for_status()
 
-            resp = requests.get(
-                search_url,
-                params=params,
-                headers=self.headers,
-                timeout=30,
-            )
-            if resp.status_code == 200:
-                search_results = resp.json()
-                results = search_results.get("results", [])
-                if results:
-                    # Step 1: Get RNA ID from search results
-                    first_result = results[0]
-                    rna_id = first_result.get("rnacentral_id")
+            data = resp.json()
+            results = data.get("results", [])
 
-                    if rna_id:
-                        # Step 2: Unified call to get_by_rna_id() for complete information
-                        return self.get_by_rna_id(rna_id)
-                # Step 3: If get_by_rna_id() failed, use search result data as fallback
-                logger.debug("get_by_rna_id() failed for %s, using search result data", rna_id)
-                return self._rna_data_to_dict(rna_id, first_result)
-            logger.error("No RNA ID found for keyword %s", keyword)
-            return None
-        except aiohttp.ClientError as e:
-            logger.error("Network error searching for keyword %s: %s", keyword, e)
+            if not results:
+                logger.info("No search results for keyword: %s", keyword)
+                return None
+
+            first_result = results[0]
+            rna_id = first_result.get("rnacentral_id")
+
+            if rna_id:
+                detailed = self.get_by_rna_id(rna_id)
+                if detailed:
+                    return detailed
+            logger.debug("Using search result data for %s", rna_id or "unknown")
+            return self._rna_data_to_dict(rna_id or "", first_result)
+
+        except requests.RequestException as e:
+            logger.error("Network error searching keyword '%s': %s", keyword, e)
             return None
         except Exception as e:
-            logger.error("Keyword %s not found: %s", keyword, e)
+            logger.error("Unexpected error searching keyword '%s': %s", keyword, e)
             return None
 
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
@@ -248,39 +224,6 @@ class RNACentralSearch(BaseSearcher):
             logger.error("Local blastn failed: %s", exc)
             return None
 
-    def _find_best_match_from_results(self, results: List[Dict], seq: str) -> Optional[Dict]:
-        """Find best match from search results, preferring exact match."""
-        exact_match = None
-        for result_item in results:
-            result_seq = result_item.get("sequence", "")
-            if result_seq == seq:
-                exact_match = result_item
-                break
-        return exact_match if exact_match else (results[0] if results else None)
-
-    async def _process_api_search_results(
-        self, results: List[Dict], seq: str
-    ) -> Optional[dict]:
-        """Process API search results and return dictionary or None."""
-        if not results:
-            logger.info("No results found for sequence.")
-            return None
-
-        target_result = self._find_best_match_from_results(results, seq)
-        if not target_result:
-            return None
-
-        rna_id = target_result.get("rnacentral_id")
-        if not rna_id:
-            return None
-
-        # Try to get complete information
-        result = await self.get_by_rna_id(rna_id)
-        if not result:
-            logger.debug("get_by_rna_id() failed for %s, using search result data", rna_id)
-            result = self._rna_data_to_dict(rna_id, target_result)
-        return result
-
     def get_by_fasta(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:
         """
         Search RNAcentral with an RNA sequence.
@@ -290,7 +233,7 @@ class RNACentralSearch(BaseSearcher):
         :param threshold: E-value threshold for BLAST search.
         :return: A dictionary containing complete RNA information or None if not found.
         """
-        def _extract_and_normalize_sequence(sequence: str) -> Optional[str]:
+        def _extract_sequence(sequence: str) -> Optional[str]:
             """Extract and normalize RNA sequence from input."""
             if sequence.startswith(">"):
                 seq_lines = sequence.strip().split("\n")
@@ -300,7 +243,7 @@ class RNACentralSearch(BaseSearcher):
             return seq if seq and re.fullmatch(r"[AUCGN\s]+", seq, re.I) else None
 
         try:
-            seq = _extract_and_normalize_sequence(sequence)
+            seq = _extract_sequence(sequence)
             if not seq:
                 logger.error("Empty or invalid RNA sequence provided.")
                 return None
@@ -319,18 +262,23 @@ class RNACentralSearch(BaseSearcher):
             search_url = f"{self.base_url}/rna"
             params = {"md5": md5_hash, "format": "json"}
 
-            resp = requests.get(search_url, params=params, headers=self.headers, timeout=60)  # Sequence search may take longer
-            if resp.status_code == 200:
-                search_results = resp.json()
-                results = search_results.get("results", [])
-                return self._process_api_search_results(results, seq)
-            error_text = resp.text()
-            logger.error("HTTP %d error for sequence search: %s", resp.status, error_text[:200])
-            raise Exception(f"HTTP {resp.status}: {error_text}")
-        except Exception as e:  # pylint: disable=broad-except
+            resp = requests.get(search_url, params=params, headers=self.headers)
+            resp.raise_for_status()
+
+            search_results = resp.json()
+            results = search_results.get("results", [])
+
+            if not results:
+                logger.info("No exact match found in RNAcentral for sequence")
+                return None
+            rna_id = results[0].get("rnacentral_id")
+            if not rna_id:
+                logger.error("No RNAcentral ID found in search results.")
+                return None
+            return self.get_by_rna_id(rna_id)
+        except Exception as e:
             logger.error("Sequence search failed: %s", e)
             return None
-
 
     @retry(
         stop=stop_after_attempt(3),
