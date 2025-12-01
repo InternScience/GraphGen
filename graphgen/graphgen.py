@@ -45,7 +45,7 @@ class GraphGen:
 
         # llm
         self.tokenizer_instance: Tokenizer = tokenizer_instance or Tokenizer(
-            model_name=os.getenv("TOKENIZER_MODEL")
+            model_name=os.getenv("TOKENIZER_MODEL", "cl100k_base")
         )
 
         self.synthesizer_llm_client: BaseLLMWrapper = (

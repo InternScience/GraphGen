@@ -21,6 +21,7 @@ fastapi
 trafilatura
 aiohttp
 diskcache
+socksio
 
 leidenalg
 igraph
