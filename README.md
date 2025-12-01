@@ -113,7 +113,7 @@ Users can flexibly configure according to the needs of synthetic data.
 
 [uniprot-icon]: https://www.google.com/s2/favicons?domain=https://www.uniprot.org
 [ncbi-icon]: https://www.google.com/s2/favicons?domain=https://www.ncbi.nlm.nih.gov/
-[rnacentral]: https://www.google.com/s2/favicons?domain=https://rnacentral.org/
+[rnacentral-icon]: https://www.google.com/s2/favicons?domain=https://rnacentral.org/
 [wiki-icon]: https://www.google.com/s2/favicons?domain=https://www.wikipedia.org/
 [bing-icon]: https://www.google.com/s2/favicons?domain=https://www.bing.com/
 [google-icon]: https://www.google.com/s2/favicons?domain=https://www.google.com

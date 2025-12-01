@@ -111,7 +111,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 [uniprot-icon]: https://www.google.com/s2/favicons?domain=https://www.uniprot.org
 [ncbi-icon]: https://www.google.com/s2/favicons?domain=https://www.ncbi.nlm.nih.gov/
-[rnacentral]: https://www.google.com/s2/favicons?domain=https://rnacentral.org/
+[rnacentral-icon]: https://www.google.com/s2/favicons?domain=https://rnacentral.org/
 [wiki-icon]: https://www.google.com/s2/favicons?domain=https://www.wikipedia.org/
 [bing-icon]: https://www.google.com/s2/favicons?domain=https://www.bing.com/
 [google-icon]: https://www.google.com/s2/favicons?domain=https://www.google.com
