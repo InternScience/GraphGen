@@ -44,6 +44,7 @@ class NCBISearch(BaseSearcher):
         local_blast_db: str = "nt_db",
         email: str = "email@example.com",
         api_key: str = "",
+        tool: str = "GraphGen",
     ):
         """
         Initialize the NCBI Search client.
@@ -53,10 +54,12 @@ class NCBISearch(BaseSearcher):
             local_blast_db (str): Path to the local BLAST database.
             email (str): Email address for NCBI API requests.
             api_key (str): API key for NCBI API requests, see https://account.ncbi.nlm.nih.gov/settings/.
+            tool (str): Tool name for NCBI API requests.
         """
         super().__init__()
         Entrez.timeout = 60  # 60 seconds timeout
         Entrez.email = email
+        Entrez.tool = tool
         if api_key:
             Entrez.api_key = api_key
         Entrez.max_tries = 10 if api_key else 3
