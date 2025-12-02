@@ -53,11 +53,11 @@ def _post_process(text: str) -> dict:
 
 
 class BDS:
-    def __init__(self, synthesizer_llm_client: BaseLLMWrapper = None):
-        self.llm_client: BaseLLMWrapper = synthesizer_llm_client or init_llm(
+    def __init__(self, llm_client: BaseLLMWrapper = None, max_concurrent: int = 1000):
+        self.llm_client: BaseLLMWrapper = llm_client or init_llm(
             "synthesizer"
         )
-        self.max_concurrent: int = 1000
+        self.max_concurrent: int = max_concurrent
 
     def generate(self, tasks: List[dict]) -> List[dict]:
         loop = create_event_loop()
