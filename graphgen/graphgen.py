@@ -6,11 +6,9 @@ import gradio as gr
 
 from graphgen.bases import BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
-from graphgen.engine import op
 from graphgen.models import (
     JsonKVStorage,
     JsonListStorage,
-    MetaJsonKVStorage,
     NetworkXStorage,
     OpenAIClient,
     Tokenizer,
@@ -47,7 +45,7 @@ class GraphGen:
 
         # llm
         self.tokenizer_instance: Tokenizer = tokenizer_instance or Tokenizer(
-            model_name=os.getenv("TOKENIZER_MODEL")
+            model_name=os.getenv("TOKENIZER_MODEL", "cl100k_base")
         )
 
         self.synthesizer_llm_client: BaseLLMWrapper = (
@@ -55,9 +53,6 @@ class GraphGen:
         )
         self.trainee_llm_client: BaseLLMWrapper = trainee_llm_client
 
-        self.meta_storage: MetaJsonKVStorage = MetaJsonKVStorage(
-            self.working_dir, namespace="_meta"
-        )
         self.full_docs_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="full_docs"
         )
@@ -67,14 +62,15 @@ class GraphGen:
         self.graph_storage: NetworkXStorage = NetworkXStorage(
             self.working_dir, namespace="graph"
         )
-        self.search_storage: JsonKVStorage = JsonKVStorage(
-            self.working_dir, namespace="search"
-        )
         self.rephrase_storage: JsonKVStorage = JsonKVStorage(
             self.working_dir, namespace="rephrase"
         )
         self.partition_storage: JsonListStorage = JsonListStorage(
             self.working_dir, namespace="partition"
+        )
+        self.search_storage: JsonKVStorage = JsonKVStorage(
+            os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
+            namespace="search",
         )
         self.qa_storage: JsonListStorage = JsonListStorage(
             os.path.join(self.working_dir, "data", "graphgen", f"{self.unique_id}"),
@@ -88,40 +84,35 @@ class GraphGen:
         # webui
         self.progress_bar: gr.Progress = progress_bar
 
-    @op("read", deps=[])
     @async_to_sync_method
     async def read(self, read_config: Dict):
         """
         read files from input sources
         """
-        data = read_files(**read_config, cache_dir=self.working_dir)
-        if len(data) == 0:
-            logger.warning("No data to process")
-            return
+        doc_stream = read_files(**read_config, cache_dir=self.working_dir)
 
-        assert isinstance(data, list) and isinstance(data[0], dict)
+        batch = {}
+        for doc in doc_stream:
+            doc_id = compute_mm_hash(doc, prefix="doc-")
+            batch[doc_id] = doc
 
         # TODO: configurable whether to use coreference resolution
 
-        new_docs = {compute_mm_hash(doc, prefix="doc-"): doc for doc in data}
-        _add_doc_keys = await self.full_docs_storage.filter_keys(list(new_docs.keys()))
-        new_docs = {k: v for k, v in new_docs.items() if k in _add_doc_keys}
-
+        _add_doc_keys = self.full_docs_storage.filter_keys(list(batch.keys()))
+        new_docs = {k: v for k, v in batch.items() if k in _add_doc_keys}
         if len(new_docs) == 0:
             logger.warning("All documents are already in the storage")
             return
+        self.full_docs_storage.upsert(new_docs)
+        self.full_docs_storage.index_done_callback()
 
-        await self.full_docs_storage.upsert(new_docs)
-        await self.full_docs_storage.index_done_callback()
-
-    @op("chunk", deps=["read"])
     @async_to_sync_method
     async def chunk(self, chunk_config: Dict):
         """
         chunk documents into smaller pieces from full_docs_storage if not already present
         """
 
-        new_docs = await self.meta_storage.get_new_data(self.full_docs_storage)
+        new_docs = self.full_docs_storage.get_all()
         if len(new_docs) == 0:
             logger.warning("All documents are already in the storage")
             return
@@ -133,9 +124,7 @@ class GraphGen:
             **chunk_config,
         )
 
-        _add_chunk_keys = await self.chunks_storage.filter_keys(
-            list(inserting_chunks.keys())
-        )
+        _add_chunk_keys = self.chunks_storage.filter_keys(list(inserting_chunks.keys()))
         inserting_chunks = {
             k: v for k, v in inserting_chunks.items() if k in _add_chunk_keys
         }
@@ -144,19 +133,17 @@ class GraphGen:
             logger.warning("All chunks are already in the storage")
             return
 
-        await self.chunks_storage.upsert(inserting_chunks)
-        await self.chunks_storage.index_done_callback()
-        await self.meta_storage.mark_done(self.full_docs_storage)
-        await self.meta_storage.index_done_callback()
+        self.chunks_storage.upsert(inserting_chunks)
+        self.chunks_storage.index_done_callback()
 
-    @op("build_kg", deps=["chunk"])
     @async_to_sync_method
     async def build_kg(self):
         """
         build knowledge graph from text chunks
         """
-        # Step 1: get new chunks according to meta and chunks storage
-        inserting_chunks = await self.meta_storage.get_new_data(self.chunks_storage)
+        # Step 1: get new chunks
+        inserting_chunks = self.chunks_storage.get_all()
+
         if len(inserting_chunks) == 0:
             logger.warning("All chunks are already in the storage")
             return
@@ -173,19 +160,16 @@ class GraphGen:
             logger.warning("No entities or relations extracted from text chunks")
             return
 
-        # Step 3: mark meta
-        await self.graph_storage.index_done_callback()
-        await self.meta_storage.mark_done(self.chunks_storage)
-        await self.meta_storage.index_done_callback()
+        # Step 3: upsert new entities and relations to the graph storage
+        self.graph_storage.index_done_callback()
 
         return _add_entities_and_relations
 
-    @op("search", deps=["read"])
     @async_to_sync_method
     async def search(self, search_config: Dict):
         logger.info("[Search] %s ...", ", ".join(search_config["data_sources"]))
 
-        seeds = await self.meta_storage.get_new_data(self.full_docs_storage)
+        seeds = self.full_docs_storage.get_all()
         if len(seeds) == 0:
             logger.warning("All documents are already been searched")
             return
@@ -194,21 +178,16 @@ class GraphGen:
             search_config=search_config,
         )
 
-        _add_search_keys = await self.search_storage.filter_keys(
-            list(search_results.keys())
-        )
+        _add_search_keys = self.search_storage.filter_keys(list(search_results.keys()))
         search_results = {
             k: v for k, v in search_results.items() if k in _add_search_keys
         }
         if len(search_results) == 0:
             logger.warning("All search results are already in the storage")
             return
-        await self.search_storage.upsert(search_results)
-        await self.search_storage.index_done_callback()
-        await self.meta_storage.mark_done(self.full_docs_storage)
-        await self.meta_storage.index_done_callback()
+        self.search_storage.upsert(search_results)
+        self.search_storage.index_done_callback()
 
-    @op("quiz_and_judge", deps=["build_kg"])
     @async_to_sync_method
     async def quiz_and_judge(self, quiz_and_judge_config: Dict):
         logger.warning(
@@ -221,6 +200,7 @@ class GraphGen:
             self.graph_storage,
             self.rephrase_storage,
             max_samples,
+            progress_bar=self.progress_bar,
         )
 
         # TODO： assert trainee_llm_client is valid before judge
@@ -236,10 +216,11 @@ class GraphGen:
             self.graph_storage,
             self.rephrase_storage,
             re_judge,
+            progress_bar=self.progress_bar,
         )
 
-        await self.rephrase_storage.index_done_callback()
-        await _update_relations.index_done_callback()
+        self.rephrase_storage.index_done_callback()
+        _update_relations.index_done_callback()
 
         logger.info("Shutting down trainee LLM client.")
         self.trainee_llm_client.shutdown()
@@ -247,7 +228,6 @@ class GraphGen:
         logger.info("Restarting synthesizer LLM client.")
         self.synthesizer_llm_client.restart()
 
-    @op("partition", deps=["build_kg"])
     @async_to_sync_method
     async def partition(self, partition_config: Dict):
         batches = await partition_kg(
@@ -256,11 +236,9 @@ class GraphGen:
             self.tokenizer_instance,
             partition_config,
         )
-        await self.partition_storage.upsert(batches)
-        await self.partition_storage.index_done_callback()
+        self.partition_storage.upsert(batches)
         return batches
 
-    @op("extract", deps=["chunk"])
     @async_to_sync_method
     async def extract(self, extract_config: Dict):
         logger.info("Extracting information from given chunks...")
@@ -275,12 +253,9 @@ class GraphGen:
             logger.warning("No information extracted")
             return
 
-        await self.extract_storage.upsert(results)
-        await self.extract_storage.index_done_callback()
-        await self.meta_storage.mark_done(self.chunks_storage)
-        await self.meta_storage.index_done_callback()
+        self.extract_storage.upsert(results)
+        self.extract_storage.index_done_callback()
 
-    @op("generate", deps=["partition"])
     @async_to_sync_method
     async def generate(self, generate_config: Dict):
 
@@ -302,17 +277,17 @@ class GraphGen:
             return
 
         # Step 3: store the generated QA pairs
-        await self.qa_storage.upsert(results)
-        await self.qa_storage.index_done_callback()
+        self.qa_storage.upsert(results)
+        self.qa_storage.index_done_callback()
 
     @async_to_sync_method
     async def clear(self):
-        await self.full_docs_storage.drop()
-        await self.chunks_storage.drop()
-        await self.search_storage.drop()
-        await self.graph_storage.clear()
-        await self.rephrase_storage.drop()
-        await self.qa_storage.drop()
+        self.full_docs_storage.drop()
+        self.chunks_storage.drop()
+        self.search_storage.drop()
+        self.graph_storage.clear()
+        self.rephrase_storage.drop()
+        self.qa_storage.drop()
 
         logger.info("All caches are cleared")
 

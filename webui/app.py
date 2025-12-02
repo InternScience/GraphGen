@@ -42,7 +42,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
 
     tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
     synthesizer_llm_client = OpenAIClient(
-        model_name=env.get("SYNTHESIZER_MODEL", ""),
+        model=env.get("SYNTHESIZER_MODEL", ""),
         base_url=env.get("SYNTHESIZER_BASE_URL", ""),
         api_key=env.get("SYNTHESIZER_API_KEY", ""),
         request_limit=True,
@@ -51,7 +51,7 @@ def init_graph_gen(config: dict, env: dict) -> GraphGen:
         tokenizer=tokenizer_instance,
     )
     trainee_llm_client = OpenAIClient(
-        model_name=env.get("TRAINEE_MODEL", ""),
+        model=env.get("TRAINEE_MODEL", ""),
         base_url=env.get("TRAINEE_BASE_URL", ""),
         api_key=env.get("TRAINEE_API_KEY", ""),
         request_limit=True,
@@ -101,12 +101,15 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
     pipeline = [
         {
             "name": "read",
+            "op_key": "read",
             "params": {
                 "input_file": params.upload_file,
             },
         },
         {
             "name": "chunk",
+            "deps": ["read"],
+            "op_key": "chunk",
             "params": {
                 "chunk_size": params.chunk_size,
                 "chunk_overlap": params.chunk_overlap,
@@ -114,6 +117,8 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         },
         {
             "name": "build_kg",
+            "deps": ["chunk"],
+            "op_key": "build_kg",
         },
     ]
 
@@ -121,6 +126,8 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         pipeline.append(
             {
                 "name": "quiz_and_judge",
+                "deps": ["build_kg"],
+                "op_key": "quiz_and_judge",
                 "params": {"quiz_samples": params.quiz_samples, "re_judge": True},
             }
         )
@@ -128,6 +135,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
             {
                 "name": "partition",
                 "deps": ["quiz_and_judge"],
+                "op_key": "partition",
                 "params": {
                     "method": params.partition_method,
                     "method_params": partition_params,
@@ -138,6 +146,8 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         pipeline.append(
             {
                 "name": "partition",
+                "deps": ["build_kg"],
+                "op_key": "partition",
                 "params": {
                     "method": params.partition_method,
                     "method_params": partition_params,
@@ -147,6 +157,8 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
     pipeline.append(
         {
             "name": "generate",
+            "deps": ["partition"],
+            "op_key": "generate",
             "params": {
                 "method": params.mode,
                 "data_format": params.data_format,
