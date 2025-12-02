@@ -9,7 +9,7 @@ import networkx as nx
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import NetworkXStorage, OpenAIModel, Tokenizer
+from graphgen.models import NetworkXStorage, OpenAIClient, Tokenizer
 from graphgen.utils import create_event_loop
 
 QA_GENERATION_PROMPT = """
@@ -54,7 +54,7 @@ def _post_process(text: str) -> dict:
 
 @dataclass
 class BDS:
-    llm_client: OpenAIModel = None
+    llm_client: OpenAIClient = None
     max_concurrent: int = 1000
 
     def generate(self, tasks: List[dict]) -> List[dict]:
@@ -105,7 +105,7 @@ if __name__ == "__main__":
     tokenizer_instance: Tokenizer = Tokenizer(
         model_name=os.getenv("TOKENIZER_MODEL", "cl100k_base")
     )
-    llm_client = OpenAIModel(
+    llm_client = OpenAIClient(
         model_name=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
         base_url=os.getenv("SYNTHESIZER_BASE_URL"),
