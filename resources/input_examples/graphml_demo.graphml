@@ -1,0 +1,362 @@
+<?xml version='1.0' encoding='utf-8'?>
+<graphml xmlns="http://graphml.graphdrawing.org/xmlns" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://graphml.graphdrawing.org/xmlns http://graphml.graphdrawing.org/xmlns/1.0/graphml.xsd"><key id="d8" for="edge" attr.name="length" attr.type="long"/>
+<key id="d7" for="edge" attr.name="loss" attr.type="double"/>
+<key id="d6" for="edge" attr.name="description" attr.type="string"/>
+<key id="d5" for="edge" attr.name="source_id" attr.type="string"/>
+<key id="d4" for="node" attr.name="length" attr.type="long"/>
+<key id="d3" for="node" attr.name="loss" attr.type="double"/>
+<key id="d2" for="node" attr.name="source_id" attr.type="string"/>
+<key id="d1" for="node" attr.name="description" attr.type="string"/>
+<key id="d0" for="node" attr.name="entity_type" attr.type="string"/>
+<graph edgedefault="undirected"><node id="&quot;农业技术&quot;">
+  <data key="d0">"TECHNOLOGY"</data>
+  <data key="d1">"农业技术是指用于提高作物产量和质量的科学方法，云粳26号的推广依赖于相关的农业技术。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">3.277478752446756e-07</data>
+  <data key="d4">50</data>
+</node>
+<node id="&quot;云南省&quot;">
+  <data key="d0">"LOCATION"</data>
+  <data key="d1">"云南省是中国的一个省份，云粳26号在该省的农业研究和推广中发挥了重要作用。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">3.128163225886591e-07</data>
+  <data key="d4">44</data>
+</node>
+<node id="&quot;云南省农业科学院粮食作物研究所&quot;">
+  <data key="d0">"ORGANIZATION"</data>
+  <data key="d1">"云南省农业科学院粮食作物研究所是一个科研机构，负责育成和研究粮食作物，包括早熟品种云粳26号。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">8.336807513843113e-05</data>
+  <data key="d4">69</data>
+</node>
+<node id="&quot;农业推广&quot;">
+  <data key="d0">"MISSION"</data>
+  <data key="d1">"农业推广是指将新技术和新品种引入生产实践的过程，云粳26号被列为主导品种以促进其推广。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">7.628287841247848e-05</data>
+  <data key="d4">51</data>
+</node>
+<node id="&quot;食用价值&quot;">
+  <data key="d0">"CONCEPT"</data>
+  <data key="d1">"食用价值是指食品在营养和口感方面的综合评价，云粳26号因其食味品质好而具有较高的食用价值。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">2.997547934514262</data>
+  <data key="d4">58</data>
+</node>
+<node id="&quot;农业部&quot;">
+  <data key="d0">"ORGANIZATION"</data>
+  <data key="d1">"农业部是中国的一个政府机构，负责农业政策的制定和推广，云粳26号被其列为主导品种。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.08804169791274698</data>
+  <data key="d4">48</data>
+</node>
+<node id="&quot;推广主导品种&quot;">
+  <data key="d0">"CONCEPT"</data>
+  <data key="d1">"推广主导品种是指在特定区域内被推荐种植的主要作物品种，云粳26号在西南稻区被列为此类品种。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.24357749228919026</data>
+  <data key="d4">55</data>
+</node>
+<node id="&quot;中海拔稻区&quot;">
+  <data key="d0">"LOCATION"</data>
+  <data key="d1">"中海拔稻区是指海拔在1500至1800米之间的稻田区域，适合云粳26号的生长。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">5.926949838261465</data>
+  <data key="d4">45</data>
+</node>
+<node id="&quot;谷壳黄色&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"谷壳黄色是云粳26号的外观特征之一，表明其成熟状态。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.4537467972212248</data>
+  <data key="d4">35</data>
+</node>
+<node id="&quot;高抗稻瘟病&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"高抗稻瘟病是云粳26号的抗病性特征，增强了其种植的可行性。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.010406265234302301</data>
+  <data key="d4">45</data>
+</node>
+<node id="&quot;落粒性适中&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"落粒性适中是云粳26号的特性之一，影响其收割和加工过程。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.39751120253379707</data>
+  <data key="d4">36</data>
+</node>
+<node id="&quot;有香味&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"有香味是云粳26号的食味品质之一，增加了其市场吸引力。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.1572458000758473</data>
+  <data key="d4">36</data>
+</node>
+<node id="&quot;稻瘟病&quot;">
+  <data key="d0">"NATURE"</data>
+  <data key="d1">"稻瘟病是一种影响水稻的病害，云粳26号具有高抗稻瘟病的特性，增强了其种植的可行性。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">2.880133332981227e-07</data>
+  <data key="d4">63</data>
+</node>
+<node id="&quot;外观特点&quot;">
+  <data key="d0">"CONCEPT"</data>
+  <data key="d1">"外观特点是指云粳26号的视觉特征，包括颖尖、谷壳颜色等，影响其市场接受度。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">1.668849735265512</data>
+  <data key="d4">51</data>
+</node>
+<node id="&quot;食味品质好&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"食味品质好是云粳26号的一个重要特性，影响消费者的选择。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.11790494848439569</data>
+  <data key="d4">33</data>
+</node>
+<node id="&quot;云粳26号&quot;">
+  <data key="d0">"WORK"</data>
+  <data key="d1">"云粳26号是由云南省农业科学院粮食作物研究所于2005年育成的早熟稻品种，具有良好的外观和食味品质。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.4054990190854595</data>
+  <data key="d4">68</data>
+</node>
+<node id="&quot;香味&quot;">
+  <data key="d0">"NATURE"</data>
+  <data key="d1">"香味是指米粒在烹饪后散发的气味，云粳26号的米粒具有良好的香味，增加了其市场吸引力。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">1.704282376131091</data>
+  <data key="d4">60</data>
+</node>
+<node id="&quot;2012年&quot;">
+  <data key="d0">"DATE"</data>
+  <data key="d1">"2012年是云粳26号被农业部列为西南稻区农业推广主导品种的年份。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">1.6109373199087365</data>
+  <data key="d4">38</data>
+</node>
+<node id="&quot;2005年&quot;">
+  <data key="d0">"DATE"</data>
+  <data key="d1">"2005年是云粳26号品种育成的年份，标志着该品种的研发开始。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">2.5795454440481884</data>
+  <data key="d4">35</data>
+</node>
+<node id="&quot;米粒大&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"米粒大是云粳26号的一个重要特征，通常与食用价值相关。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.8984304647517591</data>
+  <data key="d4">31</data>
+</node>
+<node id="&quot;落粒性&quot;">
+  <data key="d0">"NATURE"</data>
+  <data key="d1">"落粒性是指稻谷在成熟后从稻穗上脱落的特性，云粳26号的落粒性适中，影响其收割和加工的便利性。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.32474459712132514</data>
+  <data key="d4">66</data>
+</node>
+<node id="&quot;早熟品种&quot;">
+  <data key="d0">"CONCEPT"</data>
+  <data key="d1">"早熟品种是指生长周期较短的作物品种，云粳26号属于这一类，适合在特定气候条件下种植。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.0018348240895041633</data>
+  <data key="d4">55</data>
+</node>
+<node id="&quot;云南中海拔 1 500∼1 800 M 稻区&quot;">
+  <data key="d0">"LOCATION"</data>
+  <data key="d1">"云南中海拔 1 500∼1 800 m 稻区是云粳26号适宜种植的区域，提供了特定的生长环境。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.03589417758929121</data>
+  <data key="d4">55</data>
+</node>
+<node id="&quot;颖尖无色、无芒&quot;">
+  <data key="d0">"KEYWORD"</data>
+  <data key="d1">"颖尖无色、无芒是云粳26号的外观特点之一，影响其市场接受度。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.7739797890026089</data>
+  <data key="d4">39</data>
+</node>
+<node id="&quot;米粒&quot;">
+  <data key="d0">"NATURE"</data>
+  <data key="d1">"米粒是稻谷经过加工后得到的食用部分，云粳26号的米粒大且有香味，提升了其食用价值。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">7.555004360466345e-05</data>
+  <data key="d4">54</data>
+</node>
+<node id="&quot;适宜种植区域&quot;">
+  <data key="d0">"CONCEPT"</data>
+  <data key="d1">"适宜种植区域是指云粳26号推荐的种植环境，主要为云南中海拔 1 500∼1 800 m 稻区。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.4086719057062533</data>
+  <data key="d4">58</data>
+</node>
+<node id="&quot;西南稻区&quot;">
+  <data key="d0">"LOCATION"</data>
+  <data key="d1">"西南稻区是指中国西南地区，云粳26号在此区域被推广。"</data>
+  <data key="d2">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d3">0.004633279566562749</data>
+  <data key="d4">31</data>
+</node>
+<edge source="&quot;农业技术&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号的推广依赖于相关的农业技术，以提高其种植效率和产量。"</data>
+  <data key="d7">4.469515500104365e-07</data>
+  <data key="d8">39</data>
+</edge>
+<edge source="&quot;云南省&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号是云南省育成的品种，适合在该省的特定环境中种植。"</data>
+  <data key="d7">0.0005762292913028245</data>
+  <data key="d8">38</data>
+</edge>
+<edge source="&quot;云南省&quot;" target="&quot;云南省农业科学院粮食作物研究所&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云南省农业科学院粮食作物研究所位于云南省，专注于该省的粮食作物研究和育种工作。"</data>
+  <data key="d7">0.0004066592991875774</data>
+  <data key="d8">55</data>
+</edge>
+<edge source="&quot;云南省农业科学院粮食作物研究所&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号是由云南省农业科学院粮食作物研究所育成的早熟稻品种，体现了该机构的科研成果。"</data>
+  <data key="d7">8.201402306440362e-05</data>
+  <data key="d8">60</data>
+</edge>
+<edge source="&quot;农业推广&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号被列为主导品种，旨在通过农业推广提高其种植和消费。"</data>
+  <data key="d7">0.0016328476835250948</data>
+  <data key="d8">37</data>
+</edge>
+<edge source="&quot;食用价值&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号因其食味品质好而具有较高的食用价值，适合市场需求。"</data>
+  <data key="d7">9.018137544091494e-05</data>
+  <data key="d8">39</data>
+</edge>
+<edge source="&quot;农业部&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号在2012年被农业部列为西南稻区农业推广主导品种，显示了其在农业政策中的重要性。"</data>
+  <data key="d7">0.0660654296723789</data>
+  <data key="d8">51</data>
+</edge>
+<edge source="&quot;推广主导品种&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号在西南稻区被列为推广主导品种，显示其在该地区的重要性。"</data>
+  <data key="d7">0.004850300392718063</data>
+  <data key="d8">36</data>
+</edge>
+<edge source="&quot;中海拔稻区&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"中海拔稻区是云粳26号推荐的种植区域，提供了适合其生长的气候条件。"</data>
+  <data key="d7">0.4154816437684379</data>
+  <data key="d8">44</data>
+</edge>
+<edge source="&quot;谷壳黄色&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"谷壳黄色是云粳26号的外观特征之一，影响其消费者的接受度。"</data>
+  <data key="d7">0.055662130155681604</data>
+  <data key="d8">39</data>
+</edge>
+<edge source="&quot;高抗稻瘟病&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"高抗稻瘟病是云粳26号的抗病性特征，增强了其种植的可行性。"</data>
+  <data key="d7">0.007417909388497926</data>
+  <data key="d8">45</data>
+</edge>
+<edge source="&quot;落粒性适中&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"落粒性适中是云粳26号的特性之一，影响其收割和加工的便利性。"</data>
+  <data key="d7">0.04371501902711867</data>
+  <data key="d8">39</data>
+</edge>
+<edge source="&quot;有香味&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"有香味是云粳26号的食味品质之一，增加了其市场吸引力。"</data>
+  <data key="d7">0.238045756594794</data>
+  <data key="d8">36</data>
+</edge>
+<edge source="&quot;稻瘟病&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号具有高抗稻瘟病的特性，表明其在种植过程中能够抵御这一病害。"</data>
+  <data key="d7">0.006100528949900764</data>
+  <data key="d8">51</data>
+</edge>
+<edge source="&quot;外观特点&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号的外观特点包括颖尖无色、无芒等，影响其市场表现和消费者选择。"</data>
+  <data key="d7">0.4906831717572373</data>
+  <data key="d8">43</data>
+</edge>
+<edge source="&quot;食味品质好&quot;" target="&quot;云粳26号&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"食味品质好是云粳26号的一个重要特性，影响消费者的选择。"</data>
+  <data key="d7">0.013361831643390068</data>
+  <data key="d8">33</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;适宜种植区域&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号适宜在云南中海拔 1 500∼1 800 m 稻区种植，表明其对环境的适应性。"</data>
+  <data key="d7">0.39592594481115617</data>
+  <data key="d8">52</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;云南中海拔 1 500∼1 800 M 稻区&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号适宜在云南中海拔 1 500∼1 800 m 稻区种植，表明其生长环境的要求。"</data>
+  <data key="d7">0.5030086991360689</data>
+  <data key="d8">51</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;米粒大&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"米粒大是云粳26号的重要特征，通常与其食用价值相关。"</data>
+  <data key="d7">0.14715079462621358</data>
+  <data key="d8">31</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;早熟品种&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号是一种早熟品种，适合在特定的气候条件下种植，具有较短的生长周期。"</data>
+  <data key="d7">0.008795430480896508</data>
+  <data key="d8">49</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;2005年&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号于2005年育成，标志着该品种的研发历程。"</data>
+  <data key="d7">2.4413040461122195</data>
+  <data key="d8">31</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;香味&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号的香味是其食用品质的重要组成部分，吸引了消费者的关注。"</data>
+  <data key="d7">2.379013142252285e-06</data>
+  <data key="d8">40</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;颖尖无色、无芒&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"颖尖无色、无芒是云粳26号的外观特点，影响其市场表现。"</data>
+  <data key="d7">2.96823331740096</data>
+  <data key="d8">35</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;落粒性&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号的落粒性适中，影响其在收割时的表现和加工效率。"</data>
+  <data key="d7">0.11254188650424042</data>
+  <data key="d8">36</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;2012年&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"2012年云粳26号被农业部列为西南稻区农业推广主导品种，标志着其推广的重要性。"</data>
+  <data key="d7">0.26297679025</data>
+  <data key="d8">46</data>
+</edge>
+<edge source="&quot;云粳26号&quot;" target="&quot;米粒&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"云粳26号的米粒大且有香味，提升了其在市场上的竞争力。"</data>
+  <data key="d7">0.0008942391715159215</data>
+  <data key="d8">37</data>
+</edge>
+<edge source="&quot;2012年&quot;" target="&quot;西南稻区&quot;">
+  <data key="d5">chunk-59c892b0b8d999d3057866424ac38c5f</data>
+  <data key="d6">"2012年云粳26号在西南稻区被推广，表明其在该地区的适应性和重要性。"</data>
+  <data key="d7">0.001021465373999705</data>
+  <data key="d8">39</data>
+</edge>
+</graph></graphml>
