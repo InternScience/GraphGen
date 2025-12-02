@@ -12,7 +12,7 @@ nltk
 jieba
 plotly
 pandas
-gradio>=5.44.1
+gradio==5.44.1
 kaleido
 pyyaml
 langcodes
@@ -20,6 +20,8 @@ requests
 fastapi
 trafilatura
 aiohttp
+diskcache
+socksio
 
 leidenalg
 igraph
