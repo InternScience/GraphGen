@@ -1,9 +1,10 @@
 from pathlib import Path
-from typing import Any, Dict, Iterator, List, Optional
+from typing import Any, List, Optional, Union
+
+import ray
 
 from graphgen.models import (
     CSVReader,
-    JSONLReader,
     JSONReader,
     ParquetReader,
     PDFReader,
@@ -16,7 +17,7 @@ from graphgen.utils import logger
 from .parallel_file_scanner import ParallelFileScanner
 
 _MAPPING = {
-    "jsonl": JSONLReader,
+    "jsonl": JSONReader,
     "json": JSONReader,
     "txt": TXTReader,
     "csv": CSVReader,
@@ -30,70 +31,93 @@ _MAPPING = {
 }
 
 
-def _build_reader(suffix: str, cache_dir: str | None):
+def _build_reader(suffix: str, cache_dir: str | None, **reader_kwargs):
+    """Factory function to build appropriate reader instance"""
     suffix = suffix.lower()
-    if suffix == "pdf" and cache_dir is not None:
-        return _MAPPING[suffix](output_dir=cache_dir)
-    return _MAPPING[suffix]()
+    reader_cls = _MAPPING.get(suffix)
+    if not reader_cls:
+        raise ValueError(f"Unsupported file suffix: {suffix}")
+
+    # Special handling for PDFReader which needs output_dir
+    if suffix == "pdf":
+        if cache_dir is None:
+            raise ValueError("cache_dir must be provided for PDFReader")
+        return reader_cls(output_dir=cache_dir, **reader_kwargs)
+
+    return reader_cls(**reader_kwargs)
 
 
 def read_files(
-    input_file: str,
+    input_path: Union[str, List[str]],
     allowed_suffix: Optional[List[str]] = None,
     cache_dir: Optional[str] = None,
-    max_workers: int = 4,
-    rescan: bool = False,
-) -> Iterator[Dict[str, Any]]:
+    parallelism: int = 4,
+    recursive: bool = True,
+    **reader_kwargs: Any,
+) -> ray.data.Dataset:
     """
-    Read files from a path using parallel scanning and appropriate readers.
+    Unified entry point to read files of multiple types using Ray Data.
 
-    Args:
-        input_file: Path to a file or directory
-        allowed_suffix: List of file suffixes to read. If None, uses all supported types
-        cache_dir: Directory for caching PDF extraction and scan results
-        max_workers: Number of workers for parallel scanning
-        rescan: Whether to force rescan even if cached results exist
+    :param input_path: File or directory path(s) to read from
+    :param allowed_suffix: List of allowed file suffixes (e.g., ['pdf', 'txt'])
+    :param cache_dir: Directory to cache intermediate files (PDF processing)
+    :param parallelism: Number of parallel workers
+    :param recursive: Whether to scan directories recursively
+    :param reader_kwargs: Additional kwargs passed to readers
+    :return: Ray Dataset containing all documents
     """
+    try:
+        # 1. Scan all paths to discover files
+        logger.info("[READ] Scanning paths: %s", input_path)
+        scanner = ParallelFileScanner(
+            cache_dir=cache_dir,
+            allowed_suffix=allowed_suffix,
+            rescan=False,
+            max_workers=parallelism if parallelism > 0 else 1,
+        )
 
-    path = Path(input_file).expanduser()
-    if not path.exists():
-        raise FileNotFoundError(f"input_path not found: {input_file}")
+        all_files = []
+        scan_results = scanner.scan(input_path, recursive=recursive)
 
-    if allowed_suffix is None:
-        support_suffix = set(_MAPPING.keys())
-    else:
-        support_suffix = {s.lower().lstrip(".") for s in allowed_suffix}
+        for result in scan_results.values():
+            all_files.extend(result.get("files", []))
 
-    with ParallelFileScanner(
-        cache_dir=cache_dir or "cache",
-        allowed_suffix=support_suffix,
-        rescan=rescan,
-        max_workers=max_workers,
-    ) as scanner:
-        scan_results = scanner.scan(str(path), recursive=True)
+        logger.info("[READ] Found %d files to process", len(all_files))
 
-    # Extract files from scan results
-    files_to_read = []
-    for path_result in scan_results.values():
-        if "error" in path_result:
-            logger.warning("Error scanning %s: %s", path_result.path, path_result.error)
-            continue
-        files_to_read.extend(path_result.get("files", []))
+        if not all_files:
+            return ray.data.from_items([])
 
-    logger.info(
-        "Found %d eligible file(s) under folder %s (allowed_suffix=%s)",
-        len(files_to_read),
-        input_file,
-        support_suffix,
-    )
+        # 2. Group files by suffix to use appropriate reader
+        files_by_suffix = {}
+        for file_info in all_files:
+            suffix = Path(file_info["path"]).suffix.lower().lstrip(".")
+            if allowed_suffix and suffix not in [
+                s.lower().lstrip(".") for s in allowed_suffix
+            ]:
+                continue
+            files_by_suffix.setdefault(suffix, []).append(file_info["path"])
 
-    for file_info in files_to_read:
-        try:
-            file_path = file_info["path"]
-            suffix = Path(file_path).suffix.lstrip(".").lower()
-            reader = _build_reader(suffix, cache_dir)
+        # 3. Create read tasks
+        read_tasks = []
+        for suffix, file_paths in files_by_suffix.items():
+            reader = _build_reader(suffix, cache_dir, **reader_kwargs)
+            ds = reader.read(file_paths, parallelism=parallelism)
+            read_tasks.append(ds)
 
-            yield from reader.read(file_path)
+        # 4. Combine all datasets
+        if not read_tasks:
+            logger.warning("[READ] No datasets created")
+            return ray.data.from_items([])
 
-        except Exception as e:  # pylint: disable=broad-except
-            logger.exception("Error reading %s: %s", file_info.get("path"), e)
+        if len(read_tasks) == 1:
+            logger.info("[READ] Successfully read files from %s", input_path)
+            return read_tasks[0]
+        # len(read_tasks) > 1
+        combined_ds = read_tasks[0].union(*read_tasks[1:])
+
+        logger.info("[READ] Successfully read files from %s", input_path)
+        return combined_ds
+
+    except Exception as e:
+        logger.error("[READ] Failed to read files from %s: %s", input_path, e)
+        raise
