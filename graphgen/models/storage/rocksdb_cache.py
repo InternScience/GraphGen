@@ -29,5 +29,15 @@ class RocksDBCache:
             self.db.close()
             self.db = None
 
+    def __del__(self):
+        # Ensure the database is closed when the object is destroyed
+        self.close()
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.close()
+
     def __iter__(self) -> Iterator[str]:
         return iter(self.db.keys())
