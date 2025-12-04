@@ -50,6 +50,7 @@ class ChunkService:
         return pd.DataFrame(self.chunk_documents(docs))
 
     def chunk_documents(self, new_docs: list) -> list:
+        chunks = []
         for doc in new_docs:
             doc_id = doc.get("_doc_id")
             doc_type = doc.get("type")
@@ -62,24 +63,29 @@ class ChunkService:
                     **self.chunk_kwargs,
                 )
 
-                return [
+                chunks.extend(
+                    [
+                        {
+                            "_chunk_id": compute_content_hash(
+                                chunk_text, prefix="chunk-"
+                            ),
+                            "content": chunk_text,
+                            "type": "text",
+                            "_doc_id": doc_id,
+                            "length": len(self.tokenizer_instance.encode(chunk_text))
+                            if self.tokenizer_instance
+                            else len(chunk_text),
+                            "language": doc_language,
+                        }
+                        for chunk_text in text_chunks
+                    ]
+                )
+            else:
+                # other types of documents(images, sequences) are not chunked
+                chunks.append(
                     {
-                        "_chunk_id": compute_content_hash(chunk_text, prefix="chunk-"),
-                        "content": chunk_text,
-                        "type": "text",
-                        "_doc_id": doc_id,
-                        "length": len(self.tokenizer_instance.encode(chunk_text))
-                        if self.tokenizer_instance
-                        else len(chunk_text),
-                        "language": doc_language,
+                        "_chunk_id": doc_id.replace("doc-", f"{doc_type}-"),
+                        **doc,
                     }
-                    for chunk_text in text_chunks
-                ]
-
-            # other types of documents(images, sequences) are not chunked
-            return [
-                {
-                    "_chunk_id": doc_id.replace("doc-", f"{doc_type}-"),
-                    **doc,
-                }
-            ]
+                )
+        return chunks
