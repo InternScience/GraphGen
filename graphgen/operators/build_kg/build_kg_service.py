@@ -24,7 +24,7 @@ class BuildKGService:
 
         # consume the chunks and build kg
         self.build_kg(docs)
-        return pd.DataFrame()
+        return pd.DataFrame([{"status": "kg_building_completed"}])
 
     def build_kg(self, chunks: List[Chunk]) -> None:
         """

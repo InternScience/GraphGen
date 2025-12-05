@@ -1,93 +1,107 @@
-from collections import defaultdict
+from collections.abc import Iterable
 
-import gradio as gr
+import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper
-from graphgen.models import JsonKVStorage, NetworkXStorage, QuizGenerator
-from graphgen.utils import logger, run_concurrent
+from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
+from graphgen.common import init_llm, init_storage
+from graphgen.models import QuizGenerator
+from graphgen.utils import compute_content_hash, logger, run_concurrent
 
 
-async def quiz(
-    synth_llm_client: BaseLLMWrapper,
-    graph_storage: NetworkXStorage,
-    rephrase_storage: JsonKVStorage,
-    max_samples: int = 1,
-    progress_bar: gr.Progress = None,
-) -> JsonKVStorage:
-    """
-    Get all edges and quiz them using QuizGenerator.
+class QuizService:
+    def __init__(self, working_dir: str = "cache", quiz_samples: int = 1):
+        self.quiz_samples = quiz_samples
+        self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
+        self.graph_storage: BaseGraphStorage = init_storage(
+            backend="networkx", working_dir=working_dir, namespace="graph"
+        )
+        # { _description_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
+        self.quiz_storage: BaseKVStorage = init_storage(
+            backend="json_kv", working_dir=working_dir, namespace="quiz"
+        )
+        self.generator = QuizGenerator(self.llm_client)
 
-    :param synth_llm_client: generate statements
-    :param graph_storage: graph storage instance
-    :param rephrase_storage: rephrase storage instance
-    :param max_samples: max samples for each edge
-    :param progress_bar
-    :return:
-    """
+        self.concurrency_limit = 20
 
-    generator = QuizGenerator(synth_llm_client)
+    def __call__(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
+        # this operator does not consume any batch data
+        # but for compatibility we keep the interface
+        _ = batch.to_dict(orient="records")
 
-    async def _process_single_quiz(item: tuple[str, str, str]):
-        description, template_type, gt = item
-        try:
-            # if rephrase_storage exists already, directly get it
-            descriptions = rephrase_storage.get_by_id(description)
-            if descriptions:
-                return None
+        yield from self.quiz()
 
-            prompt = generator.build_prompt_for_description(description, template_type)
-            new_description = await synth_llm_client.generate_answer(
-                prompt, temperature=1
-            )
-            rephrased_text = generator.parse_rephrased_text(new_description)
-            return {description: [(rephrased_text, gt)]}
-
-        except Exception as e:  # pylint: disable=broad-except
-            logger.error("Error when quizzing description %s: %s", description, e)
+    async def _process_single_quiz(self, item: str) -> dict | None:
+        # if quiz in quiz_storage exists already, directly get it
+        _description_id = compute_content_hash(item)
+        if self.quiz_storage.get_by_id(_description_id):
             return None
 
-    edges = graph_storage.get_all_edges()
-    nodes = graph_storage.get_all_nodes()
-
-    results = defaultdict(list)
-    items = []
-    for edge in edges:
-        edge_data = edge[2]
-        description = edge_data["description"]
-
-        results[description] = [(description, "yes")]
-
-        for i in range(max_samples):
+        tasks = []
+        for i in range(self.quiz_samples):
             if i > 0:
-                items.append((description, "TEMPLATE", "yes"))
-            items.append((description, "ANTI_TEMPLATE", "no"))
+                tasks.append((item, "TEMPLATE", "yes"))
+            tasks.append((item, "ANTI_TEMPLATE", "no"))
+        try:
+            quizzes = []
+            for description, template_type, gt in tasks:
+                prompt = self.generator.build_prompt_for_description(
+                    description, template_type
+                )
+                new_description = await self.llm_client.generate_answer(
+                    prompt, temperature=1
+                )
+                rephrased_text = self.generator.parse_rephrased_text(new_description)
+                quizzes.append((rephrased_text, gt))
+            return {
+                "_description_id": _description_id,
+                "description": item,
+                "quizzes": quizzes,
+            }
+        except Exception as e:
+            logger.error("Error when quizzing description %s: %s", item, e)
+            return None
 
-    for node in nodes:
-        node_data = node[1]
-        description = node_data["description"]
+    def quiz(self) -> Iterable[pd.DataFrame]:
+        """
+        Get all nodes and edges and quiz their descriptions using QuizGenerator.
+        """
+        edges = self.graph_storage.get_all_edges()
+        nodes = self.graph_storage.get_all_nodes()
 
-        results[description] = [(description, "yes")]
+        items = []
 
-        for i in range(max_samples):
-            if i > 0:
-                items.append((description, "TEMPLATE", "yes"))
-            items.append((description, "ANTI_TEMPLATE", "no"))
+        for edge in edges:
+            edge_data = edge[2]
+            description = edge_data["description"]
+            items.append(description)
 
-    quiz_results = await run_concurrent(
-        _process_single_quiz,
-        items,
-        desc="Quizzing descriptions",
-        unit="description",
-        progress_bar=progress_bar,
-    )
+        for node in nodes:
+            node_data = node[1]
+            description = node_data["description"]
+            items.append(description)
 
-    for new_result in quiz_results:
-        if new_result:
-            for key, value in new_result.items():
-                results[key].extend(value)
+        logger.info("Total descriptions to quiz: %d", len(items))
 
-    for key, value in results.items():
-        results[key] = list(set(value))
-        rephrase_storage.upsert({key: results[key]})
+        for i in range(0, len(items), self.concurrency_limit):
+            batch_items = items[i : i + self.concurrency_limit]
+            batch_results = run_concurrent(
+                self._process_single_quiz,
+                batch_items,
+                desc=f"Quizzing descriptions ({i} / {i + len(batch_items)})",
+                unit="description",
+            )
 
-    return rephrase_storage
+            final_results = []
+            for new_result in batch_results:
+                if new_result:
+                    self.quiz_storage.upsert(
+                        {
+                            new_result["_description_id"]: {
+                                "description": new_result["description"],
+                                "quizzes": new_result["quizzes"],
+                            }
+                        }
+                    )
+                    final_results.append(new_result)
+            self.quiz_storage.index_done_callback()
+            yield pd.DataFrame(final_results)
