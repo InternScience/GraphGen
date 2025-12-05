@@ -1,1 +1,1 @@
-from .quiz import QuizService
+from .quiz_service import QuizService

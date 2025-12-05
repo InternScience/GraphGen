@@ -6,12 +6,14 @@ from .partition import partition_kg
 from .quiz import QuizService
 from .read import read
 from .search import search_all
+from .judge import JudgeService
 
 operators = {
     "read": read,
     "chunk": ChunkService,
     "build_kg": BuildKGService,
     "quiz": QuizService,
+    "judge": JudgeService,
     "extract_info": extract_info,
     "search_all": search_all,
     "partition_kg": partition_kg,

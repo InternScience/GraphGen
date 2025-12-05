@@ -5,11 +5,11 @@ import pandas as pd
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.common import init_llm, init_storage
 from graphgen.models import QuizGenerator
-from graphgen.utils import compute_content_hash, logger, run_concurrent
+from graphgen.utils import compute_content_hash, run_concurrent, logger
 
 
 class QuizService:
-    def __init__(self, working_dir: str = "cache", quiz_samples: int = 1):
+    def __init__(self, working_dir: str = "cache", quiz_samples: int = 1, concurrency_limit: int = 200):
         self.quiz_samples = quiz_samples
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
@@ -21,7 +21,7 @@ class QuizService:
         )
         self.generator = QuizGenerator(self.llm_client)
 
-        self.concurrency_limit = 20
+        self.concurrency_limit = concurrency_limit
 
     def __call__(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
         # this operator does not consume any batch data
@@ -80,6 +80,7 @@ class QuizService:
             description = node_data["description"]
             items.append(description)
 
+        print("Total descriptions to quiz: %d", len(items))
         logger.info("Total descriptions to quiz: %d", len(items))
 
         for i in range(0, len(items), self.concurrency_limit):

@@ -1,1 +1,1 @@
-from .extract_info import extract_info
+from .extract import extract_info
