@@ -4,6 +4,7 @@ from typing import Union
 
 import pandas as pd
 
+from graphgen.common import init_storage
 from graphgen.models import (
     ChineseRecursiveTextSplitter,
     RecursiveCharacterSplitter,
@@ -40,9 +41,14 @@ def split_chunks(text: str, language: str = "en", **kwargs) -> list:
 
 
 class ChunkService:
-    def __init__(self, **chunk_kwargs):
+    def __init__(self, working_dir: str = "cache", **chunk_kwargs):
         tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
         self.tokenizer_instance: Tokenizer = Tokenizer(model_name=tokenizer_model)
+        self.chunk_storage = init_storage(
+            backend="json_kv",
+            working_dir=working_dir,
+            namespace="chunk",
+        )
         self.chunk_kwargs = chunk_kwargs
 
     def __call__(self, batch: pd.DataFrame) -> pd.DataFrame:
@@ -88,4 +94,8 @@ class ChunkService:
                         **doc,
                     }
                 )
+        self.chunk_storage.upsert(
+            {chunk["_chunk_id"]: chunk for chunk in chunks}
+        )
+        self.chunk_storage.index_done_callback()
         return chunks
