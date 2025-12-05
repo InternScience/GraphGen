@@ -4,6 +4,7 @@ from typing import Awaitable, Callable, List, TypeVar
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.utils.log import logger
+
 from .loop import create_event_loop
 
 T = TypeVar("T")
@@ -27,7 +28,7 @@ def run_concurrent(
             try:
                 result = await future
                 results.append(result)
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:
                 logger.exception("Task failed: %s", e)
                 results.append(e)
 
