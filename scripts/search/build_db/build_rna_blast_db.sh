@@ -44,12 +44,13 @@ if [ "${DB_SELECTION}" = "list" ]; then
     echo "Available RNAcentral database subsets:"
     echo ""
     echo "Fetching list from RNAcentral FTP..."
-    curl -s "${RNACENTRAL_BY_DB_URL}/" | \
-        grep -oE '<a href="[^"]*\.fasta">' | \
+    listing=$(curl -s "${RNACENTRAL_BY_DB_URL}/")
+    echo "${listing}" | \
+        grep -oE '<a href="[^\"]*\.fasta">' | \
         sed 's/<a href="//;s/">//' | \
         sort | \
         while read db; do
-            size=$(curl -s "${RNACENTRAL_BY_DB_URL}/" | grep -A 1 "${db}" | grep -oE '[0-9.]+[GMK]' | head -1 || echo "unknown")
+            size=$(echo "${listing}" | grep -A 1 "${db}" | grep -oE '[0-9.]+[GMK]' | head -1 || echo "unknown")
             echo "  - ${db%.fasta}: ${size}"
         done
     echo ""
@@ -76,16 +77,14 @@ wget -q "${RELEASE_NOTES_URL}" 2>/dev/null || {
 
 if [ -f "${RELEASE_NOTES}" ]; then
     # Try to extract version from release notes (first line usually contains version info)
-    RELEASE=$(head -1 "${RELEASE_NOTES}" | grep -oE '[0-9]+\.[0-9]+' | head -1 | tr -d '.' || date +%Y%m%d)
-    if [ -z "${RELEASE}" ] || [ "${RELEASE}" = "$(date +%Y%m%d)" ]; then
-        RELEASE=$(date +%Y%m%d)
-        echo "Using date as release identifier: ${RELEASE}"
-    else
-        echo "RNAcentral release: ${RELEASE}"
-    fi
-else
+    RELEASE=$(head -1 "${RELEASE_NOTES}" | grep -oE '[0-9]+\.[0-9]+' | head -1 | tr -d '.')
+fi
+
+if [ -z "${RELEASE}" ]; then
     RELEASE=$(date +%Y%m%d)
     echo "Using date as release identifier: ${RELEASE}"
+else
+    echo "RNAcentral release: ${RELEASE}"
 fi
 
 # Download RNAcentral FASTA file
