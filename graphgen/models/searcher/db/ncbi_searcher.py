@@ -89,11 +89,11 @@ class NCBISearch(BaseSearcher):
         if accession:
             if accession.startswith(("NM_", "XM_")):
                 return "mRNA"
-            elif accession.startswith(("NC_", "NT_")):
+            if accession.startswith(("NC_", "NT_")):
                 return "genomic DNA"
-            elif accession.startswith(("NR_", "XR_")):
+            if accession.startswith(("NR_", "XR_")):
                 return "RNA"
-            elif accession.startswith("NG_"):
+            if accession.startswith("NG_"):
                 return "genomic region"
         # Fallback: infer from gene type if available
         if gene_type is not None:
@@ -215,7 +215,7 @@ class NCBISearch(BaseSearcher):
             """Extract metadata from GenBank format (title, features, organism, etc.)."""
             with Entrez.efetch(db="nuccore", id=accession, rettype="gb", retmode="text") as handle:
                 record = SeqIO.read(handle, "genbank")
-                
+
                 result["title"] = record.description
                 result["molecule_type_detail"] = (
                     "mRNA" if accession.startswith(("NM_", "XM_")) else
@@ -238,7 +238,7 @@ class NCBISearch(BaseSearcher):
 
                 if not result.get("organism") and 'organism' in record.annotations:
                     result["organism"] = record.annotations['organism']
-            
+
             return result
 
         def _extract_sequence_from_fasta(result: dict, accession: str):
@@ -249,7 +249,10 @@ class NCBISearch(BaseSearcher):
                     result["sequence"] = str(fasta_record.seq)
                     result["sequence_length"] = len(fasta_record.seq)
             except Exception as fasta_exc:
-                logger.warning("Failed to extract sequence from accession %s using FASTA format: %s", accession, fasta_exc)
+                logger.warning(
+                    "Failed to extract sequence from accession %s using FASTA format: %s",
+                    accession, fasta_exc
+                )
                 result["sequence"] = None
                 result["sequence_length"] = None
             return result
