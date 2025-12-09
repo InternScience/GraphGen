@@ -59,7 +59,7 @@ class RNACentralSearch(BaseSearcher):
             if s := acc.get("species"):
                 organisms.add(s)
             gene_value = acc.get("gene")
-            if gene_value and isinstance(gene_value, str) and (g := gene_value.strip()):
+            if isinstance(gene_value, str) and (g := gene_value.strip()):
                 gene_names.add(g)
             if m := xref.get("modifications"):
                 modifications.extend(m)
