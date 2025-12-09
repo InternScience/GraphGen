@@ -58,7 +58,8 @@ class RNACentralSearch(BaseSearcher):
             acc = xref.get("accession", {})
             if s := acc.get("species"):
                 organisms.add(s)
-            if g := acc.get("gene", "").strip():
+            gene_value = acc.get("gene")
+            if gene_value and isinstance(gene_value, str) and (g := gene_value.strip()):
                 gene_names.add(g)
             if m := xref.get("modifications"):
                 modifications.extend(m)
