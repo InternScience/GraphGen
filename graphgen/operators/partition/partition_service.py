@@ -1,170 +1,156 @@
-from typing import Any
+import os
+from typing import Any, Iterable
+
+import pandas as pd
 
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseTokenizer
+from graphgen.common import init_storage
 from graphgen.models import (
     AnchorBFSPartitioner,
     BFSPartitioner,
     DFSPartitioner,
     ECEPartitioner,
     LeidenPartitioner,
+    Tokenizer,
 )
 from graphgen.utils import logger
 
 
-def partition_kg(
-    kg_instance: BaseGraphStorage,
-    chunk_storage: BaseKVStorage,
-    tokenizer: Any = BaseTokenizer,
-    partition_config: dict = None,
-) -> list[
-    tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]]
-]:
-    method = partition_config["method"]
-    method_params = partition_config["method_params"]
-    if method == "bfs":
-        logger.info("Partitioning knowledge graph using BFS method.")
-        partitioner = BFSPartitioner()
-    elif method == "dfs":
-        logger.info("Partitioning knowledge graph using DFS method.")
-        partitioner = DFSPartitioner()
-    elif method == "ece":
-        logger.info("Partitioning knowledge graph using ECE method.")
-        # TODO： before ECE partitioning, we need to:
-        # 1. 'quiz and judge' to get the comprehension loss if unit_sampling is not random
-        # 2. pre-tokenize nodes and edges to get the token length
-        edges = kg_instance.get_all_edges()
-        nodes = kg_instance.get_all_nodes()
-        await pre_tokenize(kg_instance, tokenizer, edges, nodes)
-        partitioner = ECEPartitioner()
-    elif method == "leiden":
-        logger.info("Partitioning knowledge graph using Leiden method.")
-        partitioner = LeidenPartitioner()
-    elif method == "anchor_bfs":
-        logger.info("Partitioning knowledge graph using Anchor BFS method.")
-        partitioner = AnchorBFSPartitioner(
-            anchor_type=method_params.get("anchor_type"),
-            anchor_ids=set(method_params.get("anchor_ids", []))
-            if method_params.get("anchor_ids")
-            else None,
+class PartitionService:
+    def __init__(self, working_dir: str = "cache", **partition_kwargs):
+        self.kg_instance: BaseGraphStorage = init_storage(
+            backend="networkx",
+            working_dir=working_dir,
+            namespace="graph",
         )
-    else:
-        raise ValueError(f"Unsupported partition method: {method}")
+        self.chunk_storage: BaseKVStorage = init_storage(
+            backend="json_kv",
+            working_dir=working_dir,
+            namespace="chunk",
+        )
+        tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
+        self.tokenizer_instance: BaseTokenizer = Tokenizer(model_name=tokenizer_model)
+        self.partition_kwargs = partition_kwargs
 
-    communities = await partitioner.partition(g=kg_instance, **method_params)
-    logger.info("Partitioned the graph into %d communities.", len(communities))
-    batches = await partitioner.community2batch(communities, g=kg_instance)
+    def __call__(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
+        # this operator does not consume any batch data
+        # but for compatibility we keep the interface
+        _ = batch.to_dict(orient="records")
+        self.kg_instance.reload()
+        self.chunk_storage.reload()
 
-    batches = await attach_additional_data_to_node(batches, chunk_storage)
-    return batches
+        yield from self.partition()
 
+    def partition(self) -> Iterable[pd.DataFrame]:
+        method = self.partition_kwargs["method"]
+        method_params = self.partition_kwargs["method_params"]
+        if method == "bfs":
+            logger.info("Partitioning knowledge graph using BFS method.")
+            partitioner = BFSPartitioner()
+        elif method == "dfs":
+            logger.info("Partitioning knowledge graph using DFS method.")
+            partitioner = DFSPartitioner()
+        elif method == "ece":
+            logger.info("Partitioning knowledge graph using ECE method.")
+            # TODO： before ECE partitioning, we need to:
+            # 1. 'quiz' and 'judge' to get the comprehension loss if unit_sampling is not random
+            # 2. pre-tokenize nodes and edges to get the token length
+            self._pre_tokenize()
+            partitioner = ECEPartitioner()
+        elif method == "leiden":
+            logger.info("Partitioning knowledge graph using Leiden method.")
+            partitioner = LeidenPartitioner()
+        elif method == "anchor_bfs":
+            logger.info("Partitioning knowledge graph using Anchor BFS method.")
+            partitioner = AnchorBFSPartitioner(
+                anchor_type=method_params.get("anchor_type"),
+                anchor_ids=set(method_params.get("anchor_ids", []))
+                if method_params.get("anchor_ids")
+                else None,
+            )
+        else:
+            raise ValueError(f"Unsupported partition method: {method}")
 
-def attach_additional_data_to_node(
-    batches: list[
-        tuple[
-            list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
-        ]
-    ],
-    chunk_storage: BaseKVStorage,
-) -> list[
-    tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]]
-]:
-    """
-    Attach additional data from chunk_storage to nodes in the batches.
-    :param batches:
-    :param chunk_storage:
-    :return:
-    """
-    for batch in batches:
-        for node_id, node_data in batch[0]:
-            await _attach_by_type(node_id, node_data, chunk_storage)
-    return batches
+        communities = partitioner.partition(g=self.kg_instance, **method_params)
+        logger.info("Partitioned the graph into %d communities.", len(communities))
 
+        for community in communities:
+            batch = partitioner.community2batch(community, g=self.kg_instance)
+            batch = self._attach_additional_data_to_node(batch)
 
-async def _attach_by_type(
-    node_id: str,
-    node_data: dict,
-    chunk_storage: BaseKVStorage,
-) -> None:
-    """
-    Attach additional data to the node based on its entity type.
-    """
-    entity_type = (node_data.get("entity_type") or "").lower()
-    if not entity_type:
-        return
+            yield pd.DataFrame(
+                {
+                    "nodes": [batch[0]],
+                    "edges": [batch[1]],
+                }
+            )
 
-    source_ids = [
-        sid.strip()
-        for sid in node_data.get("source_id", "").split("<SEP>")
-        if sid.strip()
-    ]
+    def _pre_tokenize(self) -> None:
+        """Pre-tokenize all nodes and edges to add token length information."""
+        logger.info("Starting pre-tokenization of nodes and edges...")
 
-    # Handle images
-    if "image" in entity_type:
-        image_chunks = [
-            data
-            for sid in source_ids
-            if "image" in sid.lower() and (data := chunk_storage.get_by_id(sid))
-        ]
-        if image_chunks:
-            # The generator expects a dictionary with an 'img_path' key, not a list of captions.
-            # We'll use the first image chunk found for this node.
-            node_data["images"] = image_chunks[0]
-            logger.debug("Attached image data to node %s", node_id)
+        nodes = self.kg_instance.get_all_nodes()
+        edges = self.kg_instance.get_all_edges()
 
+        # Process nodes
+        for node_id, node_data in nodes:
+            if "length" not in node_data:
+                try:
+                    description = node_data.get("description", "")
+                    tokens = self.tokenizer_instance.encode(description)
+                    node_data["length"] = len(tokens)
+                    self.kg_instance.update_node(node_id, node_data)
+                except Exception as e:
+                    logger.warning(f"Failed to tokenize node {node_id}: {e}")
+                    node_data["length"] = 0
 
-import asyncio
-from typing import List, Tuple
+        # Process edges
+        for u, v, edge_data in edges:
+            if "length" not in edge_data:
+                try:
+                    description = edge_data.get("description", "")
+                    tokens = self.tokenizer_instance.encode(description)
+                    edge_data["length"] = len(tokens)
+                    self.kg_instance.update_edge(u, v, edge_data)
+                except Exception as e:
+                    logger.warning(f"Failed to tokenize edge {u}-{v}: {e}")
+                    edge_data["length"] = 0
 
-import gradio as gr
+        # Persist changes
+        self.kg_instance.index_done_callback()
+        logger.info("Pre-tokenization completed.")
 
-from graphgen.bases import BaseGraphStorage, BaseTokenizer
-from graphgen.utils import run_concurrent
+    def _attach_additional_data_to_node(self, batch: tuple) -> tuple:
+        """
+        Attach additional data from chunk_storage to nodes in the batch.
+        :param batch: tuple of (nodes_data, edges_data)
+        :return: updated batch with additional data attached to nodes
+        """
+        nodes_data, edges_data = batch
 
+        for node_id, node_data in nodes_data:
+            entity_type = (node_data.get("entity_type") or "").lower()
+            if not entity_type:
+                continue
 
-async def pre_tokenize(
-    graph_storage: BaseGraphStorage,
-    tokenizer: BaseTokenizer,
-    edges: List[Tuple],
-    nodes: List[Tuple],
-    progress_bar: gr.Progress = None,
-    max_concurrent: int = 1000,
-) -> Tuple[List, List]:
-    """为 edges/nodes 补 token-length 并回写存储，并发 1000，带进度条。"""
-    sem = asyncio.Semaphore(max_concurrent)
+            source_ids = [
+                sid.strip()
+                for sid in node_data.get("source_id", "").split("<SEP>")
+                if sid.strip()
+            ]
 
-    async def _patch_and_write(obj: Tuple, *, is_node: bool) -> Tuple:
-        async with sem:
-            data = obj[1] if is_node else obj[2]
-            if "length" not in data:
-                loop = asyncio.get_event_loop()
-                data["length"] = len(
-                    await loop.run_in_executor(
-                        None, tokenizer.encode, data["description"]
-                    )
-                )
-            if is_node:
-                graph_storage.update_node(obj[0], obj[1])
-            else:
-                graph_storage.update_edge(obj[0], obj[1], obj[2])
-            return obj
+            # Handle images
+            if "image" in entity_type:
+                image_chunks = [
+                    data
+                    for sid in source_ids
+                    if "image" in sid.lower()
+                    and (data := self.chunk_storage.get_by_id(sid))
+                ]
+                if image_chunks:
+                    # The generator expects a dictionary with an 'img_path' key, not a list of captions.
+                    # We'll use the first image chunk found for this node.
+                    node_data["images"] = image_chunks[0]
+                    logger.debug("Attached image data to node %s", node_id)
 
-    new_edges, new_nodes = await asyncio.gather(
-        run_concurrent(
-            lambda e: _patch_and_write(e, is_node=False),
-            edges,
-            desc="Pre-tokenizing edges",
-            unit="edge",
-            progress_bar=progress_bar,
-        ),
-        run_concurrent(
-            lambda n: _patch_and_write(n, is_node=True),
-            nodes,
-            desc="Pre-tokenizing nodes",
-            unit="node",
-            progress_bar=progress_bar,
-        ),
-    )
-
-    graph_storage.index_done_callback()
-    return new_edges, new_nodes
-
+        return nodes_data, edges_data

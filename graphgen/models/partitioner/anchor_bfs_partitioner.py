@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Any, List, Literal, Set, Tuple
+from typing import Any, Iterable, List, Literal, Set, Tuple
 
 from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -30,24 +30,23 @@ class AnchorBFSPartitioner(BFSPartitioner):
         self.anchor_type = anchor_type
         self.anchor_ids = anchor_ids
 
-    async def partition(
+    def partition(
         self,
         g: BaseGraphStorage,
         max_units_per_community: int = 1,
         **kwargs: Any,
-    ) -> List[Community]:
+    ) -> Iterable[Community]:
         nodes = g.get_all_nodes()  # List[tuple[id, meta]]
         edges = g.get_all_edges()  # List[tuple[u, v, meta]]
 
         adj, _ = self._build_adjacency_list(nodes, edges)
 
-        anchors: Set[str] = await self._pick_anchor_ids(nodes)
+        anchors: Set[str] = self._pick_anchor_ids(nodes)
         if not anchors:
-            return []  # if no anchors, return empty list
+            return  # if no anchors, return nothing
 
         used_n: set[str] = set()
         used_e: set[frozenset[str]] = set()
-        communities: List[Community] = []
 
         seeds = list(anchors)
         random.shuffle(seeds)
@@ -55,17 +54,13 @@ class AnchorBFSPartitioner(BFSPartitioner):
         for seed_node in seeds:
             if seed_node in used_n:
                 continue
-            comm_n, comm_e = await self._grow_community(
+            comm_n, comm_e = self._grow_community(
                 seed_node, adj, max_units_per_community, used_n, used_e
             )
             if comm_n or comm_e:
-                communities.append(
-                    Community(id=len(communities), nodes=comm_n, edges=comm_e)
-                )
+                yield Community(id=seed_node, nodes=comm_n, edges=comm_e)
 
-        return communities
-
-    async def _pick_anchor_ids(
+    def _pick_anchor_ids(
         self,
         nodes: List[tuple[str, dict]],
     ) -> Set[str]:
@@ -80,7 +75,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
         return anchor_ids
 
     @staticmethod
-    async def _grow_community(
+    def _grow_community(
         seed: str,
         adj: dict[str, List[str]],
         max_units: int,
