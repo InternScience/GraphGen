@@ -34,23 +34,22 @@ class QuizService:
         self.graph_storage.reload()
         yield from self.quiz()
 
-    async def _process_single_quiz(self, item: str) -> dict | None:
+    async def _process_single_quiz(self, item: tuple) -> dict | None:
         # if quiz in quiz_storage exists already, directly get it
-        _description_id = compute_content_hash(item)
+        index, desc = item
+        _description_id = compute_content_hash(desc, prefix="quiz-")
         if self.quiz_storage.get_by_id(_description_id):
             return None
 
         tasks = []
         for i in range(self.quiz_samples):
             if i > 0:
-                tasks.append((item, "TEMPLATE", "yes"))
-            tasks.append((item, "ANTI_TEMPLATE", "no"))
+                tasks.append((desc, "TEMPLATE", "yes"))
+            tasks.append((desc, "ANTI_TEMPLATE", "no"))
         try:
             quizzes = []
-            for description, template_type, gt in tasks:
-                prompt = self.generator.build_prompt_for_description(
-                    description, template_type
-                )
+            for d, template_type, gt in tasks:
+                prompt = self.generator.build_prompt_for_description(d, template_type)
                 new_description = await self.llm_client.generate_answer(
                     prompt, temperature=1
                 )
@@ -58,7 +57,8 @@ class QuizService:
                 quizzes.append((rephrased_text, gt))
             return {
                 "_description_id": _description_id,
-                "description": item,
+                "description": desc,
+                "index": index,
                 "quizzes": quizzes,
             }
         except Exception as e:
@@ -76,13 +76,13 @@ class QuizService:
 
         for edge in edges:
             edge_data = edge[2]
-            description = edge_data["description"]
-            items.append(description)
+            desc = edge_data["description"]
+            items.append(((edge[0], edge[1]), desc))
 
         for node in nodes:
             node_data = node[1]
-            description = node_data["description"]
-            items.append(description)
+            desc = node_data["description"]
+            items.append((node[0], desc))
 
         logger.info("Total descriptions to quiz: %d", len(items))
 
