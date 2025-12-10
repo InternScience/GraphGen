@@ -393,11 +393,18 @@ class NCBISearch(BaseSearcher):
                 return None
 
             # Try local BLAST first if enabled
-            if self.use_local_blast and (accession := self._local_blast(seq, threshold)):
-                logger.debug("Local BLAST found accession: %s", accession)
-                return self.get_by_accession(accession)
+            if self.use_local_blast:
+                accession = self._local_blast(seq, threshold)
+                if accession:
+                    logger.debug("Local BLAST found accession: %s", accession)
+                    return self.get_by_accession(accession)
+                logger.info(
+                    "Local BLAST found no match for sequence. "
+                    "API fallback disabled when using local database."
+                )
+                return None
 
-            # Fall back to network BLAST
+            # Fall back to network BLAST only if local BLAST is not enabled
             logger.debug("Falling back to NCBIWWW.qblast")
 
             with NCBIWWW.qblast("blastn", "nr", seq, hitlist_size=1, expect=threshold) as result_handle:
