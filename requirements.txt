@@ -21,6 +21,8 @@ fastapi
 trafilatura
 aiohttp
 socksio
+pydantic
+ray==2.52.1
 
 leidenalg
 igraph

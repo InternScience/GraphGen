@@ -1,42 +1,76 @@
 import math
 
-import gradio as gr
-
-from graphgen.bases import BaseLLMWrapper
-from graphgen.models import JsonKVStorage, NetworkXStorage
-from graphgen.templates import STATEMENT_JUDGEMENT_PROMPT
-from graphgen.utils import logger, run_concurrent, yes_no_loss_entropy
-
-
-import math
-from collections.abc import Iterable
-
 import pandas as pd
 
-from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
+from graphgen.bases import BaseGraphStorage, BaseLLMWrapper
 from graphgen.common import init_llm, init_storage
-from graphgen.models import NetworkXStorage, JsonKVStorage
 from graphgen.templates import STATEMENT_JUDGEMENT_PROMPT
 from graphgen.utils import logger, run_concurrent, yes_no_loss_entropy
 
 
 class JudgeService:
     """Service for judging graph edges and nodes using a trainee LLM."""
+
     def __init__(self, working_dir: str = "cache"):
         self.llm_client: BaseLLMWrapper = init_llm("trainee")
+        self.graph_storage: BaseGraphStorage = init_storage(
+            backend="networkx",
+            working_dir=working_dir,
+            namespace="graph",
+        )
 
     def __call__(self, batch: pd.DataFrame) -> pd.DataFrame:
+        items = batch.to_dict(orient="records")
+        self.graph_storage.reload()
+        self.judge(items)
         return pd.DataFrame([{"status": "judging_completed"}])
 
-    def judge(self) -> Iterable[pd.DataFrame]:
-        """
-        Judge the statements in the graph storage
+    async def _process_single_judge(self, item: dict) -> dict:
+        description = item["description"]
+        try:
+            judgement = await self.llm_client.generate_topk_per_token(
+                STATEMENT_JUDGEMENT_PROMPT["TEMPLATE"].format(statement=description)
+            )
+            top_candidates = judgement[0].top_candidates
+            gt = item.get("ground_truth", "yes")
+            loss = yes_no_loss_entropy([top_candidates], [gt])
+            logger.debug("Description: %s Loss: %s", description, loss)
+            item["loss"] = loss
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("Error in judging description: %s", e)
+            logger.info("Use default loss 0.1")
+            item["loss"] = -math.log(0.1)
+        return item
 
-        :param re_judge: re-judge the relations
-        :return:
+    def judge(self, items: list[dict]) -> None:
         """
-        return
+        Judge the description in the item and compute the loss.
+        """
+        results = run_concurrent(
+            self._process_single_judge,
+            items,
+            desc="Judging descriptions",
+            unit="description",
+        )
 
+        # Update the graph storage with the computed losses
+        for item in results:
+            print(item)
+            node_id = item.get("node_id")
+            edge_source = item.get("edge_source")
+            edge_target = item.get("edge_target")
+            loss = item["loss"]
+            if node_id is not None:
+                node_data = self.graph_storage.get_node(node_id)
+                if node_data is not None:
+                    node_data["loss"] = loss
+                    self.graph_storage.update_node(node_id, node_data)
+            elif edge_source is not None and edge_target is not None:
+                edge_data = self.graph_storage.get_edge(edge_source, edge_target)
+                if edge_data is not None:
+                    edge_data["loss"] = loss
+                    self.graph_storage.update_edge(edge_source, edge_target, edge_data)
+        self.graph_storage.index_done_callback()
 
 
 # async def judge_statement(  # pylint: disable=too-many-statements
