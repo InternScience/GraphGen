@@ -1,1 +1,1 @@
-from .generate_qas import generate_qas
+from .generate import generate_qas

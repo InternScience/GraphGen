@@ -52,7 +52,6 @@ async def generate_qas(
         batches,
         desc="[4/4]Generating QAs",
         unit="batch",
-        progress_bar=progress_bar,
     )
 
     # format
