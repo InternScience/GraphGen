@@ -59,13 +59,11 @@ class JudgeService:
             if isinstance(index, str):
                 node_id = index
                 node_data = self.graph_storage.get_node(node_id)
-                if node_data:
-                    node_data["loss"] = loss
-                    self.graph_storage.update_node(node_id, node_data)
+                node_data["loss"] = loss
+                self.graph_storage.update_node(node_id, node_data)
             elif isinstance(index, tuple):
                 edge_source, edge_target = index
                 edge_data = self.graph_storage.get_edge(edge_source, edge_target)
-                if edge_data:
-                    edge_data["loss"] = loss
-                    self.graph_storage.update_edge(edge_source, edge_target, edge_data)
+                edge_data["loss"] = loss
+                self.graph_storage.update_edge(edge_source, edge_target, edge_data)
         self.graph_storage.index_done_callback()

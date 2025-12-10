@@ -5,7 +5,7 @@ import pandas as pd
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.common import init_llm, init_storage
 from graphgen.models import QuizGenerator
-from graphgen.utils import compute_content_hash, logger, run_concurrent
+from graphgen.utils import compute_dict_hash, logger, run_concurrent
 
 
 class QuizService:
@@ -20,7 +20,7 @@ class QuizService:
         self.graph_storage: BaseGraphStorage = init_storage(
             backend="networkx", working_dir=working_dir, namespace="graph"
         )
-        # { _description_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
+        # { _quiz_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
         self.quiz_storage: BaseKVStorage = init_storage(
             backend="json_kv", working_dir=working_dir, namespace="quiz"
         )
@@ -37,8 +37,8 @@ class QuizService:
     async def _process_single_quiz(self, item: tuple) -> dict | None:
         # if quiz in quiz_storage exists already, directly get it
         index, desc = item
-        _description_id = compute_content_hash(desc, prefix="quiz-")
-        if self.quiz_storage.get_by_id(_description_id):
+        _quiz_id = compute_dict_hash({"index": index, "description": desc})
+        if self.quiz_storage.get_by_id(_quiz_id):
             return None
 
         tasks = []
@@ -56,7 +56,7 @@ class QuizService:
                 rephrased_text = self.generator.parse_rephrased_text(new_description)
                 quizzes.append((rephrased_text, gt))
             return {
-                "_description_id": _description_id,
+                "_quiz_id": _quiz_id,
                 "description": desc,
                 "index": index,
                 "quizzes": quizzes,
@@ -100,7 +100,7 @@ class QuizService:
                 if new_result:
                     self.quiz_storage.upsert(
                         {
-                            new_result["_description_id"]: {
+                            new_result["_quiz_id"]: {
                                 "description": new_result["description"],
                                 "quizzes": new_result["quizzes"],
                             }

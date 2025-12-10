@@ -1,5 +1,5 @@
 import os
-from typing import Any, Iterable
+from typing import Iterable
 
 import pandas as pd
 
@@ -101,7 +101,7 @@ class PartitionService:
                     node_data["length"] = len(tokens)
                     self.kg_instance.update_node(node_id, node_data)
                 except Exception as e:
-                    logger.warning(f"Failed to tokenize node {node_id}: {e}")
+                    logger.warning("Failed to tokenize node %s: %s", node_id, e)
                     node_data["length"] = 0
 
         # Process edges
@@ -113,7 +113,7 @@ class PartitionService:
                     edge_data["length"] = len(tokens)
                     self.kg_instance.update_edge(u, v, edge_data)
                 except Exception as e:
-                    logger.warning(f"Failed to tokenize edge {u}-{v}: {e}")
+                    logger.warning("Failed to tokenize edge %s-%s: %s", u, v, e)
                     edge_data["length"] = 0
 
         # Persist changes

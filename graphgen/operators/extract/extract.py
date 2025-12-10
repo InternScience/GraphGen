@@ -7,7 +7,7 @@ from graphgen.models.extractor import SchemaGuidedExtractor
 from graphgen.utils import logger, run_concurrent
 
 
-async def extract_info(
+async def extract(
     llm_client: BaseLLMWrapper,
     chunk_storage: BaseKVStorage,
     extract_config: dict,

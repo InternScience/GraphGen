@@ -94,8 +94,6 @@ class ChunkService:
                         **doc,
                     }
                 )
-        self.chunk_storage.upsert(
-            {chunk["_chunk_id"]: chunk for chunk in chunks}
-        )
+        self.chunk_storage.upsert({chunk["_chunk_id"]: chunk for chunk in chunks})
         self.chunk_storage.index_done_callback()
         return chunks
