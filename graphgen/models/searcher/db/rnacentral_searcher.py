@@ -255,8 +255,13 @@ class RNACentralSearch(BaseSearcher):
                 if accession:
                     logger.debug("Local BLAST found accession: %s", accession)
                     return self.get_by_rna_id(accession)
+                logger.info(
+                    "Local BLAST found no match for sequence. "
+                    "API fallback disabled when using local database."
+                )
+                return None
 
-            # Fall back to RNAcentral API if local BLAST didn't find result
+            # Fall back to RNAcentral API only if local BLAST is not enabled
             logger.debug("Falling back to RNAcentral API.")
 
             md5_hash = self._calculate_md5(seq)
@@ -272,11 +277,13 @@ class RNACentralSearch(BaseSearcher):
             if not results:
                 logger.info("No exact match found in RNAcentral for sequence")
                 return None
+
             rna_id = results[0].get("rnacentral_id")
-            if not rna_id:
-                logger.error("No RNAcentral ID found in search results.")
-                return None
-            return self.get_by_rna_id(rna_id)
+            if rna_id:
+                return self.get_by_rna_id(rna_id)
+
+            logger.error("No RNAcentral ID found in search results.")
+            return None
         except Exception as e:
             logger.error("Sequence search failed: %s", e)
             return None

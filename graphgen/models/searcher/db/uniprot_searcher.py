@@ -124,47 +124,52 @@ class UniProtSearch(BaseSearcher):
             logger.error("Empty FASTA sequence provided.")
             return None
 
-        accession = None
         if self.use_local_blast:
             accession = self._local_blast(seq, threshold)
             if accession:
                 logger.debug("Local BLAST found accession: %s", accession)
+                return self.get_by_accession(accession)
+            logger.info(
+                "Local BLAST found no match for sequence. "
+                "API fallback disabled when using local database."
+            )
+            return None
 
-        if not accession:
-            logger.debug("Falling back to NCBIWWW.qblast.")
+        # Fall back to network BLAST only if local BLAST is not enabled
+        logger.debug("Falling back to NCBIWWW.qblast.")
 
-            # UniProtKB/Swiss-Prot BLAST API
-            try:
-                logger.debug(
-                    "Performing BLAST searcher for the given sequence: %s", seq
-                )
-                result_handle = NCBIWWW.qblast(
-                    program="blastp",
-                    database="swissprot",
-                    sequence=seq,
-                    hitlist_size=1,
-                    expect=threshold,
-                )
-                blast_record = NCBIXML.read(result_handle)
-            except RequestException:
-                raise
-            except Exception as e:  # pylint: disable=broad-except
-                logger.error("BLAST searcher failed: %s", e)
-                return None
+        # UniProtKB/Swiss-Prot BLAST API
+        try:
+            logger.debug(
+                "Performing BLAST searcher for the given sequence: %s", seq
+            )
+            result_handle = NCBIWWW.qblast(
+                program="blastp",
+                database="swissprot",
+                sequence=seq,
+                hitlist_size=1,
+                expect=threshold,
+            )
+            blast_record = NCBIXML.read(result_handle)
+        except RequestException:
+            raise
+        except Exception as e:  # pylint: disable=broad-except
+            logger.error("BLAST searcher failed: %s", e)
+            return None
 
-            if not blast_record.alignments:
-                logger.info("No BLAST hits found for the given sequence.")
-                return None
+        if not blast_record.alignments:
+            logger.info("No BLAST hits found for the given sequence.")
+            return None
 
-            best_alignment = blast_record.alignments[0]
-            best_hsp = best_alignment.hsps[0]
-            if best_hsp.expect > threshold:
-                logger.info("No BLAST hits below the threshold E-value.")
-                return None
-            hit_id = best_alignment.hit_id
+        best_alignment = blast_record.alignments[0]
+        best_hsp = best_alignment.hsps[0]
+        if best_hsp.expect > threshold:
+            logger.info("No BLAST hits below the threshold E-value.")
+            return None
 
-            # like sp|P01308.1|INS_HUMAN
-            accession = hit_id.split("|")[1].split(".")[0] if "|" in hit_id else hit_id
+        # like sp|P01308.1|INS_HUMAN
+        hit_id = best_alignment.hit_id
+        accession = hit_id.split("|")[1].split(".")[0] if "|" in hit_id else hit_id
         return self.get_by_accession(accession)
 
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
