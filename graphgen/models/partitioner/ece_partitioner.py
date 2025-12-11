@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Any, Dict, List, Optional, Set, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
 from tqdm import tqdm
 
@@ -59,7 +59,7 @@ class ECEPartitioner(BFSPartitioner):
         max_tokens_per_community: int = 10240,
         unit_sampling: str = "random",
         **kwargs: Any,
-    ) -> List[Community]:
+    ) -> Iterable[Community]:
         nodes: List[Tuple[str, dict]] = g.get_all_nodes()
         edges: List[Tuple[str, str, dict]] = g.get_all_edges()
 
@@ -73,7 +73,6 @@ class ECEPartitioner(BFSPartitioner):
 
         used_n: Set[str] = set()
         used_e: Set[frozenset[str]] = set()
-        communities: List[Community] = []
 
         all_units = self._sort_units(all_units, unit_sampling)
 
@@ -141,7 +140,7 @@ class ECEPartitioner(BFSPartitioner):
                 return None
 
             return Community(
-                id=len(communities),
+                id=seed_unit[1],
                 nodes=list(community_nodes.keys()),
                 edges=[(u, v) for (u, v), _ in community_edges.items()],
             )
@@ -153,7 +152,5 @@ class ECEPartitioner(BFSPartitioner):
             ):
                 continue
             comm = _grow_community(unit)
-            if comm is not None:
-                communities.append(comm)
-
-        return communities
+            if comm:
+                yield comm
