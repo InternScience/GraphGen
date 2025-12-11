@@ -60,8 +60,8 @@ class SchemaGuidedExtractor(BaseExtractor):
         return prompt
 
     async def extract(self, chunk: dict) -> dict:
-        _chunk_id = list(chunk.keys())[0]
-        text = chunk[_chunk_id].get("content", "")
+        _chunk_id = chunk.get("_chunk_id", "")
+        text = chunk.get("content", "")
 
         prompt = self.build_prompt(text)
         response = await self.llm_client.generate_answer(prompt)
@@ -88,9 +88,7 @@ class SchemaGuidedExtractor(BaseExtractor):
             return {}
 
     @staticmethod
-    async def merge_extractions(
-        extraction_list: List[Dict[str, dict]]
-    ) -> Dict[str, dict]:
+    def merge_extractions(extraction_list: List[Dict[str, dict]]) -> Dict[str, dict]:
         """
         Merge multiple extraction results based on their hashes.
         :param extraction_list: List of extraction results, each is a dict with hash as key and record as value.

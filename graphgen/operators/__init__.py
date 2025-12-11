@@ -1,6 +1,6 @@
 from .build_kg import BuildKGService
 from .chunk import ChunkService
-from .extract import extract
+from .extract import ExtractService
 from .generate import GenerateService
 from .judge import JudgeService
 from .partition import PartitionService
@@ -14,7 +14,7 @@ operators = {
     "build_kg": BuildKGService,
     "quiz": QuizService,
     "judge": JudgeService,
-    "extract": extract,
+    "extract": ExtractService,
     "search": search_all,
     "partition": PartitionService,
     "generate": GenerateService,
