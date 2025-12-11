@@ -8,7 +8,10 @@ nodes:
     dependencies: []
     params:
       input_path:
-        - examples/input_examples/json_demo.json
+        - examples/input_examples/vqa_demo.json
+      modalities:
+        - text
+        - image
 
   - id: chunk
     op_name: chunk
@@ -24,11 +27,11 @@ nodes:
   - id: build_kg
     op_name: build_kg
     type: map_batch
+    dependencies:
+      - chunk
     execution_params:
       replicas: 1
       batch_size: 128
-    dependencies:
-      - chunk
 
   - id: partition
     op_name: partition
@@ -36,9 +39,10 @@ nodes:
     dependencies:
       - build_kg
     params:
-      method: dfs
+      method: anchor_bfs
       method_params:
-        max_units_per_community: 1
+        anchor_type: image
+        max_units_per_community: 10
 
   - id: generate
     op_name: generate
@@ -49,5 +53,5 @@ nodes:
       replicas: 1
       batch_size: 128
     params:
-      method: atomic
-      data_format: Alpaca
+      method: vqa
+      data_format: ChatML

@@ -9,11 +9,12 @@
     },
     {
         "type": "image",
-        "img_path": "resources/input_examples/images/8fb93cfc0d6b0ebb3e5d5aaae237df02964c9c3da8d8e9567ea19240b14cc742.jpg",
-        "image_caption": [
+        "content":{
+            "img_path": "examples/input_examples/images/8fb93cfc0d6b0ebb3e5d5aaae237df02964c9c3da8d8e9567ea19240b14cc742.jpg",
+            "image_caption": [
             "Fig. 1. (A) Physical map of the hrp gene cluster of E. amylovora (4, 18, 29), showing restriction sites: B, Bam HI; E, Eco RI; H, Hind II. Gene hrpN, encoding harpin, is contained in the 1.3 kb Hind II fragment indicated by the solid bar. The shaded region (including hrpN) contains that part of the hrp gene cluster in which most transposon insertions, exemplified by K49, a Tn10 mini-kan (30) insertion, abolish the HR and pathogenicity phenotypes. Most "
-        ],
-        "image_footnote": []
+        ]
+        }
     },
     {
         "type": "text",
@@ -25,11 +26,12 @@
     },
     {
         "type": "image",
-        "img_path": "resources/input_examples/images/cc5b36e3c972b210d8b56d34fc7ffe56f793f287b3399345aea31cd20eed2824.jpg",
-        "image_caption": [
+        "content": {
+            "img_path": "examples/input_examples/images/cc5b36e3c972b210d8b56d34fc7ffe56f793f287b3399345aea31cd20eed2824.jpg",
+            "image_caption": [
             "Fig. 2. Tobacco leaf showing responses 24 hours after infitration of sectors (7) with the following preparations: 1,， living E. coli DH5α (pCPP9) $( 1 \\times 1 0 ^ { 8 } / \\mathrm { m l } )$ ; 2, E. coli DH5α (pCPP430) $( 1 \\ \\times \\ 1 0 ^ { 8 } / \\mathrm { m l } )$ ; 3, E. coli DH5α (pCPP430K49) $( 1 \\times 1 0 ^ { 8 } / \\mathrm { m } )$ ; 4, E. amylovora Ea321 $( 1 \\times 1 0 ^ { 8 } / \\mathsf { m l } )$ ; 5, Ea321K49, an hrp mutant $( 1 \\times 1 0 ^ { 8 } / \\mathsf { m } )$ , 8, heat-treated CFEP from $\\pmb { \\varepsilon }$ coli ${ \\mathsf { D } } { \\mathsf { H } } { \\mathsf { S } } { \\mathsf {  { \\alpha } } } ( { \\mathsf { P } } { \\mathsf { C } } { \\mathsf { P } } { \\mathsf { P } } { \\mathsf { 9 } } )$ ; 9,heat-treated CFEP from E. coli DH5α(pCPP430); 10, heat-treated CFEP from E. coli DH5α(pCPP430K49); 11, heattreated CFEP from $\\boldsymbol { \\varepsilon }$ amylovora Ea321; 12, heat-treated CFEP from Ea321K49; 6, harpin $( 1 . 1 \\mu M )$ from E. coli DH5α(pCPP430) eluted from SDS-polyacrylamide gel; 7, same preparation as 6, but protease treated for 2 hours then heated for io min to inactivate protease; 13, harpin $( 1 \\pmb { \\mu } \\pmb { M } )$ from E. amylovora Ea321 eluted from SDS-polyacrylamide gel; 14, same preparation as 13 but with protease treatment as sample 7. Harpin solutions $< - 0 . 3 \\mu \\mathsf { m }$ do not cause collapse of infitrated tissue; spotty and incomplete collapse is caused by harpin between 0.3 and $0 . 5 ~ { \\mu } \\mathsf { m }$ . "
-        ],
-        "image_footnote": []
+        ]
+        }
     },
     {
         "type": "text",
@@ -41,10 +43,12 @@
     },
     {
         "type": "table",
-        "img_path": "resources/input_examples/images/0f25783fdfa99042db274ba9f6b3064cf17c5435814edfbee42ae6b19aac37d2.jpg",
-        "table_caption": [],
-        "table_footnote": [],
-        "table_body": "<table><tr><td>Protease per milliter</td><td>Tissue collapse</td><td>Harpin detected</td></tr><tr><td>0</td><td>+</td><td>+</td></tr><tr><td>5μg</td><td>+</td><td>+</td></tr><tr><td>10μg</td><td>+</td><td>+</td></tr><tr><td>20 μg</td><td>Weak</td><td>+</td></tr><tr><td>40 μg</td><td>-</td><td></td></tr><tr><td>80μg</td><td>一</td><td></td></tr><tr><td>80μg + 0.5 mM PMSF</td><td>+</td><td>+</td></tr><tr><td>Cell-free supernatant</td><td></td><td></td></tr></table>"
+        "content": {
+            "img_path": "examples/input_examples/images/0f25783fdfa99042db274ba9f6b3064cf17c5435814edfbee42ae6b19aac37d2.jpg",
+            "table_caption": [],
+            "table_footnote": [],
+            "table_body": "<table><tr><td>Protease per milliter</td><td>Tissue collapse</td><td>Harpin detected</td></tr><tr><td>0</td><td>+</td><td>+</td></tr><tr><td>5μg</td><td>+</td><td>+</td></tr><tr><td>10μg</td><td>+</td><td>+</td></tr><tr><td>20 μg</td><td>Weak</td><td>+</td></tr><tr><td>40 μg</td><td>-</td><td></td></tr><tr><td>80μg</td><td>一</td><td></td></tr><tr><td>80μg + 0.5 mM PMSF</td><td>+</td><td>+</td></tr><tr><td>Cell-free supernatant</td><td></td><td></td></tr></table>"
+        }
     },
     {
         "type": "text",
@@ -52,11 +56,12 @@
     },
     {
         "type": "image",
-        "img_path": "resources/input_examples/images/4abc534d1dea2b706e44aaac26fe2ae309fee014082db00bc2d87187a6bb5dca.jpg",
-        "image_caption": [
-            "Fig. 3. SDS-polyacrylamide gel electrophoresis of CFEPs and purified harpin. Lanes: 1, purified harpin $( 1 . 5 \\ \\mathsf { \\pmb { \\mu } } \\mathsf { \\pmb { \\mathsf { g } } } )$ from E. coli $\\mathsf { D M } 5 \\alpha ( \\mathsf { p C P } 4 3 0 )$ incubated with protease (9) for 1 hour; 2, purified harpin $( 1 . 5 \\mu \\mathfrak { g } )$ from E. amylovora Ea321 incubated with protease for 1 hour; 3, same as 1, but without treatment with protease; 4, same as 2, but without treatment with protease; 5, CFEP (5 ${ \\pmb { \\mu } } ( { \\pmb q } )$ from E. coli DH5α(pCPP9) treated at $1 0 0 ^ { \\circ } \\mathbb { C }$ for 10'min; 6, CFEP $( 5 \\ \\pmb { \\mu } \\pmb { \\mu } )$ from E. coli DH5a(pCPP430K49) treated at $\\pmb { 1 0 0 } \\pmb { \\circ } \\pmb { \\subset }$ for 10 min; 7, CFEP $( 5 ~ \\mu 9 )$ from E. amylovora Ea321 treated "
-        ],
-        "image_footnote": []
+        "content": {
+            "img_path": "examples/input_examples/images/4abc534d1dea2b706e44aaac26fe2ae309fee014082db00bc2d87187a6bb5dca.jpg",
+            "image_caption": [
+                "Fig. 3. SDS-polyacrylamide gel electrophoresis of CFEPs and purified harpin. Lanes: 1, purified harpin $( 1 . 5 \\ \\mathsf { \\pmb { \\mu } } \\mathsf { \\pmb { \\mathsf { g } } } )$ from E. coli $\\mathsf { D M } 5 \\alpha ( \\mathsf { p C P } 4 3 0 )$ incubated with protease (9) for 1 hour; 2, purified harpin $( 1 . 5 \\mu \\mathfrak { g } )$ from E. amylovora Ea321 incubated with protease for 1 hour; 3, same as 1, but without treatment with protease; 4, same as 2, but without treatment with protease; 5, CFEP (5 ${ \\pmb { \\mu } } ( { \\pmb q } )$ from E. coli DH5α(pCPP9) treated at $1 0 0 ^ { \\circ } \\mathbb { C }$ for 10'min; 6, CFEP $( 5 \\ \\pmb { \\mu } \\pmb { \\mu } )$ from E. coli DH5a(pCPP430K49) treated at $\\pmb { 1 0 0 } \\pmb { \\circ } \\pmb { \\subset }$ for 10 min; 7, CFEP $( 5 ~ \\mu 9 )$ from E. amylovora Ea321 treated "
+            ]
+        }
     },
     {
         "type": "text",
@@ -64,12 +69,13 @@
     },
     {
         "type": "image",
-        "img_path": "resources/input_examples/images/390516e39e77030092027ded523ee99e96ffa8b6df4476c9b12d7bb1dd20d635.jpg",
-        "image_caption": [
-            "Fig. 4. Subcellular location of elicitor protein. Logphase cells $( 1 . 5 m )$ of strain Ea321(pCPP430) were fractionated (31). Proteins from each fraction were electrophoresed and transferred to Immobilon-P membrane (Millipore, Bedford, Massachusetts). The Amplified Alkaline Phosphatase Immuno-Blot Assay Kit (170-6412, Bio-Rad Richmond, California) was ",
-            "used in a Western blot to detect the elicitor protein with an antiserum raised in rabbit in response to harpin (15). (A) Fractions in lanes: 1, periplasm; 2, membrane; 3, whole cells; 4, supernatant; 5, cytoplasm. (B) Harpin purified by high-performance liquid chromatography (19) hybridized with antiserum. Arrows indicates $4 4 \\ k \\mathsf { D }$ based on the molecular weight markers used in Fig. 3. (C) Normal serum control. CFEP from E. coli DH5a(pCPP430) hybridized with pre-immune serum. "
-        ],
-        "image_footnote": []
+        "content": {
+            "img_path": "examples/input_examples/images/390516e39e77030092027ded523ee99e96ffa8b6df4476c9b12d7bb1dd20d635.jpg",
+            "image_caption": [
+                "Fig. 4. Subcellular location of elicitor protein. Logphase cells $( 1 . 5 m )$ of strain Ea321(pCPP430) were fractionated (31). Proteins from each fraction were electrophoresed and transferred to Immobilon-P membrane (Millipore, Bedford, Massachusetts). The Amplified Alkaline Phosphatase Immuno-Blot Assay Kit (170-6412, Bio-Rad Richmond, California) was ",
+                "used in a Western blot to detect the elicitor protein with an antiserum raised in rabbit in response to harpin (15). (A) Fractions in lanes: 1, periplasm; 2, membrane; 3, whole cells; 4, supernatant; 5, cytoplasm. (B) Harpin purified by high-performance liquid chromatography (19) hybridized with antiserum. Arrows indicates $4 4 \\ k \\mathsf { D }$ based on the molecular weight markers used in Fig. 3. (C) Normal serum control. CFEP from E. coli DH5a(pCPP430) hybridized with pre-immune serum. "
+            ]
+        }
     },
     {
         "type": "text",
@@ -77,10 +83,11 @@
     },
     {
         "type": "image",
-        "img_path": "resources/input_examples/images/eda01885ec54011f15e7a4a56bea0129a0475b2ab5b920a4cff20a4fb623517d.jpg",
-        "image_caption": [
-            "Fig. 5. Changes in pH of bathing solution of tobacco cell-suspension cultures (TCSC). Control values (no additive) were subtracted. Open squares, harpin (60 nM); open circles, cells of E. coli $\\mathsf { D H } 5 \\alpha ( \\mathsf { p C P P } 4 3 0 )$ $( 5 ~ \\times ~ 1 0 ^ { 7 }$ cells per milliliter); filled squares, cells of E. amylovora Ea321 $( 5 \\times 1 0 ^ { 7 }$ cells per milliiter); triangles, cells of E. coli DH5α(pCPP430K49) $( 5 \\times 1 0 ^ { 7 }$ cells per milliter); diamonds, cells of $\\boldsymbol { \\varepsilon }$ amylovora Ea321K49 $( 5 ~ \\times ~ 1 0 ^ { 7 }$ cells per  milliter); filled circles, cells of $\\boldsymbol { E } .$ coli DH5α(pCPP9) $( 5 \\times$ $\\pmb { 1 0 ^ { 6 } }$ cells per mililiter). TCSCs were shaken at room temperature with the indicated preparations. The pH was measured at the intervals indicated. All preparations that elicited HR in tobacco leaves (Fig. 2) also caused a pH increase in the TCSC medium. "
-        ],
-        "image_footnote": []
+        "content": {
+            "img_path": "examples/input_examples/images/eda01885ec54011f15e7a4a56bea0129a0475b2ab5b920a4cff20a4fb623517d.jpg",
+            "image_caption": [
+                "Fig. 5. Changes in pH of bathing solution of tobacco cell-suspension cultures (TCSC). Control values (no additive) were subtracted. Open squares, harpin (60 nM); open circles, cells of E. coli $\\mathsf { D H } 5 \\alpha ( \\mathsf { p C P P } 4 3 0 )$ $( 5 ~ \\times ~ 1 0 ^ { 7 }$ cells per milliliter); filled squares, cells of E. amylovora Ea321 $( 5 \\times 1 0 ^ { 7 }$ cells per milliiter); triangles, cells of E. coli DH5α(pCPP430K49) $( 5 \\times 1 0 ^ { 7 }$ cells per milliter); diamonds, cells of $\\boldsymbol { \\varepsilon }$ amylovora Ea321K49 $( 5 ~ \\times ~ 1 0 ^ { 7 }$ cells per  milliter); filled circles, cells of $\\boldsymbol { E } .$ coli DH5α(pCPP9) $( 5 \\times$ $\\pmb { 1 0 ^ { 6 } }$ cells per mililiter). TCSCs were shaken at room temperature with the indicated preparations. The pH was measured at the intervals indicated. All preparations that elicited HR in tobacco leaves (Fig. 2) also caused a pH increase in the TCSC medium. "
+            ]
+        }
     }
 ]
