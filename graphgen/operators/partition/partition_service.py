@@ -1,3 +1,4 @@
+import json
 import os
 from typing import Iterable
 
@@ -149,7 +150,7 @@ class PartitionService:
                 if image_chunks:
                     # The generator expects a dictionary with an 'img_path' key, not a list of captions.
                     # We'll use the first image chunk found for this node.
-                    node_data["images"] = image_chunks[0]
+                    node_data["image_data"] = json.loads(image_chunks[0]["content"])
                     logger.debug("Attached image data to node %s", node_id)
 
         return nodes_data, edges_data

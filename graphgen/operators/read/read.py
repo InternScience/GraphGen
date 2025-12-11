@@ -85,7 +85,7 @@ def read(
         logger.info("[READ] Found %d files to process", len(all_files))
 
         if not all_files:
-            return ray.data.from_items([])
+            raise ValueError("No files found to read.")
 
         # 2. Group files by suffix to use appropriate reader
         files_by_suffix = {}
@@ -116,7 +116,7 @@ def read(
         combined_ds = combined_ds.map(
             lambda record: {
                 **record,
-                "_doc_id": compute_mm_hash(record),
+                "_doc_id": compute_mm_hash(record, prefix="doc-"),
             }
         )
 
