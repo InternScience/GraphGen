@@ -106,8 +106,7 @@ def read(
 
         # 4. Combine all datasets
         if not read_tasks:
-            logger.warning("[READ] No datasets created")
-            return ray.data.from_items([])
+            raise ValueError("No datasets created from the provided files.")
 
         if len(read_tasks) == 1:
             combined_ds = read_tasks[0]
