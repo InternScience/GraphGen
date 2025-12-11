@@ -198,7 +198,7 @@ class Engine:
             deps_set.update(n.dependencies)
         return all_ids - deps_set
 
-    def execute(self, initial_ds: ray.data.Dataset) -> Dict[str, List[Any]]:
+    def execute(self, initial_ds: ray.data.Dataset) -> Dict[str, ray.data.Dataset]:
         sorted_nodes = self._topo_sort(self.config.nodes)
 
         for node in sorted_nodes:
@@ -210,7 +210,4 @@ class Engine:
         def _fetch_result(ds: ray.data.Dataset) -> List[Any]:
             return ds.take_all()
 
-        results = ray.get(
-            [_fetch_result.remote(self.datasets[node_id]) for node_id in leaf_nodes]
-        )
-        return dict(zip(leaf_nodes, results))
+        return {node_id: self.datasets[node_id] for node_id in leaf_nodes}
