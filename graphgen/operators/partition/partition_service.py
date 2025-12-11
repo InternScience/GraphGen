@@ -72,7 +72,6 @@ class PartitionService:
             raise ValueError(f"Unsupported partition method: {method}")
 
         communities = partitioner.partition(g=self.kg_instance, **method_params)
-        logger.info("Partitioned the graph into %d communities.", len(communities))
 
         for community in communities:
             batch = partitioner.community2batch(community, g=self.kg_instance)
