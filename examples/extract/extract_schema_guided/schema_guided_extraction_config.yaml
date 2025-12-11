@@ -1,20 +1,34 @@
-pipeline:
-  - name: read_step
-    op_key: read
-    params:
-      input_file: resources/input_examples/extract_demo.txt # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
+global_params:
+  working_dir: cache
 
-  - name: chunk_step
-    op_key: chunk
-    deps: [read_step] # chunk_step depends on read_step
+nodes:
+  - id: read
+    op_name: read
+    type: source
+    dependencies: []
     params:
-      chunk_size: 20480
+      input_path:
+        - examples/input_examples/extract_demo.txt
+
+  - id: chunk
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 20480 # larger chunk size for better context
       chunk_overlap: 2000
-      separators: []
 
-  - name: extract_step
-    op_key: extract
-    deps: [chunk_step] # extract_step depends on chunk_step
+  - id: extract
+    op_name: extract
+    type: map_batch
+    dependencies:
+      - chunk
+    execution_params:
+      replicas: 1
+      batch_size: 128
     params:
-      method: schema_guided # extraction method, support: schema_guided
-      schema_file: graphgen/templates/extraction/schemas/legal_contract.json # schema file path for schema_guided method
+      method: schema_guided
+      schema_path: graphgen/templates/extraction/schemas/legal_contract.json

@@ -16,12 +16,15 @@ class TXTReader(BaseReader):
         :param input_path: Path to the input text file or list of text files.
         :return: Ray Dataset containing the read text data.
         """
-        docs_ds = ray.data.read_text(input_path, encoding="utf-8")
+        docs_ds = ray.data.read_binary_files(
+            input_path,
+            include_paths=False,
+        )
 
         docs_ds = docs_ds.map(
             lambda row: {
                 "type": "text",
-                self.text_column: row["text"],
+                self.text_column: row["bytes"].decode("utf-8"),
             }
         )
 
