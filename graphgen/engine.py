@@ -84,10 +84,6 @@ class Engine:
 
         main_ds = self.datasets[deps[0]]
         other_dss = [self.datasets[d] for d in deps[1:]]
-        if not all(ds.schema() == main_ds.schema() for ds in other_dss):
-            raise ValueError(
-                f"Union requires all datasets to have the same schema for node {node.id}"
-            )
         return main_ds.union(*other_dss)
 
     def _execute_node(self, node: Node, initial_ds: ray.data.Dataset):
