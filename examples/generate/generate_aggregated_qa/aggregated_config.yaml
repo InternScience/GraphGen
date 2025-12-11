@@ -49,7 +49,7 @@ nodes:
       - quiz
     execution_params:
       replicas: 1
-      batch_size: 16
+      batch_size: 128
 
   - id: partition
     op_name: partition
@@ -71,7 +71,7 @@ nodes:
       - partition
     execution_params:
       replicas: 1
-      batch_size: 16
+      batch_size: 128
     params:
       method: aggregated # atomic, aggregated, multi_hop, cot, vqa
       data_format: ChatML # Alpaca, Sharegpt, ChatML

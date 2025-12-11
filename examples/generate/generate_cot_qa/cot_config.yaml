@@ -8,7 +8,7 @@ nodes:
     dependencies: []
     params:
       input_path:
-        - examples/input_examples/json_demo.json
+        - examples/input_examples/txt_demo.txt
 
   - id: chunk
     op_name: chunk
@@ -36,9 +36,11 @@ nodes:
     dependencies:
       - build_kg
     params:
-      method: dfs
+      method: leiden
       method_params:
-        max_units_per_community: 1
+        max_size: 20
+        use_lcc: false
+        random_seed: 42
 
   - id: generate
     op_name: generate
@@ -49,5 +51,5 @@ nodes:
       replicas: 1
       batch_size: 128
     params:
-      method: atomic
-      data_format: Alpaca
+      method: cot
+      data_format: Sharegpt

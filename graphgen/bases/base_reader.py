@@ -12,8 +12,9 @@ class BaseReader(ABC):
     Abstract base class for reading and processing data.
     """
 
-    def __init__(self, text_column: str = "content"):
+    def __init__(self, text_column: str = "content", modalities: list = None):
         self.text_column = text_column
+        self.modalities = modalities if modalities is not None else ["text"]
 
     @abstractmethod
     def read(self, input_path: Union[str, List[str]]) -> Dataset:
