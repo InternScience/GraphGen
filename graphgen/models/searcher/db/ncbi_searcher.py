@@ -24,7 +24,7 @@ from graphgen.utils import logger
 
 @lru_cache(maxsize=None)
 def _get_pool():
-    return ThreadPoolExecutor(max_workers=10)
+    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
 
 
 # ensure only one NCBI request at a time
@@ -432,16 +432,29 @@ class NCBISearch(BaseSearcher):
 
         loop = asyncio.get_running_loop()
 
-        # limit concurrent requests (NCBI rate limit: max 3 requests per second)
-        async with _ncbi_lock:
-            # Auto-detect query type and execute in thread pool
-            if query.startswith(">") or re.fullmatch(r"[ATCGN\s]+", query, re.I):
+        # Auto-detect query type and execute in thread pool
+        # Only use lock for network API calls (NCBI rate limit: max 3 requests per second)
+        # Local BLAST can run in parallel
+        if query.startswith(">") or re.fullmatch(r"[ATCGN\s]+", query, re.I):
+            # FASTA sequence: use lock only if using network BLAST
+            if self.use_local_blast:
+                # Local BLAST can run in parallel, no lock needed
                 result = await loop.run_in_executor(_get_pool(), self.get_by_fasta, query, threshold)
-            elif re.fullmatch(r"^\d+$", query):
-                result = await loop.run_in_executor(_get_pool(), self.get_by_gene_id, query)
-            elif re.fullmatch(r"[A-Z]{2}_\d+\.?\d*", query, re.I):
-                result = await loop.run_in_executor(_get_pool(), self.get_by_accession, query)
             else:
+                # Network BLAST needs lock to respect rate limits
+                async with _ncbi_lock:
+                    result = await loop.run_in_executor(_get_pool(), self.get_by_fasta, query, threshold)
+        elif re.fullmatch(r"^\d+$", query):
+            # Gene ID: always use lock (network API call)
+            async with _ncbi_lock:
+                result = await loop.run_in_executor(_get_pool(), self.get_by_gene_id, query)
+        elif re.fullmatch(r"[A-Z]{2}_\d+\.?\d*", query, re.I):
+            # Accession: always use lock (network API call)
+            async with _ncbi_lock:
+                result = await loop.run_in_executor(_get_pool(), self.get_by_accession, query)
+        else:
+            # Keyword: always use lock (network API call)
+            async with _ncbi_lock:
                 result = await loop.run_in_executor(_get_pool(), self.get_best_hit, query)
 
         if result:
