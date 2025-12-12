@@ -6,7 +6,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from io import StringIO
-from typing import Dict, Optional
+from typing import Dict, Optional, List
 
 from Bio import ExPASy, SeqIO, SwissProt, UniProt
 from Bio.Blast import NCBIWWW, NCBIXML
@@ -19,12 +19,12 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
-from graphgen.utils import logger
+from graphgen.utils import logger, load_json
 
 
 @lru_cache(maxsize=None)
 def _get_pool():
-    return ThreadPoolExecutor(max_workers=10)
+    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
 
 
 # ensure only one BLAST searcher at a time
@@ -39,15 +39,76 @@ class UniProtSearch(BaseSearcher):
     3) Search with FASTA sequence (BLAST searcher). Note that NCBIWWW does not support async.
     """
 
-    def __init__(self, use_local_blast: bool = False, local_blast_db: str = "sp_db"):
+    def __init__(
+        self, 
+        use_local_blast: bool = False, 
+        local_blast_db: str = "sp_db",
+        metadata_db_file: Optional[str] = None,
+        blast_num_threads: int = 4
+    ):
         super().__init__()
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
+        self.metadata_db_file = metadata_db_file
+        self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
+        
+        # Load pre-built metadata database if provided
+        self._metadata_db: Optional[Dict[str, Optional[dict]]] = None
+        self._search_index: Optional[Dict[str, List[str]]] = None
+        if self.metadata_db_file:
+            self._load_metadata_db()
+        
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.phr"):
             logger.error("Local BLAST database files not found. Please check the path.")
             self.use_local_blast = False
 
+    def _load_metadata_db(self) -> None:
+        """Load pre-built metadata database from file."""
+        if not self.metadata_db_file:
+            return
+        
+        try:
+            if os.path.isfile(self.metadata_db_file):
+                data = load_json(self.metadata_db_file)
+                if data and isinstance(data, dict):
+                    # New format with metadata and search_index
+                    if "metadata" in data:
+                        self._metadata_db = data["metadata"]
+                        self._search_index = data.get("search_index", {})
+                    else:
+                        # Legacy format - assume entire dict is metadata
+                        self._metadata_db = data
+                        self._search_index = {}
+                    
+                    if self._metadata_db:
+                        logger.info("Loaded %d protein entries from metadata database: %s", 
+                                   len(self._metadata_db), self.metadata_db_file)
+                        if self._search_index:
+                            logger.info("Loaded search index with %d keywords", len(self._search_index))
+                else:
+                    logger.warning("Metadata database file %s exists but contains invalid data", 
+                                  self.metadata_db_file)
+                    self._metadata_db = None
+                    self._search_index = None
+            else:
+                logger.warning("Metadata database file not found: %s", self.metadata_db_file)
+                logger.info("To build the database, run: python -m graphgen.models.searcher.db.build_protein_metadata_db")
+        except Exception as e:
+            logger.warning("Failed to load metadata database from %s: %s", self.metadata_db_file, e)
+            self._metadata_db = None
+            self._search_index = None
+
     def get_by_accession(self, accession: str) -> Optional[dict]:
+        # Check pre-built metadata database first
+        if self._metadata_db is not None:
+            if accession in self._metadata_db:
+                result = self._metadata_db[accession]
+                logger.debug("Found accession %s in metadata database", accession)
+                return result
+            else:
+                logger.debug("Accession %s not found in metadata database, falling back to API", accession)
+        
+        # Fall back to API if metadata database not available or not found
         try:
             handle = ExPASy.get_sprot_raw(accession)
             record = SwissProt.read(handle)
@@ -85,12 +146,52 @@ class UniProtSearch(BaseSearcher):
     def get_best_hit(self, keyword: str) -> Optional[Dict]:
         """
         Search UniProt with a keyword and return the best hit.
+        First tries local metadata database if available, then falls back to API.
         :param keyword: The searcher keyword.
         :return: A dictionary containing the best hit information or None if not found.
         """
         if not keyword.strip():
             return None
 
+        # Try local metadata database first if available
+        if self._search_index is not None and self._metadata_db is not None:
+            keyword_lower = keyword.lower().strip()
+            
+            # Direct match
+            if keyword_lower in self._search_index:
+                accession_ids = self._search_index[keyword_lower]
+                if accession_ids:
+                    accession = accession_ids[0]  # Get first match
+                    result = self._metadata_db.get(accession)
+                    if result:
+                        logger.debug("Found keyword '%s' in local database: %s", keyword, accession)
+                        return result
+            
+            # Partial match - search for keywords that contain the search term
+            matching_accessions = []
+            for index_keyword, accessions in self._search_index.items():
+                if keyword_lower in index_keyword or index_keyword in keyword_lower:
+                    matching_accessions.extend(accessions)
+            
+            if matching_accessions:
+                # Remove duplicates while preserving order
+                seen = set()
+                unique_accessions = []
+                for acc in matching_accessions:
+                    if acc not in seen:
+                        seen.add(acc)
+                        unique_accessions.append(acc)
+                
+                # Try each match until we find a valid result
+                for accession in unique_accessions[:10]:  # Limit to first 10 matches
+                    result = self._metadata_db.get(accession)
+                    if result:
+                        logger.debug("Found keyword '%s' via partial match in local database: %s", keyword, accession)
+                        return result
+            
+            logger.debug("Keyword '%s' not found in local database, falling back to API", keyword)
+
+        # Fall back to API search
         try:
             iterator = UniProt.search(keyword, fields=None, batch_size=1)
             hit = next(iterator, None)
@@ -175,6 +276,7 @@ class UniProtSearch(BaseSearcher):
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
         """
         Perform local BLAST search using local BLAST database.
+        Optimized with multi-threading and faster output format.
         :param seq: The protein sequence.
         :param threshold: E-value threshold for BLAST searcher.
         :return: The accession number of the best hit or None if not found.
@@ -186,6 +288,11 @@ class UniProtSearch(BaseSearcher):
                 tmp.write(f">query\n{seq}\n")
                 tmp_name = tmp.name
 
+            # Optimized BLAST command with:
+            # - num_threads: Use multiple threads for faster search
+            # - outfmt 6 sacc: Only return accession (minimal output)
+            # - max_target_seqs 1: Only need the best hit
+            # - evalue: Threshold for significance
             cmd = [
                 "blastp",
                 "-db",
@@ -196,11 +303,27 @@ class UniProtSearch(BaseSearcher):
                 str(threshold),
                 "-max_target_seqs",
                 "1",
+                "-num_threads",
+                str(self.blast_num_threads),
                 "-outfmt",
-                "6 sacc",  # only return accession
+                "6 sacc",  # Only accession, tab-separated
             ]
-            logger.debug("Running local blastp: %s", " ".join(cmd))
-            out = subprocess.check_output(cmd, text=True).strip()
+            logger.debug("Running local blastp (threads=%d): %s", 
+                        self.blast_num_threads, " ".join(cmd))
+            
+            # Run BLAST with timeout to avoid hanging
+            try:
+                out = subprocess.check_output(
+                    cmd, 
+                    text=True, 
+                    timeout=300,  # 5 minute timeout for BLAST search
+                    stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
+                ).strip()
+            except subprocess.TimeoutExpired:
+                logger.warning("BLAST search timed out after 5 minutes for sequence")
+                os.remove(tmp_name)
+                return None
+            
             os.remove(tmp_name)
             if out:
                 return out.split("\n", maxsplit=1)[0]
@@ -239,13 +362,23 @@ class UniProtSearch(BaseSearcher):
         if query.startswith(">") or re.fullmatch(
             r"[ACDEFGHIKLMNPQRSTVWY\s]+", query, re.I
         ):
-            async with _blast_lock:
+            # Only use lock for network BLAST (NCBIWWW), local BLAST can run in parallel
+            if self.use_local_blast:
+                # Local BLAST can run in parallel, no lock needed
                 result = await loop.run_in_executor(
                     _get_pool(), self.get_by_fasta, query, threshold
                 )
+            else:
+                # Network BLAST needs lock to respect rate limits
+                async with _blast_lock:
+                    result = await loop.run_in_executor(
+                        _get_pool(), self.get_by_fasta, query, threshold
+                    )
 
         # check if accession number
-        elif re.fullmatch(r"[A-NR-Z0-9]{6,10}", query, re.I):
+        # UniProt accession IDs: 6-10 characters, must start with a letter
+        # Format: [A-Z][A-Z0-9]{5,9} (6-10 chars total: 1 letter + 5-9 alphanumeric)
+        elif re.fullmatch(r"[A-Z][A-Z0-9]{5,9}", query, re.I):
             result = await loop.run_in_executor(
                 _get_pool(), self.get_by_accession, query
             )

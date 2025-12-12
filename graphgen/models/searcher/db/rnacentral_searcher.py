@@ -18,12 +18,12 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
-from graphgen.utils import logger
+from graphgen.utils import logger, load_json
 
 
 @lru_cache(maxsize=None)
 def _get_pool():
-    return ThreadPoolExecutor(max_workers=10)
+    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
 
 class RNACentralSearch(BaseSearcher):
     """
@@ -35,12 +35,28 @@ class RNACentralSearch(BaseSearcher):
     API Documentation: https://rnacentral.org/api/v1
     """
 
-    def __init__(self, use_local_blast: bool = False, local_blast_db: str = "rna_db"):
+    def __init__(
+        self, 
+        use_local_blast: bool = False, 
+        local_blast_db: str = "rna_db", 
+        api_timeout: int = 5,
+        metadata_db_file: Optional[str] = None,
+        blast_num_threads: int = 4
+    ):
         super().__init__()
         self.base_url = "https://rnacentral.org/api/v1"
         self.headers = {"Accept": "application/json"}
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
+        self.api_timeout = api_timeout
+        self.metadata_db_file = metadata_db_file
+        self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
+        
+        # Load pre-built metadata database if provided
+        self._metadata_db: Optional[Dict[str, Optional[dict]]] = None
+        if self.metadata_db_file:
+            self._load_metadata_db()
+        
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
             logger.error("Local BLAST database files not found. Please check the path.")
             self.use_local_blast = False
@@ -142,22 +158,60 @@ class RNACentralSearch(BaseSearcher):
 
         return hashlib.md5(normalized_seq.encode("ascii")).hexdigest()
 
+    def _load_metadata_db(self) -> None:
+        """Load pre-built metadata database from file."""
+        if not self.metadata_db_file:
+            return
+        
+        try:
+            if os.path.isfile(self.metadata_db_file):
+                self._metadata_db = load_json(self.metadata_db_file)
+                if self._metadata_db and isinstance(self._metadata_db, dict):
+                    logger.info("Loaded %d RNA ID entries from metadata database: %s", 
+                               len(self._metadata_db), self.metadata_db_file)
+                else:
+                    logger.warning("Metadata database file %s exists but contains invalid data", 
+                                  self.metadata_db_file)
+                    self._metadata_db = None
+            else:
+                logger.warning("Metadata database file not found: %s", self.metadata_db_file)
+                logger.info("To build the database, run: python -m graphgen.models.searcher.db.build_rna_metadata_db")
+        except Exception as e:
+            logger.warning("Failed to load metadata database from %s: %s", self.metadata_db_file, e)
+            self._metadata_db = None
+
     def get_by_rna_id(self, rna_id: str) -> Optional[dict]:
         """
         Get RNA information by RNAcentral ID.
+        First checks pre-built metadata database if available, then falls back to API.
         :param rna_id: RNAcentral ID (e.g., URS0000000001).
         :return: A dictionary containing RNA information or None if not found.
         """
+        # Check pre-built metadata database first
+        if self._metadata_db is not None:
+            if rna_id in self._metadata_db:
+                result = self._metadata_db[rna_id]
+                logger.debug("Found RNA ID %s in metadata database", rna_id)
+                return result
+            else:
+                logger.debug("RNA ID %s not found in metadata database, skipping API call", rna_id)
+                return None
+        
+        # Fall back to API if metadata database not available
         try:
             url = f"{self.base_url}/rna/{rna_id}"
             url += "?flat=true"
 
-            resp = requests.get(url, headers=self.headers, timeout=30)
+            resp = requests.get(url, headers=self.headers, timeout=self.api_timeout)
             resp.raise_for_status()
 
             rna_data = resp.json()
             xrefs_data = rna_data.get("xrefs", [])
-            return self._rna_data_to_dict(rna_id, rna_data, xrefs_data)
+            result = self._rna_data_to_dict(rna_id, rna_data, xrefs_data)
+            return result
+        except requests.Timeout as e:
+            logger.warning("Timeout getting RNA ID %s (timeout=%ds): %s", rna_id, self.api_timeout, e)
+            return None
         except requests.RequestException as e:
             logger.error("Network error getting RNA ID %s: %s", rna_id, e)
             return None
@@ -179,7 +233,7 @@ class RNACentralSearch(BaseSearcher):
         try:
             url = f"{self.base_url}/rna"
             params = {"search": keyword, "format": "json"}
-            resp = requests.get(url, params=params, headers=self.headers, timeout=30)
+            resp = requests.get(url, params=params, headers=self.headers, timeout=self.api_timeout)
             resp.raise_for_status()
 
             data = resp.json()
@@ -207,22 +261,54 @@ class RNACentralSearch(BaseSearcher):
             return None
 
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
-        """Perform local BLAST search using local BLAST database."""
+        """
+        Perform local BLAST search using local BLAST database.
+        Optimized with multi-threading and faster output format.
+        """
         try:
+            # Use temporary file for query sequence
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".fa", delete=False) as tmp:
                 tmp.write(f">query\n{seq}\n")
                 tmp_name = tmp.name
 
+            # Optimized BLAST command with:
+            # - num_threads: Use multiple threads for faster search
+            # - outfmt 6 sacc: Only return accession (minimal output)
+            # - max_target_seqs 1: Only need the best hit
+            # - evalue: Threshold for significance
             cmd = [
                 "blastn", "-db", self.local_blast_db, "-query", tmp_name,
-                "-evalue", str(threshold), "-max_target_seqs", "1", "-outfmt", "6 sacc"
+                "-evalue", str(threshold),
+                "-max_target_seqs", "1",
+                "-num_threads", str(self.blast_num_threads),
+                "-outfmt", "6 sacc"  # Only accession, tab-separated
             ]
-            logger.debug("Running local blastn for RNA: %s", " ".join(cmd))
-            out = subprocess.check_output(cmd, text=True).strip()
+            logger.debug("Running local blastn for RNA (threads=%d): %s", 
+                        self.blast_num_threads, " ".join(cmd))
+            
+            # Run BLAST with timeout to avoid hanging
+            try:
+                out = subprocess.check_output(
+                    cmd, 
+                    text=True, 
+                    timeout=300,  # 5 minute timeout for BLAST search
+                    stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
+                ).strip()
+            except subprocess.TimeoutExpired:
+                logger.warning("BLAST search timed out after 5 minutes for sequence")
+                os.remove(tmp_name)
+                return None
+            
             os.remove(tmp_name)
             return out.split("\n", maxsplit=1)[0] if out else None
         except Exception as exc:
             logger.error("Local blastn failed: %s", exc)
+            # Clean up temp file if it still exists
+            try:
+                if 'tmp_name' in locals():
+                    os.remove(tmp_name)
+            except Exception:
+                pass
             return None
 
     def get_by_fasta(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:
@@ -254,7 +340,15 @@ class RNACentralSearch(BaseSearcher):
                 accession = self._local_blast(seq, threshold)
                 if accession:
                     logger.debug("Local BLAST found accession: %s", accession)
-                    return self.get_by_rna_id(accession)
+                    detailed = self.get_by_rna_id(accession)
+                    if detailed:
+                        return detailed
+                    logger.info(
+                        "Local BLAST found accession %s but metadata not available in database. "
+                        "API fallback disabled when using local database.",
+                        accession
+                    )
+                    return None
                 logger.info(
                     "Local BLAST found no match for sequence. "
                     "API fallback disabled when using local database."
@@ -280,7 +374,12 @@ class RNACentralSearch(BaseSearcher):
 
             rna_id = results[0].get("rnacentral_id")
             if rna_id:
-                return self.get_by_rna_id(rna_id)
+                detailed = self.get_by_rna_id(rna_id)
+                if detailed:
+                    return detailed
+                # Fallback: use search result data if get_by_rna_id returns None
+                logger.debug("Using search result data for %s (get_by_rna_id returned None)", rna_id)
+                return self._rna_data_to_dict(rna_id, results[0])
 
             logger.error("No RNAcentral ID found in search results.")
             return None
