@@ -4,7 +4,7 @@ from typing import Iterable
 
 import pandas as pd
 
-from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseTokenizer
+from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseOperator, BaseTokenizer
 from graphgen.common import init_storage
 from graphgen.models import (
     AnchorBFSPartitioner,
@@ -17,8 +17,9 @@ from graphgen.models import (
 from graphgen.utils import logger
 
 
-class PartitionService:
+class PartitionService(BaseOperator):
     def __init__(self, working_dir: str = "cache", **partition_kwargs):
+        super().__init__(working_dir=working_dir, op_name="partition_service")
         self.kg_instance: BaseGraphStorage = init_storage(
             backend="networkx",
             working_dir=working_dir,
@@ -33,7 +34,7 @@ class PartitionService:
         self.tokenizer_instance: BaseTokenizer = Tokenizer(model_name=tokenizer_model)
         self.partition_kwargs = partition_kwargs
 
-    def __call__(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
+    def process(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
         # this operator does not consume any batch data
         # but for compatibility we keep the interface
         _ = batch.to_dict(orient="records")

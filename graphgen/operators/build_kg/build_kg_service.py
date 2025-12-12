@@ -2,7 +2,7 @@ from typing import List
 
 import pandas as pd
 
-from graphgen.bases import BaseGraphStorage, BaseLLMWrapper
+from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.bases.datatypes import Chunk
 from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger
@@ -11,14 +11,15 @@ from .build_mm_kg import build_mm_kg
 from .build_text_kg import build_text_kg
 
 
-class BuildKGService:
+class BuildKGService(BaseOperator):
     def __init__(self, working_dir: str = "cache"):
+        super().__init__(working_dir=working_dir, op_name="build_kg_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
             backend="networkx", working_dir=working_dir, namespace="graph"
         )
 
-    def __call__(self, batch: pd.DataFrame) -> pd.DataFrame:
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         docs = batch.to_dict(orient="records")
         docs = [Chunk.from_dict(doc["_chunk_id"], doc) for doc in docs]
 

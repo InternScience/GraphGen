@@ -2,16 +2,17 @@ import math
 
 import pandas as pd
 
-from graphgen.bases import BaseGraphStorage, BaseLLMWrapper
+from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
 from graphgen.templates import STATEMENT_JUDGEMENT_PROMPT
 from graphgen.utils import logger, run_concurrent, yes_no_loss_entropy
 
 
-class JudgeService:
+class JudgeService(BaseOperator):
     """Service for judging graph edges and nodes using a trainee LLM."""
 
     def __init__(self, working_dir: str = "cache"):
+        super().__init__(working_dir=working_dir, op_name="judge_service")
         self.llm_client: BaseLLMWrapper = init_llm("trainee")
         self.graph_storage: BaseGraphStorage = init_storage(
             backend="networkx",
@@ -19,7 +20,7 @@ class JudgeService:
             namespace="graph",
         )
 
-    def __call__(self, batch: pd.DataFrame) -> pd.DataFrame:
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         items = batch.to_dict(orient="records")
         self.graph_storage.reload()
         self.judge(items)
