@@ -2,14 +2,15 @@ import json
 
 import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper
+from graphgen.bases import BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm
 from graphgen.models.extractor import SchemaGuidedExtractor
 from graphgen.utils import logger, run_concurrent
 
 
-class ExtractService:
+class ExtractService(BaseOperator):
     def __init__(self, working_dir: str = "cache", **extract_kwargs):
+        super().__init__(working_dir=working_dir, op_name="extract_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.extract_kwargs = extract_kwargs
         self.method = self.extract_kwargs.get("method")
@@ -21,8 +22,8 @@ class ExtractService:
         else:
             raise ValueError(f"Unsupported extraction method: {self.method}")
 
-    def __call__(self, batches: pd.DataFrame) -> pd.DataFrame:
-        items = batches.to_dict(orient="records")
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
+        items = batch.to_dict(orient="records")
         return pd.DataFrame(self.extract(items))
 
     def extract(self, items: list[dict]) -> list[dict]:

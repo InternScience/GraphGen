@@ -6,7 +6,6 @@ from typing import Any, Optional, Union, cast
 import networkx as nx
 
 from graphgen.bases.base_storage import BaseGraphStorage
-from graphgen.utils import logger
 
 
 @dataclass
@@ -19,11 +18,6 @@ class NetworkXStorage(BaseGraphStorage):
 
     @staticmethod
     def write_nx_graph(graph: nx.Graph, file_name):
-        logger.info(
-            "Writing graph with %d nodes, %d edges",
-            graph.number_of_nodes(),
-            graph.number_of_edges(),
-        )
         nx.write_graphml(graph, file_name)
 
     @staticmethod
@@ -82,12 +76,11 @@ class NetworkXStorage(BaseGraphStorage):
             self.working_dir, f"{self.namespace}.graphml"
         )
         preloaded_graph = NetworkXStorage.load_nx_graph(self._graphml_xml_file)
-        if preloaded_graph is not None:
-            logger.info(
-                "Loaded graph from %s with %d nodes, %d edges",
-                self._graphml_xml_file,
-                preloaded_graph.number_of_nodes(),
-                preloaded_graph.number_of_edges(),
+        if preloaded_graph:
+            print(
+                f"Loaded graph from {self._graphml_xml_file} with "
+                f"{preloaded_graph.number_of_nodes()} nodes, "
+                f"{preloaded_graph.number_of_edges()} edges"
             )
         self._graph = preloaded_graph or nx.Graph()
 
@@ -133,7 +126,7 @@ class NetworkXStorage(BaseGraphStorage):
         if self._graph.has_node(node_id):
             self._graph.nodes[node_id].update(node_data)
         else:
-            logger.warning("Node %s not found in the graph for update.", node_id)
+            print(f"Node {node_id} not found in the graph for update.")
 
     def upsert_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
@@ -146,10 +139,8 @@ class NetworkXStorage(BaseGraphStorage):
         if self._graph.has_edge(source_node_id, target_node_id):
             self._graph.edges[(source_node_id, target_node_id)].update(edge_data)
         else:
-            logger.warning(
-                "Edge %s -> %s not found in the graph for update.",
-                source_node_id,
-                target_node_id,
+            print(
+                f"Edge {source_node_id} -> {target_node_id} not found in the graph for update."
             )
 
     def delete_node(self, node_id: str):
@@ -160,16 +151,16 @@ class NetworkXStorage(BaseGraphStorage):
         """
         if self._graph.has_node(node_id):
             self._graph.remove_node(node_id)
-            logger.info("Node %s deleted from the graph.", node_id)
+            print(f"Node {node_id} deleted from the graph.")
         else:
-            logger.warning("Node %s not found in the graph for deletion.", node_id)
+            print(f"Node {node_id} not found in the graph for deletion.")
 
     def clear(self):
         """
         Clear the graph by removing all nodes and edges.
         """
         self._graph.clear()
-        logger.info("Graph %s cleared.", self.namespace)
+        print(f"Graph {self.namespace} cleared.")
 
     def reload(self):
         """

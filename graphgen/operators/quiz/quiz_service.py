@@ -2,19 +2,20 @@ from collections.abc import Iterable
 
 import pandas as pd
 
-from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
+from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
 from graphgen.models import QuizGenerator
 from graphgen.utils import compute_dict_hash, logger, run_concurrent
 
 
-class QuizService:
+class QuizService(BaseOperator):
     def __init__(
         self,
         working_dir: str = "cache",
         quiz_samples: int = 1,
         concurrency_limit: int = 200,
     ):
+        super().__init__(working_dir=working_dir, op_name="quiz_service")
         self.quiz_samples = quiz_samples
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
@@ -27,7 +28,7 @@ class QuizService:
         self.generator = QuizGenerator(self.llm_client)
         self.concurrency_limit = concurrency_limit
 
-    def __call__(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
+    def process(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
         # this operator does not consume any batch data
         # but for compatibility we keep the interface
         _ = batch.to_dict(orient="records")

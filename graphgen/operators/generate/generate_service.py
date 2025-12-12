@@ -1,6 +1,6 @@
 import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper
+from graphgen.bases import BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm
 from graphgen.models import (
     AggregatedGenerator,
@@ -12,12 +12,18 @@ from graphgen.models import (
 from graphgen.utils import logger, run_concurrent
 
 
-class GenerateService:
+class GenerateService(BaseOperator):
     """
     Generate question-answer pairs based on nodes and edges.
     """
 
-    def __init__(self, method: str = "aggregated", data_format: str = "ChatML"):
+    def __init__(
+        self,
+        working_dir: str = "cache",
+        method: str = "aggregated",
+        data_format: str = "ChatML",
+    ):
+        super().__init__(working_dir=working_dir, op_name="generate_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
 
         self.method = method
@@ -36,8 +42,8 @@ class GenerateService:
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 
-    def __call__(self, batches: pd.DataFrame) -> pd.DataFrame:
-        items = batches.to_dict(orient="records")
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
+        items = batch.to_dict(orient="records")
         return pd.DataFrame(self.generate(items))
 
     def generate(self, items: list[dict]) -> list[dict]:

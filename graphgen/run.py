@@ -12,7 +12,7 @@ from ray.data.datasource.filename_provider import FilenameProvider
 
 from graphgen.engine import Engine
 from graphgen.operators import operators
-from graphgen.utils import logger, set_logger
+from graphgen.utils import CURRENT_LOGGER_VAR, logger, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -88,14 +88,17 @@ def main():
     output_path = os.path.join(working_dir, "data", "graphgen", f"{unique_id}")
     set_working_dir(output_path)
 
-    set_logger(
-        os.path.join(output_path, f"{unique_id}.log"),
+    log_path = os.path.join(working_dir, "logs", "Driver.log")
+    driver_logger = set_logger(
+        log_path,
+        name="GraphGen",
         if_stream=True,
     )
+    CURRENT_LOGGER_VAR.set(driver_logger)
     logger.info(
         "GraphGen with unique ID %s logging to %s",
         unique_id,
-        os.path.join(working_dir, f"{unique_id}.log"),
+        log_path,
     )
     ds = ray.data.from_items([])
     results = engine.execute(ds)

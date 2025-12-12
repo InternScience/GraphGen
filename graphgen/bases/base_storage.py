@@ -41,6 +41,9 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
     def drop(self):
         raise NotImplementedError
 
+    def reload(self):
+        raise NotImplementedError
+
 
 class BaseGraphStorage(StorageNameSpace):
     def has_node(self, node_id: str) -> bool:
@@ -87,4 +90,7 @@ class BaseGraphStorage(StorageNameSpace):
         raise NotImplementedError
 
     def delete_node(self, node_id: str):
+        raise NotImplementedError
+
+    def reload(self):
         raise NotImplementedError
