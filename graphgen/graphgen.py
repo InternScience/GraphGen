@@ -1,3 +1,4 @@
+import hashlib
 import os
 import time
 from typing import Dict
@@ -173,20 +174,52 @@ class GraphGen:
         if len(seeds) == 0:
             logger.warning("All documents are already been searched")
             return
+        
+        # Get save_interval from config (default: 1000, 0 to disable)
+        save_interval = search_config.get("save_interval", 1000)
+        
         search_results = await search_all(
             seed_data=seeds,
             search_config=search_config,
+            search_storage=self.search_storage if save_interval > 0 else None,
+            save_interval=save_interval,
         )
 
-        _add_search_keys = self.search_storage.filter_keys(list(search_results.keys()))
+        # Convert search_results from {data_source: [results]} to {key: result}
+        # This maintains backward compatibility
+        flattened_results = {}
+        for data_source, result_list in search_results.items():
+            if not isinstance(result_list, list):
+                continue
+            for result in result_list:
+                if result is None:
+                    continue
+                # Use _search_query as key if available, otherwise generate a key
+                if isinstance(result, dict) and "_search_query" in result:
+                    query = result["_search_query"]
+                    key = f"{data_source}:{query}"
+                else:
+                    # Generate a unique key
+                    result_str = str(result)
+                    key_hash = hashlib.md5(result_str.encode()).hexdigest()[:8]
+                    key = f"{data_source}:{key_hash}"
+                flattened_results[key] = result
+
+        _add_search_keys = self.search_storage.filter_keys(list(flattened_results.keys()))
         search_results = {
-            k: v for k, v in search_results.items() if k in _add_search_keys
+            k: v for k, v in flattened_results.items() if k in _add_search_keys
         }
         if len(search_results) == 0:
             logger.warning("All search results are already in the storage")
             return
-        self.search_storage.upsert(search_results)
-        self.search_storage.index_done_callback()
+        
+        # Only save if not using periodic saving (to avoid duplicate saves)
+        if save_interval == 0:
+            self.search_storage.upsert(search_results)
+            self.search_storage.index_done_callback()
+        else:
+            # Results were already saved periodically, just update index
+            self.search_storage.index_done_callback()
 
     @async_to_sync_method
     async def quiz_and_judge(self, quiz_and_judge_config: Dict):

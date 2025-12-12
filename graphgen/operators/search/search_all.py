@@ -15,12 +15,16 @@ from graphgen.utils import logger, run_concurrent
 async def search_all(
     seed_data: dict,
     search_config: dict,
+    search_storage=None,
+    save_interval: int = 1000,
 ) -> dict:
     """
     Perform searches across multiple search types and aggregate the results.
     :param seed_data: A dictionary containing seed data with entity names.
     :param search_config: A dictionary specifying which data sources to use for searching.
-    :return: A dictionary with
+    :param search_storage: Optional storage instance for periodic saving of results.
+    :param save_interval: Number of search results to accumulate before saving (default: 1000, 0 to disable).
+    :return: A dictionary with search results
     """
 
     results = {}
@@ -30,6 +34,41 @@ async def search_all(
         data = list(seed_data.values())
         data = [d["content"] for d in data if "content" in d]
         data = list(set(data))  # Remove duplicates
+
+        # Prepare save callback for this data source
+        def make_save_callback(source_name):
+            def save_callback(intermediate_results, completed_count):
+                """Save intermediate search results."""
+                if search_storage is None:
+                    return
+                
+                # Convert results list to dict format
+                # Results are tuples of (query, result_dict) or just result_dict
+                batch_results = {}
+                for result in intermediate_results:
+                    if result is None:
+                        continue
+                    # Check if result is a dict with _search_query key
+                    if isinstance(result, dict) and "_search_query" in result:
+                        query = result["_search_query"]
+                        # Create a key for the result (using query as key)
+                        key = f"{source_name}:{query}"
+                        batch_results[key] = result
+                    elif isinstance(result, dict):
+                        # If no _search_query, use a generated key
+                        key = f"{source_name}:{completed_count}"
+                        batch_results[key] = result
+                
+                if batch_results:
+                    # Filter out already existing keys
+                    new_keys = search_storage.filter_keys(list(batch_results.keys()))
+                    new_results = {k: v for k, v in batch_results.items() if k in new_keys}
+                    if new_results:
+                        search_storage.upsert(new_results)
+                        search_storage.index_done_callback()
+                        logger.debug("Saved %d intermediate results for %s", len(new_results), source_name)
+            
+            return save_callback
 
         if data_source == "uniprot":
             from graphgen.models import UniProtSearch
@@ -43,6 +82,8 @@ async def search_all(
                 data,
                 desc="Searching UniProt database",
                 unit="keyword",
+                save_interval=save_interval if save_interval > 0 else 0,
+                save_callback=make_save_callback("uniprot") if search_storage and save_interval > 0 else None,
             )
             results[data_source] = uniprot_results
 
@@ -58,6 +99,8 @@ async def search_all(
                 data,
                 desc="Searching NCBI database",
                 unit="keyword",
+                save_interval=save_interval if save_interval > 0 else 0,
+                save_callback=make_save_callback("ncbi") if search_storage and save_interval > 0 else None,
             )
             results[data_source] = ncbi_results
 
@@ -73,6 +116,8 @@ async def search_all(
                 data,
                 desc="Searching RNAcentral database",
                 unit="keyword",
+                save_interval=save_interval if save_interval > 0 else 0,
+                save_callback=make_save_callback("rnacentral") if search_storage and save_interval > 0 else None,
             )
             results[data_source] = rnacentral_results
 
