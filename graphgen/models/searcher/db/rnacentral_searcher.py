@@ -327,7 +327,8 @@ class RNACentralSearch(BaseSearcher):
                 seq = "".join(seq_lines[1:])
             else:
                 seq = sequence.strip().replace(" ", "").replace("\n", "")
-            return seq if seq and re.fullmatch(r"[AUCGN\s]+", seq, re.I) else None
+            # Accept both U (original RNA) and T (converted for local BLAST compatibility)
+            return seq if seq and re.fullmatch(r"[AUCGTN\s]+", seq, re.I) else None
 
         try:
             seq = _extract_sequence(sequence)
@@ -404,10 +405,13 @@ class RNACentralSearch(BaseSearcher):
 
         loop = asyncio.get_running_loop()
 
-        # check if RNA sequence (AUCG characters, contains U)
-        if query.startswith(">") or (
-            re.fullmatch(r"[AUCGN\s]+", query, re.I) and "U" in query.upper()
-        ):
+        # check if RNA sequence (AUCG or ATCG characters, contains U or T)
+        # Note: Sequences with T are also RNA sequences
+        is_rna_sequence = query.startswith(">") or (
+            re.fullmatch(r"[AUCGTN\s]+", query, re.I) and 
+            ("U" in query.upper() or "T" in query.upper())
+        )
+        if is_rna_sequence:
             result = await loop.run_in_executor(_get_pool(), self.get_by_fasta, query, threshold)
         # check if RNAcentral ID (typically starts with URS)
         elif re.fullmatch(r"URS\d+", query, re.I):
