@@ -73,13 +73,13 @@ async def search_all(
         if data_source == "uniprot":
             from graphgen.models import UniProtSearch
 
-            uniprot_params = search_config.get("uniprot_params", {})
+            uniprot_params = search_config.get("uniprot_params", {}).copy()
+            # Get max_concurrent from config before passing params to constructor
+            max_concurrent = uniprot_params.pop("max_concurrent", None)
+            
             uniprot_search_client = UniProtSearch(
                 **uniprot_params
             )
-            
-            # Get max_concurrent from config, default to None (unlimited) for backward compatibility
-            max_concurrent = uniprot_params.get("max_concurrent")
 
             uniprot_results = await run_concurrent(
                 uniprot_search_client.search,
@@ -95,13 +95,13 @@ async def search_all(
         elif data_source == "ncbi":
             from graphgen.models import NCBISearch
 
-            ncbi_params = search_config.get("ncbi_params", {})
+            ncbi_params = search_config.get("ncbi_params", {}).copy()
+            # Get max_concurrent from config before passing params to constructor
+            max_concurrent = ncbi_params.pop("max_concurrent", None)
+            
             ncbi_search_client = NCBISearch(
                 **ncbi_params
             )
-            
-            # Get max_concurrent from config, default to None (unlimited) for backward compatibility
-            max_concurrent = ncbi_params.get("max_concurrent")
 
             ncbi_results = await run_concurrent(
                 ncbi_search_client.search,
@@ -117,13 +117,13 @@ async def search_all(
         elif data_source == "rnacentral":
             from graphgen.models import RNACentralSearch
 
-            rnacentral_params = search_config.get("rnacentral_params", {})
+            rnacentral_params = search_config.get("rnacentral_params", {}).copy()
+            # Get max_concurrent from config before passing params to constructor
+            max_concurrent = rnacentral_params.pop("max_concurrent", None)
+            
             rnacentral_search_client = RNACentralSearch(
                 **rnacentral_params
             )
-            
-            # Get max_concurrent from config, default to None (unlimited) for backward compatibility
-            max_concurrent = rnacentral_params.get("max_concurrent")
 
             rnacentral_results = await run_concurrent(
                 rnacentral_search_client.search,
