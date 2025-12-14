@@ -73,9 +73,16 @@ class NCBISearch(BaseSearcher):
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
         self.blast_num_threads = blast_num_threads
-        if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
-            logger.error("Local BLAST database files not found. Please check the path.")
-            self.use_local_blast = False
+        if self.use_local_blast:
+            # Check for single-file database (.nhr) or multi-file database (.00.nhr)
+            db_exists = (
+                os.path.isfile(f"{self.local_blast_db}.nhr") or
+                os.path.isfile(f"{self.local_blast_db}.00.nhr")
+            )
+            if not db_exists:
+                logger.error("Local BLAST database files not found. Please check the path.")
+                logger.error("Expected: %s.nhr or %s.00.nhr", self.local_blast_db, self.local_blast_db)
+                self.use_local_blast = False
 
     @staticmethod
     def _nested_get(data: dict, *keys, default=None):
