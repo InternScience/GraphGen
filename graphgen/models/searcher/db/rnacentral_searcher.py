@@ -151,6 +151,12 @@ class RNACentralSearch(BaseSearcher):
 
         return hashlib.md5(normalized_seq.encode("ascii")).hexdigest()
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((requests.Timeout, requests.RequestException)),
+        reraise=False,
+    )
     def get_by_rna_id(self, rna_id: str) -> Optional[dict]:
         """
         Get RNA information by RNAcentral ID.
@@ -178,6 +184,12 @@ class RNACentralSearch(BaseSearcher):
             logger.error("Unexpected error getting RNA ID %s: %s", rna_id, e)
             return None
 
+    @retry(
+        stop=stop_after_attempt(3),
+        wait=wait_exponential(multiplier=1, min=2, max=10),
+        retry=retry_if_exception_type((requests.Timeout, requests.RequestException)),
+        reraise=False,
+    )
     def get_best_hit(self, keyword: str) -> Optional[dict]:
         """
         Search RNAcentral with a keyword and return the best hit.
