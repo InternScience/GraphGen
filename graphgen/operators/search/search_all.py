@@ -73,9 +73,13 @@ async def search_all(
         if data_source == "uniprot":
             from graphgen.models import UniProtSearch
 
+            uniprot_params = search_config.get("uniprot_params", {})
             uniprot_search_client = UniProtSearch(
-                **search_config.get("uniprot_params", {})
+                **uniprot_params
             )
+            
+            # Get max_concurrent from config, default to None (unlimited) for backward compatibility
+            max_concurrent = uniprot_params.get("max_concurrent")
 
             uniprot_results = await run_concurrent(
                 uniprot_search_client.search,
@@ -84,15 +88,20 @@ async def search_all(
                 unit="keyword",
                 save_interval=save_interval if save_interval > 0 else 0,
                 save_callback=make_save_callback("uniprot") if search_storage and save_interval > 0 else None,
+                max_concurrent=max_concurrent,
             )
             results[data_source] = uniprot_results
 
         elif data_source == "ncbi":
             from graphgen.models import NCBISearch
 
+            ncbi_params = search_config.get("ncbi_params", {})
             ncbi_search_client = NCBISearch(
-                **search_config.get("ncbi_params", {})
+                **ncbi_params
             )
+            
+            # Get max_concurrent from config, default to None (unlimited) for backward compatibility
+            max_concurrent = ncbi_params.get("max_concurrent")
 
             ncbi_results = await run_concurrent(
                 ncbi_search_client.search,
@@ -101,15 +110,20 @@ async def search_all(
                 unit="keyword",
                 save_interval=save_interval if save_interval > 0 else 0,
                 save_callback=make_save_callback("ncbi") if search_storage and save_interval > 0 else None,
+                max_concurrent=max_concurrent,
             )
             results[data_source] = ncbi_results
 
         elif data_source == "rnacentral":
             from graphgen.models import RNACentralSearch
 
+            rnacentral_params = search_config.get("rnacentral_params", {})
             rnacentral_search_client = RNACentralSearch(
-                **search_config.get("rnacentral_params", {})
+                **rnacentral_params
             )
+            
+            # Get max_concurrent from config, default to None (unlimited) for backward compatibility
+            max_concurrent = rnacentral_params.get("max_concurrent")
 
             rnacentral_results = await run_concurrent(
                 rnacentral_search_client.search,
@@ -118,6 +132,7 @@ async def search_all(
                 unit="keyword",
                 save_interval=save_interval if save_interval > 0 else 0,
                 save_callback=make_save_callback("rnacentral") if search_storage and save_interval > 0 else None,
+                max_concurrent=max_concurrent,
             )
             results[data_source] = rnacentral_results
 

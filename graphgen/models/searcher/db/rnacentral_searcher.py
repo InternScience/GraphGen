@@ -18,7 +18,7 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
-from graphgen.utils import logger, load_json
+from graphgen.utils import logger
 
 
 @lru_cache(maxsize=None)
@@ -39,8 +39,7 @@ class RNACentralSearch(BaseSearcher):
         self, 
         use_local_blast: bool = False, 
         local_blast_db: str = "rna_db", 
-        api_timeout: int = 5,
-        metadata_db_file: Optional[str] = None,
+        api_timeout: int = 30,
         blast_num_threads: int = 4
     ):
         super().__init__()
@@ -49,13 +48,7 @@ class RNACentralSearch(BaseSearcher):
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
         self.api_timeout = api_timeout
-        self.metadata_db_file = metadata_db_file
         self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
-        
-        # Load pre-built metadata database if provided
-        self._metadata_db: Optional[Dict[str, Optional[dict]]] = None
-        if self.metadata_db_file:
-            self._load_metadata_db()
         
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
             logger.error("Local BLAST database files not found. Please check the path.")
@@ -158,46 +151,12 @@ class RNACentralSearch(BaseSearcher):
 
         return hashlib.md5(normalized_seq.encode("ascii")).hexdigest()
 
-    def _load_metadata_db(self) -> None:
-        """Load pre-built metadata database from file."""
-        if not self.metadata_db_file:
-            return
-        
-        try:
-            if os.path.isfile(self.metadata_db_file):
-                self._metadata_db = load_json(self.metadata_db_file)
-                if self._metadata_db and isinstance(self._metadata_db, dict):
-                    logger.info("Loaded %d RNA ID entries from metadata database: %s", 
-                               len(self._metadata_db), self.metadata_db_file)
-                else:
-                    logger.warning("Metadata database file %s exists but contains invalid data", 
-                                  self.metadata_db_file)
-                    self._metadata_db = None
-            else:
-                logger.warning("Metadata database file not found: %s", self.metadata_db_file)
-                logger.info("To build the database, run: python -m graphgen.models.searcher.db.build_rna_metadata_db")
-        except Exception as e:
-            logger.warning("Failed to load metadata database from %s: %s", self.metadata_db_file, e)
-            self._metadata_db = None
-
     def get_by_rna_id(self, rna_id: str) -> Optional[dict]:
         """
         Get RNA information by RNAcentral ID.
-        First checks pre-built metadata database if available, then falls back to API.
         :param rna_id: RNAcentral ID (e.g., URS0000000001).
         :return: A dictionary containing RNA information or None if not found.
         """
-        # Check pre-built metadata database first
-        if self._metadata_db is not None:
-            if rna_id in self._metadata_db:
-                result = self._metadata_db[rna_id]
-                logger.debug("Found RNA ID %s in metadata database", rna_id)
-                return result
-            else:
-                logger.debug("RNA ID %s not found in metadata database, skipping API call", rna_id)
-                return None
-        
-        # Fall back to API if metadata database not available
         try:
             url = f"{self.base_url}/rna/{rna_id}"
             url += "?flat=true"
@@ -327,7 +286,7 @@ class RNACentralSearch(BaseSearcher):
                 seq = "".join(seq_lines[1:])
             else:
                 seq = sequence.strip().replace(" ", "").replace("\n", "")
-            # Accept both U (original RNA) and T (converted for local BLAST compatibility)
+            # Accept both U (original RNA) and T
             return seq if seq and re.fullmatch(r"[AUCGTN\s]+", seq, re.I) else None
 
         try:
@@ -345,8 +304,7 @@ class RNACentralSearch(BaseSearcher):
                     if detailed:
                         return detailed
                     logger.info(
-                        "Local BLAST found accession %s but metadata not available in database. "
-                        "API fallback disabled when using local database.",
+                        "Local BLAST found accession %s but could not retrieve metadata from API.",
                         accession
                     )
                     return None
