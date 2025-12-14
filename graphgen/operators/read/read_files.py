@@ -93,7 +93,13 @@ def read_files(
             suffix = Path(file_path).suffix.lstrip(".").lower()
             reader = _build_reader(suffix, cache_dir)
 
-            yield from reader.read(file_path)
+            # Prefer stream reading if available (for memory efficiency)
+            if hasattr(reader, "read_stream"):
+                yield from reader.read_stream(file_path)
+            else:
+                # Fallback to regular read() method
+                for doc in reader.read(file_path):
+                    yield doc
 
         except Exception as e:  # pylint: disable=broad-except
             logger.exception("Error reading %s: %s", file_info.get("path"), e)

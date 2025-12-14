@@ -1,5 +1,6 @@
 import os
 from dataclasses import dataclass
+from typing import Iterator, Tuple
 
 from graphgen.bases.base_storage import BaseKVStorage, BaseListStorage
 from graphgen.utils import load_json, logger, write_json
@@ -41,6 +42,42 @@ class JsonKVStorage(BaseKVStorage):
 
     def get_all(self) -> dict[str, dict]:
         return self._data
+
+    def iter_items(self) -> Iterator[Tuple[str, dict]]:
+        """
+        Iterate over all items without loading everything into memory at once.
+        Returns an iterator of (key, value) tuples.
+        """
+        for key, value in self._data.items():
+            yield key, value
+
+    def get_batch(self, keys: list[str]) -> dict[str, dict]:
+        """
+        Get a batch of items by their keys.
+        
+        :param keys: List of keys to retrieve.
+        :return: Dictionary of {key: value} for the requested keys.
+        """
+        return {key: self._data.get(key) for key in keys if key in self._data}
+
+    def iter_batches(self, batch_size: int = 10000) -> Iterator[dict[str, dict]]:
+        """
+        Iterate over items in batches to avoid loading everything into memory.
+        
+        :param batch_size: Number of items per batch.
+        :return: Iterator of dictionaries, each containing up to batch_size items.
+        """
+        batch = {}
+        count = 0
+        for key, value in self._data.items():
+            batch[key] = value
+            count += 1
+            if count >= batch_size:
+                yield batch
+                batch = {}
+                count = 0
+        if batch:
+            yield batch
 
     def filter_keys(self, data: list[str]) -> set[str]:
         return {s for s in data if s not in self._data}

@@ -88,24 +88,45 @@ class GraphGen:
     @async_to_sync_method
     async def read(self, read_config: Dict):
         """
-        read files from input sources
+        read files from input sources with batch processing
         """
+        # Get batch_size from config, default to 10000
+        batch_size = read_config.pop("batch_size", 10000)
+        
         doc_stream = read_files(**read_config, cache_dir=self.working_dir)
 
         batch = {}
+        total_processed = 0
+        
         for doc in doc_stream:
             doc_id = compute_mm_hash(doc, prefix="doc-")
             batch[doc_id] = doc
+            
+            # Process batch when it reaches batch_size
+            if len(batch) >= batch_size:
+                _add_doc_keys = self.full_docs_storage.filter_keys(list(batch.keys()))
+                new_docs = {k: v for k, v in batch.items() if k in _add_doc_keys}
+                if new_docs:
+                    self.full_docs_storage.upsert(new_docs)
+                    total_processed += len(new_docs)
+                    logger.info("Processed batch: %d new documents (total: %d)", len(new_docs), total_processed)
+                batch.clear()
 
         # TODO: configurable whether to use coreference resolution
 
-        _add_doc_keys = self.full_docs_storage.filter_keys(list(batch.keys()))
-        new_docs = {k: v for k, v in batch.items() if k in _add_doc_keys}
-        if len(new_docs) == 0:
+        # Process remaining documents in batch
+        if batch:
+            _add_doc_keys = self.full_docs_storage.filter_keys(list(batch.keys()))
+            new_docs = {k: v for k, v in batch.items() if k in _add_doc_keys}
+            if new_docs:
+                self.full_docs_storage.upsert(new_docs)
+                total_processed += len(new_docs)
+                logger.info("Processed final batch: %d new documents (total: %d)", len(new_docs), total_processed)
+        
+        if total_processed == 0:
             logger.warning("All documents are already in the storage")
-            return
-        self.full_docs_storage.upsert(new_docs)
-        self.full_docs_storage.index_done_callback()
+        else:
+            self.full_docs_storage.index_done_callback()
 
     @async_to_sync_method
     async def chunk(self, chunk_config: Dict):
@@ -170,44 +191,56 @@ class GraphGen:
     async def search(self, search_config: Dict):
         logger.info("[Search] %s ...", ", ".join(search_config["data_sources"]))
 
-        seeds = self.full_docs_storage.get_all()
-        if len(seeds) == 0:
-            logger.warning("All documents are already been searched")
-            return
+        # Get search_batch_size from config (default: 10000)
+        search_batch_size = search_config.get("search_batch_size", 10000)
         
         # Get save_interval from config (default: 1000, 0 to disable)
         save_interval = search_config.get("save_interval", 1000)
         
-        search_results = await search_all(
-            seed_data=seeds,
-            search_config=search_config,
-            search_storage=self.search_storage if save_interval > 0 else None,
-            save_interval=save_interval,
-        )
-
-        # Convert search_results from {data_source: [results]} to {key: result}
-        # This maintains backward compatibility
-        flattened_results = {}
-        for data_source, result_list in search_results.items():
-            if not isinstance(result_list, list):
+        # Process in batches to avoid OOM
+        all_flattened_results = {}
+        batch_num = 0
+        
+        for seeds_batch in self.full_docs_storage.iter_batches(batch_size=search_batch_size):
+            if len(seeds_batch) == 0:
                 continue
-            for result in result_list:
-                if result is None:
-                    continue
-                # Use _search_query as key if available, otherwise generate a key
-                if isinstance(result, dict) and "_search_query" in result:
-                    query = result["_search_query"]
-                    key = f"{data_source}:{query}"
-                else:
-                    # Generate a unique key
-                    result_str = str(result)
-                    key_hash = hashlib.md5(result_str.encode()).hexdigest()[:8]
-                    key = f"{data_source}:{key_hash}"
-                flattened_results[key] = result
+                
+            batch_num += 1
+            logger.info("Processing search batch %d with %d documents", batch_num, len(seeds_batch))
+            
+            search_results = await search_all(
+                seed_data=seeds_batch,
+                search_config=search_config,
+                search_storage=self.search_storage if save_interval > 0 else None,
+                save_interval=save_interval,
+            )
 
-        _add_search_keys = self.search_storage.filter_keys(list(flattened_results.keys()))
+            # Convert search_results from {data_source: [results]} to {key: result}
+            # This maintains backward compatibility
+            for data_source, result_list in search_results.items():
+                if not isinstance(result_list, list):
+                    continue
+                for result in result_list:
+                    if result is None:
+                        continue
+                    # Use _search_query as key if available, otherwise generate a key
+                    if isinstance(result, dict) and "_search_query" in result:
+                        query = result["_search_query"]
+                        key = f"{data_source}:{query}"
+                    else:
+                        # Generate a unique key
+                        result_str = str(result)
+                        key_hash = hashlib.md5(result_str.encode()).hexdigest()[:8]
+                        key = f"{data_source}:{key_hash}"
+                    all_flattened_results[key] = result
+
+        if len(all_flattened_results) == 0:
+            logger.warning("No search results generated")
+            return
+
+        _add_search_keys = self.search_storage.filter_keys(list(all_flattened_results.keys()))
         search_results = {
-            k: v for k, v in flattened_results.items() if k in _add_search_keys
+            k: v for k, v in all_flattened_results.items() if k in _add_search_keys
         }
         if len(search_results) == 0:
             logger.warning("All search results are already in the storage")
