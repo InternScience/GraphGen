@@ -49,6 +49,7 @@ class NCBISearch(BaseSearcher):
         email: str = "email@example.com",
         api_key: str = "",
         tool: str = "GraphGen",
+        blast_num_threads: int = 4,
     ):
         """
         Initialize the NCBI Search client.
@@ -59,6 +60,7 @@ class NCBISearch(BaseSearcher):
             email (str): Email address for NCBI API requests.
             api_key (str): API key for NCBI API requests, see https://account.ncbi.nlm.nih.gov/settings/.
             tool (str): Tool name for NCBI API requests.
+            blast_num_threads (int): Number of threads for BLAST search.
         """
         super().__init__()
         Entrez.timeout = 60  # 60 seconds timeout
@@ -70,6 +72,7 @@ class NCBISearch(BaseSearcher):
         Entrez.sleep_between_tries = 5
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
+        self.blast_num_threads = blast_num_threads
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
             logger.error("Local BLAST database files not found. Please check the path.")
             self.use_local_blast = False
@@ -329,22 +332,53 @@ class NCBISearch(BaseSearcher):
         return None
 
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
-        """Perform local BLAST search using local BLAST database."""
+        """
+        Perform local BLAST search using local BLAST database.
+        Optimized with multi-threading and faster output format.
+        """
         try:
             with tempfile.NamedTemporaryFile(mode="w+", suffix=".fa", delete=False) as tmp:
                 tmp.write(f">query\n{seq}\n")
                 tmp_name = tmp.name
 
+            # Optimized BLAST command with:
+            # - num_threads: Use multiple threads for faster search
+            # - outfmt 6 sacc: Only return accession (minimal output)
+            # - max_target_seqs 1: Only need the best hit
+            # - evalue: Threshold for significance
             cmd = [
                 "blastn", "-db", self.local_blast_db, "-query", tmp_name,
-                "-evalue", str(threshold), "-max_target_seqs", "1", "-outfmt", "6 sacc"
+                "-evalue", str(threshold),
+                "-max_target_seqs", "1",
+                "-num_threads", str(self.blast_num_threads),
+                "-outfmt", "6 sacc"  # Only accession, tab-separated
             ]
-            logger.debug("Running local blastn: %s", " ".join(cmd))
-            out = subprocess.check_output(cmd, text=True).strip()
+            logger.debug("Running local blastn (threads=%d): %s", 
+                        self.blast_num_threads, " ".join(cmd))
+            
+            # Run BLAST with timeout to avoid hanging
+            try:
+                out = subprocess.check_output(
+                    cmd, 
+                    text=True, 
+                    timeout=300,  # 5 minute timeout for BLAST search
+                    stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
+                ).strip()
+            except subprocess.TimeoutExpired:
+                logger.warning("BLAST search timed out after 5 minutes for sequence")
+                os.remove(tmp_name)
+                return None
+            
             os.remove(tmp_name)
             return out.split("\n", maxsplit=1)[0] if out else None
         except Exception as exc:
             logger.error("Local blastn failed: %s", exc)
+            # Clean up temp file if it still exists
+            try:
+                if 'tmp_name' in locals():
+                    os.remove(tmp_name)
+            except Exception:
+                pass
             return None
 
     def get_by_fasta(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:

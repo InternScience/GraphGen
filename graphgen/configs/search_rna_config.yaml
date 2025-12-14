@@ -12,3 +12,5 @@ pipeline:
       rnacentral_params:
         use_local_blast: true # whether to use local blast for RNA search
         local_blast_db: rnacentral_ensembl_gencode_YYYYMMDD/ensembl_gencode_YYYYMMDD # path to local BLAST database (without .nhr extension)
+        blast_num_threads: 2 # number of threads for BLAST search (reduce to save memory)
+        max_concurrent: 5 # maximum number of concurrent search tasks (reduce to prevent OOM, default: unlimited)

@@ -19,6 +19,7 @@ async def run_concurrent(
     progress_bar: Optional[gr.Progress] = None,
     save_interval: int = 0,
     save_callback: Optional[Callable[[List[R], int], None]] = None,
+    max_concurrent: Optional[int] = None,
 ) -> List[R]:
     """
     Run coroutines concurrently with optional periodic saving.
@@ -30,9 +31,30 @@ async def run_concurrent(
     :param progress_bar: Optional Gradio progress bar
     :param save_interval: Number of completed tasks before calling save_callback (0 to disable)
     :param save_callback: Callback function to save intermediate results (results, completed_count)
+    :param max_concurrent: Maximum number of concurrent tasks (None for unlimited, default: None)
     :return: List of results
     """
-    tasks = [asyncio.create_task(coro_fn(it)) for it in items]
+    if not items:
+        return []
+    
+    # Use semaphore to limit concurrent tasks if max_concurrent is specified
+    semaphore = asyncio.Semaphore(max_concurrent) if max_concurrent is not None and max_concurrent > 0 else None
+    
+    async def run_with_semaphore(item: T) -> R:
+        """Wrapper to apply semaphore if needed."""
+        if semaphore:
+            async with semaphore:
+                return await coro_fn(item)
+        else:
+            return await coro_fn(item)
+    
+    # Create tasks with concurrency limit
+    if max_concurrent is not None and max_concurrent > 0:
+        # Use semaphore-controlled wrapper
+        tasks = [asyncio.create_task(run_with_semaphore(it)) for it in items]
+    else:
+        # Original behavior: create all tasks at once
+        tasks = [asyncio.create_task(coro_fn(it)) for it in items]
 
     completed_count = 0
     results = []
