@@ -28,7 +28,7 @@ def _get_pool():
 
 
 # ensure only one NCBI request at a time
-_ncbi_lock = asyncio.Lock()
+_blast_lock = asyncio.Lock()
 
 
 class NCBISearch(BaseSearcher):
@@ -97,14 +97,16 @@ class NCBISearch(BaseSearcher):
     def _infer_molecule_type_detail(accession: Optional[str], gene_type: Optional[int] = None) -> Optional[str]:
         """Infer molecule_type_detail from accession prefix or gene type."""
         if accession:
-            if accession.startswith(("NM_", "XM_")):
-                return "mRNA"
-            if accession.startswith(("NC_", "NT_")):
-                return "genomic DNA"
-            if accession.startswith(("NR_", "XR_")):
-                return "RNA"
-            if accession.startswith("NG_"):
-                return "genomic region"
+            # Map accession prefixes to molecule types
+            prefix_map = {
+                ("NM_", "XM_"): "mRNA",
+                ("NC_", "NT_"): "genomic DNA",
+                ("NR_", "XR_"): "RNA",
+                ("NG_",): "genomic region",
+            }
+            for prefixes, mol_type in prefix_map.items():
+                if accession.startswith(prefixes):
+                    return mol_type
         # Fallback: infer from gene type if available
         if gene_type is not None:
             gene_type_map = {
@@ -163,7 +165,6 @@ class NCBISearch(BaseSearcher):
             None,
         )
         # Fallback: if no type 3 accession, try any available accession
-        # This is needed for genes that don't have mRNA transcripts but have other sequence records
         if not representative_accession:
             representative_accession = next(
                 (
@@ -219,6 +220,12 @@ class NCBISearch(BaseSearcher):
             "_representative_accession": representative_accession,
         }
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((RequestException, IncompleteRead)),
+        reraise=True,
+    )
     def get_by_gene_id(self, gene_id: str, preferred_accession: Optional[str] = None) -> Optional[dict]:
         """Get gene information by Gene ID."""
         def _extract_metadata_from_genbank(result: dict, accession: str):
@@ -227,12 +234,7 @@ class NCBISearch(BaseSearcher):
                 record = SeqIO.read(handle, "genbank")
 
                 result["title"] = record.description
-                result["molecule_type_detail"] = (
-                    "mRNA" if accession.startswith(("NM_", "XM_")) else
-                    "genomic DNA" if accession.startswith(("NC_", "NT_")) else
-                    "RNA" if accession.startswith(("NR_", "XR_")) else
-                    "genomic region" if accession.startswith("NG_") else "N/A"
-                )
+                result["molecule_type_detail"] = self._infer_molecule_type_detail(accession) or "N/A"
 
                 for feature in record.features:
                     if feature.type == "source":
@@ -267,25 +269,62 @@ class NCBISearch(BaseSearcher):
                 result["sequence_length"] = None
             return result
 
+        def _extract_sequence(result: dict, accession: str):
+            """
+            Extract sequence using the appropriate method based on configuration.
+            If use_local_blast=True, use local database. Otherwise, use NCBI API.
+            Always fetches sequence (no option to skip).
+            """
+            # If using local BLAST, use local database
+            if self.use_local_blast:
+                sequence = self._extract_sequence_from_local_db(accession)
+                
+                if sequence:
+                    result["sequence"] = sequence
+                    result["sequence_length"] = len(sequence)
+                else:
+                    # Failed to extract from local DB, set to None (no fallback to API)
+                    result["sequence"] = None
+                    result["sequence_length"] = None
+                    logger.warning(
+                        "Failed to extract sequence from local DB for accession %s. "
+                        "Not falling back to NCBI API as use_local_blast=True.",
+                        accession
+                    )
+            else:
+                # Use NCBI API to fetch sequence
+                result = _extract_sequence_from_fasta(result, accession)
+            
+            return result
+
         try:
             with Entrez.efetch(db="gene", id=gene_id, retmode="xml") as handle:
                 gene_record = Entrez.read(handle)
-                if not gene_record:
-                    return None
+            
+            if not gene_record:
+                return None
 
-                result = self._gene_record_to_dict(gene_record, gene_id)
-                if accession := (preferred_accession or result.get("_representative_accession")):
-                    result = _extract_metadata_from_genbank(result, accession)
-                    result = _extract_sequence_from_fasta(result, accession)
+            result = self._gene_record_to_dict(gene_record, gene_id)
+            
+            if accession := (preferred_accession or result.get("_representative_accession")):
+                result = _extract_metadata_from_genbank(result, accession)
+                # Extract sequence using appropriate method
+                result = _extract_sequence(result, accession)
 
-                result.pop("_representative_accession", None)
-                return result
+            result.pop("_representative_accession", None)
+            return result
         except (RequestException, IncompleteRead):
             raise
         except Exception as exc:
             logger.error("Gene ID %s not found: %s", gene_id, exc)
             return None
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((RequestException, IncompleteRead)),
+        reraise=True,
+    )
     def get_by_accession(self, accession: str) -> Optional[dict]:
         """Get sequence information by accession number."""
         def _extract_gene_id(link_handle):
@@ -311,9 +350,11 @@ class NCBISearch(BaseSearcher):
                 return None
 
             result = self.get_by_gene_id(gene_id, preferred_accession=accession)
+            
             if result:
                 result["id"] = accession
                 result["url"] = f"https://www.ncbi.nlm.nih.gov/nuccore/{accession}"
+            
             return result
         except (RequestException, IncompleteRead):
             raise
@@ -321,6 +362,12 @@ class NCBISearch(BaseSearcher):
             logger.error("Accession %s not found: %s", accession, exc)
             return None
 
+    @retry(
+        stop=stop_after_attempt(5),
+        wait=wait_exponential(multiplier=1, min=4, max=10),
+        retry=retry_if_exception_type((RequestException, IncompleteRead)),
+        reraise=True,
+    )
     def get_best_hit(self, keyword: str) -> Optional[dict]:
         """Search NCBI Gene database with a keyword and return the best hit."""
         if not keyword.strip():
@@ -330,13 +377,38 @@ class NCBISearch(BaseSearcher):
             for search_term in [f"{keyword}[Gene] OR {keyword}[All Fields]", keyword]:
                 with Entrez.esearch(db="gene", term=search_term, retmax=1, sort="relevance") as search_handle:
                     search_results = Entrez.read(search_handle)
-                    if len(gene_id := search_results.get("IdList", [])) > 0:
-                        return self.get_by_gene_id(gene_id)
+                
+                if len(gene_id := search_results.get("IdList", [])) > 0:
+                    result = self.get_by_gene_id(gene_id)
+                    return result
         except (RequestException, IncompleteRead):
             raise
         except Exception as e:
             logger.error("Keyword %s not found: %s", keyword, e)
         return None
+
+    def _extract_sequence_from_local_db(self, accession: str) -> Optional[str]:
+        """Extract sequence from local BLAST database using blastdbcmd."""
+        try:
+            cmd = [
+                "blastdbcmd",
+                "-db", self.local_blast_db,
+                "-entry", accession,
+                "-outfmt", "%s"  # Only sequence, no header
+            ]
+            sequence = subprocess.check_output(
+                cmd,
+                text=True,
+                timeout=10,  # 10 second timeout for local extraction
+                stderr=subprocess.DEVNULL
+            ).strip()
+            return sequence if sequence else None
+        except subprocess.TimeoutExpired:
+            logger.warning("Timeout extracting sequence from local DB for accession %s", accession)
+            return None
+        except Exception as exc:
+            logger.warning("Failed to extract sequence from local DB for accession %s: %s", accession, exc)
+            return None
 
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
         """
@@ -436,20 +508,22 @@ class NCBISearch(BaseSearcher):
             # Try local BLAST first if enabled
             if self.use_local_blast:
                 accession = self._local_blast(seq, threshold)
+                
                 if accession:
                     logger.debug("Local BLAST found accession: %s", accession)
-                    return self.get_by_accession(accession)
-                logger.info(
-                    "Local BLAST found no match for sequence. "
-                    "API fallback disabled when using local database."
-                )
+                    # When using local BLAST, skip sequence fetching by default (faster, fewer API calls)
+                    # Sequence is already known from the query, so we only need metadata
+                    result = self.get_by_accession(accession)
+                    return result
+                
+                logger.info("Local BLAST found no match for sequence. API fallback disabled when using local database.")
                 return None
 
             # Fall back to network BLAST only if local BLAST is not enabled
             logger.debug("Falling back to NCBIWWW.qblast")
-
             with NCBIWWW.qblast("blastn", "nr", seq, hitlist_size=1, expect=threshold) as result_handle:
-                return _process_network_blast_result(NCBIXML.read(result_handle), seq, threshold)
+                result = _process_network_blast_result(NCBIXML.read(result_handle), seq, threshold)
+            return result
         except (RequestException, IncompleteRead):
             raise
         except Exception as e:
@@ -474,29 +548,25 @@ class NCBISearch(BaseSearcher):
         loop = asyncio.get_running_loop()
 
         # Auto-detect query type and execute in thread pool
-        # Only use lock for network API calls (NCBI rate limit: max 3 requests per second)
-        # Local BLAST can run in parallel
+        # All methods need lock because they all call NCBI API (rate limit: max 3 requests per second)
+        # Even if get_by_fasta uses local BLAST, it still calls get_by_accession which needs API
+        async def _execute_with_lock(func, *args):
+            """Execute function with lock for NCBI API calls."""
+            async with _blast_lock:
+                return await loop.run_in_executor(_get_pool(), func, *args)
+
         if query.startswith(">") or re.fullmatch(r"[ATCGN\s]+", query, re.I):
-            # FASTA sequence: use lock only if using network BLAST
-            if self.use_local_blast:
-                # Local BLAST can run in parallel, no lock needed
-                result = await loop.run_in_executor(_get_pool(), self.get_by_fasta, query, threshold)
-            else:
-                # Network BLAST needs lock to respect rate limits
-                async with _ncbi_lock:
-                    result = await loop.run_in_executor(_get_pool(), self.get_by_fasta, query, threshold)
+            # FASTA sequence: always use lock (even with local BLAST, get_by_accession needs API)
+            result = await _execute_with_lock(self.get_by_fasta, query, threshold)
         elif re.fullmatch(r"^\d+$", query):
             # Gene ID: always use lock (network API call)
-            async with _ncbi_lock:
-                result = await loop.run_in_executor(_get_pool(), self.get_by_gene_id, query)
+            result = await _execute_with_lock(self.get_by_gene_id, query)
         elif re.fullmatch(r"[A-Z]{2}_\d+\.?\d*", query, re.I):
             # Accession: always use lock (network API call)
-            async with _ncbi_lock:
-                result = await loop.run_in_executor(_get_pool(), self.get_by_accession, query)
+            result = await _execute_with_lock(self.get_by_accession, query)
         else:
             # Keyword: always use lock (network API call)
-            async with _ncbi_lock:
-                result = await loop.run_in_executor(_get_pool(), self.get_best_hit, query)
+            result = await _execute_with_lock(self.get_best_hit, query)
 
         if result:
             result["_search_query"] = query
