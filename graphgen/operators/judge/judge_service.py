@@ -15,7 +15,7 @@ class JudgeService(BaseOperator):
         super().__init__(working_dir=working_dir, op_name="judge_service")
         self.llm_client: BaseLLMWrapper = init_llm("trainee")
         self.graph_storage: BaseGraphStorage = init_storage(
-            backend="networkx",
+            backend="kuzu",
             working_dir=working_dir,
             namespace="graph",
         )

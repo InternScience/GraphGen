@@ -79,7 +79,4 @@ class RocksDBKVStorage(BaseKVStorage):
             self._db.close()
 
     def reload(self):
-        if self._db:
-            self._db.close()
-        self._db = Rdict(self._db_path)
-        print(f"Reloaded RocksDB {self.namespace}")
+        """For databases that need reloading, RocksDB auto-manages this."""

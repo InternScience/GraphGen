@@ -1,6 +1,6 @@
 import random
 from collections.abc import Iterable
-from typing import Any, List
+from typing import Any
 
 from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community

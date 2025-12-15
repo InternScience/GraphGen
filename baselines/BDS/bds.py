@@ -8,8 +8,8 @@ from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.bases import BaseLLMWrapper
+from graphgen.common import init_llm
 from graphgen.models import NetworkXStorage
-from graphgen.operators import init_llm
 from graphgen.utils import create_event_loop
 
 QA_GENERATION_PROMPT = """
@@ -54,9 +54,7 @@ def _post_process(text: str) -> dict:
 
 class BDS:
     def __init__(self, llm_client: BaseLLMWrapper = None, max_concurrent: int = 1000):
-        self.llm_client: BaseLLMWrapper = llm_client or init_llm(
-            "synthesizer"
-        )
+        self.llm_client: BaseLLMWrapper = llm_client or init_llm("synthesizer")
         self.max_concurrent: int = max_concurrent
 
     def generate(self, tasks: List[dict]) -> List[dict]:
