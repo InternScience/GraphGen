@@ -42,10 +42,10 @@ RNACENTRAL_SEQUENCES_URL="${RNACENTRAL_RELEASE_URL}/sequences"
 RNACENTRAL_BY_DB_URL="${RNACENTRAL_SEQUENCES_URL}/by-database"
 
 # Parse command line arguments
-DB_SELECTION=${1:-all}
+DB_SELECTION=${1:-selected}
 
 # Predefined database list for "selected" option
-SELECTED_DATABASES=("ensembl_gencode" "mirbase" "gtrnadb" "refseq" "lncbase")
+SELECTED_DATABASES=("ensembl_gencode" "mirbase" "gtrnadb" "refseq" "lncbase" "rfam")
 
 # List available databases if requested
 if [ "${DB_SELECTION}" = "list" ]; then
@@ -65,7 +65,7 @@ if [ "${DB_SELECTION}" = "list" ]; then
     echo "Usage: $0 [all|list|selected|database_name...]"
     echo "  Example: $0 refseq    # Download only RefSeq sequences (~98M)"
     echo "  Example: $0 rfam      # Download only Rfam sequences (~1.5G)"
-    echo "  Example: $0 selected   # Download predefined databases (ensembl_gencode, mirbase, gtrnadb, refseq, lncbase)"
+    echo "  Example: $0 selected   # Download predefined databases (ensembl_gencode, mirbase, gtrnadb, refseq, lncbase, rfam)"
     echo "  Example: $0 refseq mirbase  # Download multiple databases"
     echo "  Example: $0 all       # Download complete active database (~8.4G)"
     exit 0
