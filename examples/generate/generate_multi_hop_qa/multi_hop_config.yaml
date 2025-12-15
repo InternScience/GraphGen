@@ -1,0 +1,56 @@
+global_params:
+  working_dir: cache
+
+nodes:
+  - id: read
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/csv_demo.csv
+
+  - id: chunk
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 1024
+      chunk_overlap: 100
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    dependencies:
+      - chunk
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - build_kg
+    params:
+      method: ece
+      method_params:
+        max_units_per_community: 3
+        min_units_per_community: 3
+        max_tokens_per_community: 10240
+        unit_sampling: random
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      method: multi_hop
+      data_format: ChatML

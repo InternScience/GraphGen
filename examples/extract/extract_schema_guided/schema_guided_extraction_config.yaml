@@ -1,0 +1,34 @@
+global_params:
+  working_dir: cache
+
+nodes:
+  - id: read
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/extract_demo.txt
+
+  - id: chunk
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 20480 # larger chunk size for better context
+      chunk_overlap: 2000
+
+  - id: extract
+    op_name: extract
+    type: map_batch
+    dependencies:
+      - chunk
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      method: schema_guided
+      schema_path: graphgen/templates/extraction/schemas/legal_contract.json

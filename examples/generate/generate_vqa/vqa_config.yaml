@@ -1,0 +1,57 @@
+global_params:
+  working_dir: cache
+
+nodes:
+  - id: read
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/vqa_demo.json
+      modalities:
+        - text
+        - image
+
+  - id: chunk
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 1024
+      chunk_overlap: 100
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    dependencies:
+      - chunk
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - build_kg
+    params:
+      method: anchor_bfs
+      method_params:
+        anchor_type: image
+        max_units_per_community: 10
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      method: vqa
+      data_format: ChatML

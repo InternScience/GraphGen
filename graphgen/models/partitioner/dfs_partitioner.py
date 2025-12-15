@@ -1,5 +1,6 @@
 import random
-from typing import Any, List
+from collections.abc import Iterable
+from typing import Any
 
 from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community
@@ -16,12 +17,12 @@ class DFSPartitioner(BasePartitioner):
     (In GraphGen, a unit is defined as a node or an edge.)
     """
 
-    async def partition(
+    def partition(
         self,
         g: BaseGraphStorage,
         max_units_per_community: int = 1,
         **kwargs: Any,
-    ) -> List[Community]:
+    ) -> Iterable[Community]:
         nodes = g.get_all_nodes()
         edges = g.get_all_edges()
 
@@ -29,7 +30,6 @@ class DFSPartitioner(BasePartitioner):
 
         used_n: set[str] = set()
         used_e: set[frozenset[str]] = set()
-        communities: List[Community] = []
 
         units = [(NODE_UNIT, n[0]) for n in nodes] + [
             (EDGE_UNIT, frozenset((u, v))) for u, v, _ in edges
@@ -71,8 +71,4 @@ class DFSPartitioner(BasePartitioner):
                             stack.append((NODE_UNIT, n))
 
             if comm_n or comm_e:
-                communities.append(
-                    Community(id=len(communities), nodes=comm_n, edges=comm_e)
-                )
-
-        return communities
+                yield Community(id=seed, nodes=comm_n, edges=comm_e)

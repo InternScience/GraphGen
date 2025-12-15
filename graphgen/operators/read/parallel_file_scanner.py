@@ -5,14 +5,13 @@ from pathlib import Path
 from typing import Any, Dict, List, Set, Union
 
 from graphgen.models import RocksDBCache
-from graphgen.utils import logger
 
 
 class ParallelFileScanner:
     def __init__(
         self, cache_dir: str, allowed_suffix, rescan: bool = False, max_workers: int = 4
     ):
-        self.cache = RocksDBCache(os.path.join(cache_dir, "file_paths_cache"))
+        self.cache = RocksDBCache(os.path.join(cache_dir, "input_paths.db"))
         self.allowed_suffix = set(allowed_suffix) if allowed_suffix else None
         self.rescan = rescan
         self.max_workers = max_workers
@@ -32,15 +31,12 @@ class ParallelFileScanner:
                         self._scan_files, Path(p).resolve(), recursive, set()
                     )
                     future_to_path[future] = p
-                else:
-                    logger.warning("[READ] Path does not exist: %s", p)
 
             for future in as_completed(future_to_path):
                 path = future_to_path[future]
                 try:
                     results[path] = future.result()
                 except Exception as e:
-                    logger.error("[READ] Error scanning path %s: %s", path, e)
                     results[path] = {
                         "error": str(e),
                         "files": [],
@@ -56,17 +52,14 @@ class ParallelFileScanner:
 
         # Avoid cycles due to symlinks
         if path_str in visited:
-            logger.warning("[READ] Skipping already visited path: %s", path_str)
             return self._empty_result(path_str)
 
         # cache check
         cache_key = f"scan::{path_str}::recursive::{recursive}"
         cached = self.cache.get(cache_key)
         if cached and not self.rescan:
-            logger.info("[READ] Using cached scan result for path: %s", path_str)
             return cached["data"]
 
-        logger.info("[READ] Scanning path: %s", path_str)
         files, dirs = [], []
         stats = {"total_size": 0, "file_count": 0, "dir_count": 0, "errors": 0}
 
@@ -108,7 +101,6 @@ class ParallelFileScanner:
                             stats["errors"] += 1
 
         except (PermissionError, FileNotFoundError, OSError) as e:
-            logger.error("[READ] Failed to scan path %s: %s", path_str, e)
             return {"error": str(e), "files": [], "dirs": [], "stats": stats}
 
         if recursive:
@@ -171,7 +163,6 @@ class ParallelFileScanner:
                 try:
                     results[path] = future.result()
                 except Exception as e:
-                    logger.error("[READ] Error scanning subdirectory %s: %s", path, e)
                     results[path] = {
                         "error": str(e),
                         "files": [],
@@ -183,18 +174,14 @@ class ParallelFileScanner:
 
     def _cache_result(self, key: str, result: Dict, path: Path):
         """Cache the scan result"""
-        try:
-            self.cache.set(
-                key,
-                {
-                    "data": result,
-                    "dir_mtime": path.stat().st_mtime,
-                    "cached_at": time.time(),
-                },
-            )
-            logger.info("[READ] Cached scan result for path: %s", path)
-        except OSError as e:
-            logger.error("[READ] Failed to cache scan result for path %s: %s", path, e)
+        self.cache.set(
+            key,
+            {
+                "data": result,
+                "dir_mtime": path.stat().st_mtime,
+                "cached_at": time.time(),
+            },
+        )
 
     def _is_allowed_file(self, path: Path) -> bool:
         """Check if the file has an allowed suffix"""
@@ -209,7 +196,6 @@ class ParallelFileScanner:
         keys = [k for k in self.cache if k.startswith(f"scan::{path}")]
         for k in keys:
             self.cache.delete(k)
-        logger.info("[READ] Invalidated cache for path: %s", path)
 
     def close(self):
         self.cache.close()
