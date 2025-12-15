@@ -16,7 +16,7 @@ class BuildKGService(BaseOperator):
         super().__init__(working_dir=working_dir, op_name="build_kg_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
-            backend="networkx", working_dir=working_dir, namespace="graph"
+            backend="kuzu", working_dir=working_dir, namespace="graph"
         )
 
     def process(self, batch: pd.DataFrame) -> pd.DataFrame:

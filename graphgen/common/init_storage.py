@@ -55,6 +55,10 @@ class GraphStorageActor:
             from graphgen.models import NetworkXStorage
 
             self.graph = NetworkXStorage(working_dir, namespace)
+        if backend == "kuzu":
+            from graphgen.models import KuzuStorage
+
+            self.graph = KuzuStorage(working_dir, namespace)
         else:
             raise ValueError(f"Unknown Graph backend: {backend}")
 
@@ -240,7 +244,7 @@ class StorageFactory:
                     get_if_exists=True,
                 ).remote(backend, working_dir, namespace)
             return RemoteKVStorageProxy(namespace)
-        if backend in ["networkx"]:
+        if backend in ["networkx", "kuzu"]:
             actor_name = f"Actor_Graph_{namespace}"
             try:
                 ray.get_actor(actor_name)

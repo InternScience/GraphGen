@@ -21,7 +21,7 @@ class PartitionService(BaseOperator):
     def __init__(self, working_dir: str = "cache", **partition_kwargs):
         super().__init__(working_dir=working_dir, op_name="partition_service")
         self.kg_instance: BaseGraphStorage = init_storage(
-            backend="networkx",
+            backend="kuzu",
             working_dir=working_dir,
             namespace="graph",
         )
