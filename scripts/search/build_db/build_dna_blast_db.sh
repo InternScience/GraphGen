@@ -58,12 +58,68 @@ else
     echo "Using date as release identifier: ${RELEASE}"
 fi
 
+# Function to check if a file is already downloaded and complete
+check_file_downloaded() {
+    local filename=$1
+    # Since we're already in ${DOWNLOAD_TMP} directory, use filename directly
+    local local_file="${filename}"
+    
+    # Check if compressed file (.fna.gz) exists
+    if [ -f "${local_file}" ] && [ -s "${local_file}" ]; then
+        # Try to verify it's a valid gzip file by attempting to decompress a small portion
+        if gunzip -t "${local_file}" 2>/dev/null; then
+            return 0  # Compressed file exists and is valid
+        else
+            # File exists but is corrupted, remove it
+            rm -f "${local_file}"
+            return 1
+        fi
+    fi
+    
+    # Check if decompressed file (.fna) exists (may have been extracted previously)
+    local decompressed_file="${local_file%.gz}"
+    if [ -f "${decompressed_file}" ] && [ -s "${decompressed_file}" ]; then
+        # Check if it's a valid FASTA file (starts with >)
+        if head -1 "${decompressed_file}" 2>/dev/null | grep -q "^>"; then
+            return 0  # Decompressed file exists and appears valid
+        else
+            # File exists but doesn't look like a valid FASTA file
+            return 1
+        fi
+    fi
+    
+    return 1  # Neither compressed nor decompressed file exists
+}
+
 # Function to check if a file contains target species
 check_file_for_species() {
     local url=$1
     local filename=$2
     local temp_file="/tmp/check_${filename//\//_}"
     
+    # First check if file is already downloaded locally
+    if check_file_downloaded "${filename}"; then
+        # File already exists, check if it contains target species
+        # Check both compressed and decompressed versions
+        local decompressed_file="${filename%.gz}"
+        if [ -f "${filename}" ]; then
+            # Compressed file exists
+            if gunzip -c "${filename}" 2>/dev/null | head -2000 | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+                return 0  # Contains target species
+            else
+                return 1  # Does not contain target species
+            fi
+        elif [ -f "${decompressed_file}" ]; then
+            # Decompressed file exists
+            if head -2000 "${decompressed_file}" 2>/dev/null | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+                return 0  # Contains target species
+            else
+                return 1  # Does not contain target species
+            fi
+        fi
+    fi
+    
+    # File not downloaded yet, download first 500KB to check
     # Download first 500KB (enough to get many sequence headers)
     # This should be sufficient to identify the species in most cases
     if curl -s --max-time 30 --range 0-512000 "${url}" -o "${temp_file}" 2>/dev/null && [ -s "${temp_file}" ]; then
@@ -112,12 +168,19 @@ case ${DOWNLOAD_TYPE} in
                 echo -n "[${total_file_count}] Checking ${category}/${filename}... "
                 
                 if check_file_for_species "${url}" "${filename}"; then
-                    echo "✓ contains target species, downloading..."
-                    download_count=$((download_count + 1))
-                    total_download_count=$((total_download_count + 1))
-                    wget -c -q --show-progress "${url}" || {
-                        echo "Warning: Failed to download ${filename}"
-                    }
+                    # Check if file is already downloaded
+                    if check_file_downloaded "${filename}"; then
+                        echo "✓ already downloaded (contains target species)"
+                        download_count=$((download_count + 1))
+                        total_download_count=$((total_download_count + 1))
+                    else
+                        echo "✓ contains target species, downloading..."
+                        download_count=$((download_count + 1))
+                        total_download_count=$((total_download_count + 1))
+                        wget -c -q --show-progress "${url}" || {
+                            echo "Warning: Failed to download ${filename}"
+                        }
+                    fi
                 else
                     echo "✗ skipping (no target species data)"
                 fi
@@ -136,46 +199,70 @@ case ${DOWNLOAD_TYPE} in
         # Note: You can modify this list based on your specific requirements
         for category in vertebrate_mammalian vertebrate_other bacteria archaea fungi; do
             echo "Downloading ${category} sequences..."
+            # Get list of files and save to temp file to avoid subshell issues
             curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
                 grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-                sed 's/href="\(.*\)"/\1/' | \
-                while read filename; do
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            while read filename; do
+                if check_file_downloaded "${filename}"; then
+                    echo "  ✓ ${filename} already downloaded, skipping..."
+                else
                     echo "  Downloading ${filename}..."
                     wget -c -q --show-progress \
                         "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}" || {
                         echo "Warning: Failed to download ${filename}"
                     }
-                done
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
         done
         ;;
     complete)
         echo "Downloading RefSeq complete genomic sequences (WARNING: very large, may take hours)..."
+        # Get list of files and save to temp file to avoid subshell issues
         curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/complete/" | \
             grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-            sed 's/href="\(.*\)"/\1/' | \
-            while read filename; do
+            sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_complete.txt
+        
+        while read filename; do
+            if check_file_downloaded "${filename}"; then
+                echo "  ✓ ${filename} already downloaded, skipping..."
+            else
                 echo "  Downloading ${filename}..."
                 wget -c -q --show-progress \
                     "https://ftp.ncbi.nlm.nih.gov/refseq/release/complete/${filename}" || {
                     echo "Warning: Failed to download ${filename}"
                 }
-            done
+            fi
+        done < /tmp/refseq_files_complete.txt
+        
+        rm -f /tmp/refseq_files_complete.txt
         ;;
     all)
         echo "Downloading all RefSeq genomic sequences from all categories (WARNING: extremely large, may take many hours)..."
         # Download genomic sequences from all categories
         for category in vertebrate_mammalian vertebrate_other bacteria archaea fungi invertebrate plant viral protozoa mitochondrion plastid plasmid other; do
             echo "Downloading ${category} genomic sequences..."
+            # Get list of files and save to temp file to avoid subshell issues
             curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
                 grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-                sed 's/href="\(.*\)"/\1/' | \
-                while read filename; do
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            while read filename; do
+                if check_file_downloaded "${filename}"; then
+                    echo "  ✓ ${filename} already downloaded, skipping..."
+                else
                     echo "  Downloading ${filename}..."
                     wget -c -q --show-progress \
                         "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}" || {
                         echo "Warning: Failed to download ${filename}"
                     }
-                done
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
         done
         ;;
     *)
