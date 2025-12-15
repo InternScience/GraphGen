@@ -131,7 +131,7 @@ class LLMFactory:
             ray.get_actor(actor_name)
         except ValueError:
             print(f"Creating Ray actor for LLM {model_type} with backend {backend}.")
-            num_gpus = config.pop("num_gpus", 0)
+            num_gpus = int(config.pop("num_gpus", 0))
             actor = (
                 ray.remote(LLMServiceActor)
                 .options(
