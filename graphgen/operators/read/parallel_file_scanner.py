@@ -11,7 +11,7 @@ class ParallelFileScanner:
     def __init__(
         self, cache_dir: str, allowed_suffix, rescan: bool = False, max_workers: int = 4
     ):
-        self.cache = RocksDBCache(os.path.join(cache_dir, "file_paths_cache"))
+        self.cache = RocksDBCache(os.path.join(cache_dir, "input_paths.db"))
         self.allowed_suffix = set(allowed_suffix) if allowed_suffix else None
         self.rescan = rescan
         self.max_workers = max_workers
