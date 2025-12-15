@@ -23,7 +23,7 @@ class QuizService(BaseOperator):
         )
         # { _quiz_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
         self.quiz_storage: BaseKVStorage = init_storage(
-            backend="json_kv", working_dir=working_dir, namespace="quiz"
+            backend="rocksdb", working_dir=working_dir, namespace="quiz"
         )
         self.generator = QuizGenerator(self.llm_client)
         self.concurrency_limit = concurrency_limit

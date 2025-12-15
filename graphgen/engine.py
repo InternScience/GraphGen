@@ -8,6 +8,7 @@ import ray
 import ray.data
 
 from graphgen.bases import Config, Node
+from graphgen.utils import logger
 
 
 class Engine:
@@ -26,7 +27,7 @@ class Engine:
                 log_to_driver=True,
                 **ray_init_kwargs,
             )
-            print(f"Ray Dashboard URL: {context.dashboard_url}")
+            logger.info("Ray Dashboard URL: %s", context.dashboard_url)
 
     @staticmethod
     def _topo_sort(nodes: List[Node]) -> List[Node]:

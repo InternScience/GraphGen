@@ -26,7 +26,7 @@ class PartitionService(BaseOperator):
             namespace="graph",
         )
         self.chunk_storage: BaseKVStorage = init_storage(
-            backend="json_kv",
+            backend="rocksdb",
             working_dir=working_dir,
             namespace="chunk",
         )
