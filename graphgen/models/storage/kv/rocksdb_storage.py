@@ -7,7 +7,6 @@ from typing import Any, Dict, List, Set
 from rocksdict import Rdict
 
 from graphgen.bases.base_storage import BaseKVStorage
-from graphgen.utils import logger
 
 
 @dataclass
@@ -18,7 +17,9 @@ class RocksDBKVStorage(BaseKVStorage):
     def __post_init__(self):
         self._db_path = os.path.join(self.working_dir, f"{self.namespace}.db")
         self._db = Rdict(self._db_path)
-        logger.info("Load KV (RocksDB) %s at %s", self.namespace, self._db_path)
+        print(
+            f"RocksDBKVStorage initialized for namespace '{self.namespace}' at '{self._db_path}'"
+        )
 
     @property
     def data(self):
@@ -29,7 +30,7 @@ class RocksDBKVStorage(BaseKVStorage):
 
     def index_done_callback(self):
         self._db.flush()
-        logger.info("RocksDB flushed for %s", self.namespace)
+        print(f"RocksDB flushed for {self.namespace}")
 
     def get_by_id(self, id: str) -> Any:
         return self._db.get(id, None)
@@ -63,7 +64,6 @@ class RocksDBKVStorage(BaseKVStorage):
         if left_data:
             for k, v in left_data.items():
                 self._db[k] = v
-
             # if left_data is very large, it is recommended to use self._db.write_batch() for optimization
 
         return left_data
@@ -72,8 +72,14 @@ class RocksDBKVStorage(BaseKVStorage):
         self._db.close()
         Rdict.destroy(self._db_path)
         self._db = Rdict(self._db_path)
-        logger.info("Dropped RocksDB %s", self.namespace)
+        print(f"Dropped RocksDB {self.namespace}")
 
     def close(self):
         if self._db:
             self._db.close()
+
+    def reload(self):
+        if self._db:
+            self._db.close()
+        self._db = Rdict(self._db_path)
+        print(f"Reloaded RocksDB {self.namespace}")

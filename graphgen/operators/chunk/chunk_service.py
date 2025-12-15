@@ -47,7 +47,7 @@ class ChunkService(BaseOperator):
         tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
         self.tokenizer_instance: Tokenizer = Tokenizer(model_name=tokenizer_model)
         self.chunk_storage = init_storage(
-            backend="json_kv",
+            backend="rocksdb",
             working_dir=working_dir,
             namespace="chunk",
         )

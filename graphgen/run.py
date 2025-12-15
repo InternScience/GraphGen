@@ -81,13 +81,9 @@ def main():
     with open(args.config_file, "r", encoding="utf-8") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    engine = Engine(config, operators)
-
     unique_id = int(time.time())
-
-    output_path = os.path.join(working_dir, "data", "graphgen", f"{unique_id}")
+    output_path = os.path.join(working_dir, "output", f"{unique_id}")
     set_working_dir(output_path)
-
     log_path = os.path.join(working_dir, "logs", "Driver.log")
     driver_logger = set_logger(
         log_path,
@@ -100,6 +96,8 @@ def main():
         unique_id,
         log_path,
     )
+
+    engine = Engine(config, operators)
     ds = ray.data.from_items([])
     results = engine.execute(ds)
 
