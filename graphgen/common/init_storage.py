@@ -55,7 +55,7 @@ class GraphStorageActor:
             from graphgen.models import NetworkXStorage
 
             self.graph = NetworkXStorage(working_dir, namespace)
-        if backend == "kuzu":
+        elif backend == "kuzu":
             from graphgen.models import KuzuStorage
 
             self.graph = KuzuStorage(working_dir, namespace)
