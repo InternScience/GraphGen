@@ -1,14 +1,18 @@
 import argparse
 import os
 import time
-from importlib.resources import files
+from importlib import resources
+from typing import Any, Dict
 
+import ray
 import yaml
 from dotenv import load_dotenv
+from ray.data.block import Block
+from ray.data.datasource.filename_provider import FilenameProvider
 
-from graphgen.engine import Context, Engine, collect_ops
-from graphgen.graphgen import GraphGen
-from graphgen.utils import logger, set_logger
+from graphgen.engine import Engine
+from graphgen.operators import operators
+from graphgen.utils import CURRENT_LOGGER_VAR, logger, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 
@@ -28,12 +32,38 @@ def save_config(config_path, global_config):
         )
 
 
+class NodeFilenameProvider(FilenameProvider):
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+
+    def get_filename_for_block(
+        self, block: Block, write_uuid: str, task_index: int, block_index: int
+    ) -> str:
+        # format: {node_id}_{write_uuid}_{task_index:06}_{block_index:06}.json
+        return f"{self.node_id}_{write_uuid}_{task_index:06d}_{block_index:06d}.jsonl"
+
+    def get_filename_for_row(
+        self,
+        row: Dict[str, Any],
+        write_uuid: str,
+        task_index: int,
+        block_index: int,
+        row_index: int,
+    ) -> str:
+        raise NotImplementedError(
+            f"Row-based filenames are not supported by write_json. "
+            f"Node: {self.node_id}, write_uuid: {write_uuid}"
+        )
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--config_file",
         help="Config parameters for GraphGen.",
-        default=files("graphgen").joinpath("configs", "aggregated_config.yaml"),
+        default=resources.files("graphgen")
+        .joinpath("configs")
+        .joinpath("aggregated_config.yaml"),
         type=str,
     )
     parser.add_argument(
@@ -52,28 +82,38 @@ def main():
         config = yaml.load(f, Loader=yaml.FullLoader)
 
     unique_id = int(time.time())
-
-    output_path = os.path.join(working_dir, "data", "graphgen", f"{unique_id}")
+    output_path = os.path.join(working_dir, "output", f"{unique_id}")
     set_working_dir(output_path)
-
-    set_logger(
-        os.path.join(output_path, f"{unique_id}.log"),
+    log_path = os.path.join(working_dir, "logs", "Driver.log")
+    driver_logger = set_logger(
+        log_path,
+        name="GraphGen",
         if_stream=True,
     )
+    CURRENT_LOGGER_VAR.set(driver_logger)
     logger.info(
         "GraphGen with unique ID %s logging to %s",
         unique_id,
-        os.path.join(working_dir, f"{unique_id}.log"),
+        log_path,
     )
 
-    graph_gen = GraphGen(unique_id=unique_id, working_dir=working_dir)
+    engine = Engine(config, operators)
+    ds = ray.data.from_items([])
+    results = engine.execute(ds)
 
-    # share context between different steps
-    ctx = Context(config=config, graph_gen=graph_gen)
-    ops = collect_ops(config, graph_gen)
-
-    # run operations
-    Engine(max_workers=config.get("max_workers", 4)).run(ops, ctx)
+    for node_id, dataset in results.items():
+        output_path = os.path.join(output_path, f"{node_id}")
+        os.makedirs(output_path, exist_ok=True)
+        dataset.write_json(
+            output_path,
+            filename_provider=NodeFilenameProvider(node_id),
+            pandas_json_args_fn=lambda: {
+                "force_ascii": False,
+                "orient": "records",
+                "lines": True,
+            },
+        )
+        logger.info("Node %s results saved to %s", node_id, output_path)
 
     save_config(os.path.join(output_path, "config.yaml"), config)
     logger.info("GraphGen completed successfully. Data saved to %s", output_path)

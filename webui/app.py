@@ -5,14 +5,12 @@ import tempfile
 from importlib.resources import files
 
 import gradio as gr
-import pandas as pd
+import ray
 from dotenv import load_dotenv
 
-from graphgen.engine import Context, Engine, collect_ops
-from graphgen.graphgen import GraphGen
-from graphgen.models import OpenAIClient, Tokenizer
-from graphgen.models.llm.limitter import RPM, TPM
-from graphgen.utils import set_logger
+from graphgen.engine import Engine
+from graphgen.operators import operators
+from graphgen.utils import CURRENT_LOGGER_VAR, set_logger
 from webui.base import WebuiParams
 from webui.i18n import Translate
 from webui.i18n import gettext as _
@@ -21,7 +19,6 @@ from webui.utils import cleanup_workspace, count_tokens, preview_file, setup_wor
 
 root_dir = files("webui").parent
 sys.path.append(root_dir)
-
 
 load_dotenv()
 
@@ -34,131 +31,136 @@ css = """
 """
 
 
-def init_graph_gen(config: dict, env: dict) -> GraphGen:
-    # Set up working directory
-    log_file, working_dir = setup_workspace(os.path.join(root_dir, "cache"))
-    set_logger(log_file, if_stream=True)
-    os.environ.update({k: str(v) for k, v in env.items()})
-
-    tokenizer_instance = Tokenizer(config.get("tokenizer", "cl100k_base"))
-    synthesizer_llm_client = OpenAIClient(
-        model=env.get("SYNTHESIZER_MODEL", ""),
-        base_url=env.get("SYNTHESIZER_BASE_URL", ""),
-        api_key=env.get("SYNTHESIZER_API_KEY", ""),
-        request_limit=True,
-        rpm=RPM(env.get("RPM", 1000)),
-        tpm=TPM(env.get("TPM", 50000)),
-        tokenizer=tokenizer_instance,
-    )
-    trainee_llm_client = OpenAIClient(
-        model=env.get("TRAINEE_MODEL", ""),
-        base_url=env.get("TRAINEE_BASE_URL", ""),
-        api_key=env.get("TRAINEE_API_KEY", ""),
-        request_limit=True,
-        rpm=RPM(env.get("RPM", 1000)),
-        tpm=TPM(env.get("TPM", 50000)),
-        tokenizer=tokenizer_instance,
-    )
-
-    graph_gen = GraphGen(
-        working_dir=working_dir,
-        tokenizer_instance=tokenizer_instance,
-        synthesizer_llm_client=synthesizer_llm_client,
-        trainee_llm_client=trainee_llm_client,
-    )
-
-    return graph_gen
-
-
-# pylint: disable=too-many-statements
-def run_graphgen(params: WebuiParams, progress=gr.Progress()):
-    def sum_tokens(client):
-        return sum(u["total_tokens"] for u in client.token_usage)
-
+def _get_partition_params(params: WebuiParams):
     method = params.partition_method
     if method == "dfs":
-        partition_params = {
+        return {
             "max_units_per_community": params.dfs_max_units,
         }
-    elif method == "bfs":
-        partition_params = {
+    if method == "bfs":
+        return {
             "max_units_per_community": params.bfs_max_units,
         }
-    elif method == "leiden":
-        partition_params = {
+    if method == "leiden":
+        return {
             "max_size": params.leiden_max_size,
             "use_lcc": params.leiden_use_lcc,
             "random_seed": params.leiden_random_seed,
         }
-    else:  # ece
-        partition_params = {
-            "max_units_per_community": params.ece_max_units,
-            "min_units_per_community": params.ece_min_units,
-            "max_tokens_per_community": params.ece_max_tokens,
-            "unit_sampling": params.ece_unit_sampling,
-        }
+    # ece
+    return {
+        "max_units_per_community": params.ece_max_units,
+        "min_units_per_community": params.ece_min_units,
+        "max_tokens_per_community": params.ece_max_tokens,
+        "unit_sampling": params.ece_unit_sampling,
+    }
 
-    pipeline = [
+
+# pylint: disable=too-many-statements
+def run_graphgen(params: WebuiParams, progress=gr.Progress()):
+    # 1. Setup Workspace
+    log_file, working_dir = setup_workspace(os.path.join(root_dir, "cache"))
+    driver_logger = set_logger(log_file, "GraphGeb", if_stream=True)
+    CURRENT_LOGGER_VAR.set(driver_logger)
+
+    # 2. Setup Environment Variables for Ray Actors/LLM Init
+    # The refactored code relies on env vars in graphgen/common/init_llm.py
+    os.environ["SYNTHESIZER_BACKEND"] = "openai_api"  # Assuming OpenAI compatible API
+    os.environ["SYNTHESIZER_BASE_URL"] = params.synthesizer_url
+    os.environ["SYNTHESIZER_API_KEY"] = params.api_key
+    os.environ["SYNTHESIZER_MODEL"] = params.synthesizer_model
+    os.environ["RPM"] = str(params.rpm)
+    os.environ["TPM"] = str(params.tpm)
+    os.environ["TOKENIZER_MODEL"] = params.tokenizer
+
+    if params.if_trainee_model:
+        os.environ["TRAINEE_BACKEND"] = "openai_api"
+        os.environ["TRAINEE_BASE_URL"] = params.trainee_url
+        os.environ["TRAINEE_API_KEY"] = params.trainee_api_key
+        os.environ["TRAINEE_MODEL"] = params.trainee_model
+
+    # 3. Construct Pipeline Configuration (DAG)
+    nodes = [
         {
-            "name": "read",
-            "op_key": "read",
+            "id": "read",
+            "op_name": "read",
+            "type": "source",
+            "dependencies": [],
             "params": {
-                "input_file": params.upload_file,
+                "input_path": [params.upload_file],
             },
         },
         {
-            "name": "chunk",
-            "deps": ["read"],
-            "op_key": "chunk",
+            "id": "chunk",
+            "op_name": "chunk",
+            "type": "map_batch",
+            "dependencies": ["read"],
+            "execution_params": {"replicas": 1},
             "params": {
                 "chunk_size": params.chunk_size,
                 "chunk_overlap": params.chunk_overlap,
             },
         },
         {
-            "name": "build_kg",
-            "deps": ["chunk"],
-            "op_key": "build_kg",
+            "id": "build_kg",
+            "op_name": "build_kg",
+            "type": "map_batch",
+            "dependencies": ["chunk"],
+            "execution_params": {"replicas": 1, "batch_size": 128},
         },
     ]
 
+    last_node_id = "build_kg"
+
+    # Optional: Quiz and Judge
     if params.if_trainee_model:
-        pipeline.append(
+        nodes.append(
             {
-                "name": "quiz_and_judge",
-                "deps": ["build_kg"],
-                "op_key": "quiz_and_judge",
-                "params": {"quiz_samples": params.quiz_samples, "re_judge": True},
-            }
-        )
-        pipeline.append(
-            {
-                "name": "partition",
-                "deps": ["quiz_and_judge"],
-                "op_key": "partition",
+                "id": "quiz",
+                "op_name": "quiz",
+                "type": "aggregate",  # QuizService uses aggregate in config
+                "dependencies": ["build_kg"],
+                "execution_params": {"replicas": 1, "batch_size": 128},
                 "params": {
-                    "method": params.partition_method,
-                    "method_params": partition_params,
+                    "quiz_samples": params.quiz_samples,
+                    "concurrency_limit": 200,
                 },
             }
         )
-    else:
-        pipeline.append(
+
+        nodes.append(
             {
-                "name": "partition",
-                "deps": ["build_kg"],
-                "op_key": "partition",
-                "params": {
-                    "method": params.partition_method,
-                    "method_params": partition_params,
-                },
+                "id": "judge",
+                "op_name": "judge",
+                "type": "map_batch",
+                "dependencies": ["quiz"],
+                "execution_params": {"replicas": 1, "batch_size": 128},
             }
         )
-    pipeline.append(
+        last_node_id = "judge"
+
+    # Node: Partition
+    nodes.append(
         {
-            "name": "generate",
-            "deps": ["partition"],
-            "op_key": "generate",
+            "id": "partition",
+            "op_name": "partition",
+            "type": "aggregate",  # PartitionService uses aggregate
+            "dependencies": [last_node_id],
+            "params": {
+                "method": params.partition_method,
+                "method_params": _get_partition_params(params),
+            },
+        }
+    )
+
+    # Node: Generate
+    nodes.append(
+        {
+            "id": "generate",
+            "op_name": "generate",
+            "type": "map_batch",
+            "dependencies": ["partition"],
+            "execution_params": {"replicas": 1, "batch_size": 128},
             "params": {
                 "method": params.mode,
                 "data_format": params.data_format,
@@ -166,88 +168,50 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         }
     )
 
-    config = {
-        "if_trainee_model": params.if_trainee_model,
-        "read": {"input_file": params.upload_file},
-        "pipeline": pipeline,
-    }
-
-    env = {
-        "TOKENIZER_MODEL": params.tokenizer,
-        "SYNTHESIZER_BASE_URL": params.synthesizer_url,
-        "SYNTHESIZER_MODEL": params.synthesizer_model,
-        "TRAINEE_BASE_URL": params.trainee_url,
-        "TRAINEE_MODEL": params.trainee_model,
-        "SYNTHESIZER_API_KEY": params.api_key,
-        "TRAINEE_API_KEY": params.trainee_api_key,
-        "RPM": params.rpm,
-        "TPM": params.tpm,
-    }
-
-    # Test API connection
-    test_api_connection(
-        env["SYNTHESIZER_BASE_URL"],
-        env["SYNTHESIZER_API_KEY"],
-        env["SYNTHESIZER_MODEL"],
-    )
-    if config["if_trainee_model"]:
-        test_api_connection(
-            env["TRAINEE_BASE_URL"], env["TRAINEE_API_KEY"], env["TRAINEE_MODEL"]
-        )
-
-    # Initialize GraphGen
-    graph_gen = init_graph_gen(config, env)
-    graph_gen.clear()
-    graph_gen.progress_bar = progress
+    config = {"global_params": {"working_dir": working_dir}, "nodes": nodes}
 
     try:
-        ctx = Context(config=config, graph_gen=graph_gen)
-        ops = collect_ops(config, graph_gen)
-        Engine(max_workers=config.get("max_workers", 4)).run(ops, ctx)
+        # 4. Initialize and Run Engine
+        # Initialize Ray if not already running (Engine handles this mostly, but good for safety)
+        if not ray.is_initialized():
+            ray.init(ignore_reinit_error=True, log_to_driver=True)
 
-        # Save output
-        output_data = graph_gen.qa_storage.data
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".jsonl", delete=False, encoding="utf-8"
-        ) as tmpfile:
-            json.dump(output_data, tmpfile, ensure_ascii=False)
-            output_file = tmpfile.name
+        engine = Engine(config, operators)
 
-        synthesizer_tokens = sum_tokens(graph_gen.synthesizer_llm_client)
-        trainee_tokens = (
-            sum_tokens(graph_gen.trainee_llm_client)
-            if config["if_trainee_model"]
-            else 0
-        )
-        total_tokens = synthesizer_tokens + trainee_tokens
+        # Start with an empty dataset to kick off the pipeline
+        ds = ray.data.from_items([])
 
-        data_frame = params.token_counter
-        try:
-            _update_data = [
-                [data_frame.iloc[0, 0], data_frame.iloc[0, 1], str(total_tokens)]
-            ]
-            new_df = pd.DataFrame(_update_data, columns=data_frame.columns)
-            data_frame = new_df
+        # Execute pipeline
+        results = engine.execute(ds)
 
-        except Exception as e:
-            raise gr.Error(f"DataFrame operation error: {str(e)}")
+        # 5. Process Output
+        # Extract the result from the 'generate' node
+        if "generate" in results:
+            result_ds = results["generate"]
 
-        return output_file, gr.DataFrame(
-            label="Token Stats",
-            headers=["Source Text Token Count", "Expected Token Usage", "Token Used"],
-            datatype="str",
-            interactive=False,
-            value=data_frame,
-            visible=True,
-            wrap=True,
-        )
+            # Create a temporary file to save the output
+            with tempfile.NamedTemporaryFile(
+                mode="w", suffix=".jsonl", delete=False, encoding="utf-8"
+            ) as tmpfile:
+                # Iterate over rows and write to file
+                for row in result_ds.iter_rows():
+                    json.dump(row, tmpfile, ensure_ascii=False)
+                    tmpfile.write("\n")
+                output_file = tmpfile.name
+        else:
+            raise gr.Error("Generation step failed to produce output.")
+
+        # Note: Dynamic token counting from distributed actors is not directly available
+        # via client properties in the new architecture. We return the estimated stats from input.
+
+        return output_file, params.token_counter
 
     except Exception as e:  # pylint: disable=broad-except
         raise gr.Error(f"Error occurred: {str(e)}")
 
     finally:
         # Clean up workspace
-        cleanup_workspace(graph_gen.working_dir)
+        cleanup_workspace(working_dir)  # Optional: keep for debugging or enable
 
 
 with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
@@ -267,7 +231,6 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
             ("简体中文", "zh"),
         ],
         value="en",
-        # label=_("Language"),
         render=False,
         container=False,
         elem_classes=["center-row"],
@@ -295,7 +258,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
         os.path.join(root_dir, "webui", "translation.json"),
         lang_btn,
         placeholder_langs=["en", "zh"],
-        persistant=False,  # True to save the language setting in the browser. Requires gradio >= 5.6.0
+        persistant=False,
     ):
         lang_btn.render()
 
@@ -700,7 +663,6 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
             ],
             outputs=[output, token_counter],
         )
-
 
 if __name__ == "__main__":
     demo.queue(api_open=False, default_concurrency_limit=2)

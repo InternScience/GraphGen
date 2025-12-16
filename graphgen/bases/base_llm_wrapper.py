@@ -72,9 +72,3 @@ class BaseLLMWrapper(abc.ABC):
 
         filtered = filtered.strip()
         return filtered if filtered else text.strip()
-
-    def shutdown(self) -> None:
-        """Shutdown the LLM engine if applicable."""
-
-    def restart(self) -> None:
-        """Reinitialize the LLM engine if applicable."""
