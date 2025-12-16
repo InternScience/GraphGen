@@ -24,6 +24,8 @@ class Engine:
 
         # Disable Ray Data progress bars and verbose output
         os.environ.setdefault("RAY_DATA_DISABLE_PROGRESS_BARS", "1")
+        # Disable metrics exporter to avoid RpcError
+        os.environ.setdefault("RAY_DISABLE_IMPORTANT_WARNING", "1")
         try:
             from ray.data import DataContext
             ctx = DataContext.get_current()
@@ -33,6 +35,8 @@ class Engine:
             pass  # Ray Data context might not be available
 
         if not ray.is_initialized():
+            # Disable metrics exporter to avoid RpcError
+            ray_init_kwargs.setdefault("_metrics_export_port", 0)
             context = ray.init(
                 ignore_reinit_error=True,
                 logging_level=logging.ERROR,
