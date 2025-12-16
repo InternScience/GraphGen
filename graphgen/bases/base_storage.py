@@ -16,23 +16,6 @@ class StorageNameSpace:
         """commit the storage operations after querying"""
 
 
-class BaseListStorage(Generic[T], StorageNameSpace):
-    def all_items(self) -> list[T]:
-        raise NotImplementedError
-
-    def get_by_index(self, index: int) -> Union[T, None]:
-        raise NotImplementedError
-
-    def append(self, data: T):
-        raise NotImplementedError
-
-    def upsert(self, data: list[T]):
-        raise NotImplementedError
-
-    def drop(self):
-        raise NotImplementedError
-
-
 class BaseKVStorage(Generic[T], StorageNameSpace):
     def all_keys(self) -> list[str]:
         raise NotImplementedError
@@ -56,6 +39,9 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
         raise NotImplementedError
 
     def drop(self):
+        raise NotImplementedError
+
+    def reload(self):
         raise NotImplementedError
 
 
@@ -104,4 +90,7 @@ class BaseGraphStorage(StorageNameSpace):
         raise NotImplementedError
 
     def delete_node(self, node_id: str):
+        raise NotImplementedError
+
+    def reload(self):
         raise NotImplementedError

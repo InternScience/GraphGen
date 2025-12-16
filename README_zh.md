@@ -190,24 +190,86 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
      ```
    - 设置以下环境变量：
      ```bash
-     # Synthesizer 用于构建知识图谱并生成数据
-     SYNTHESIZER_MODEL=your_synthesizer_model_name
-     SYNTHESIZER_BASE_URL=your_base_url_for_synthesizer_model
-     SYNTHESIZER_API_KEY=your_api_key_for_synthesizer_model
-     # Trainee 用于使用生成数据进行训练
-     TRAINEE_MODEL=your_trainee_model_name
-     TRAINEE_BASE_URL=your_base_url_for_trainee_model
-     TRAINEE_API_KEY=your_api_key_for_trainee_model
+      # Tokenizer
+      TOKENIZER_MODEL=
+      
+      # LLM
+      # 支持不同的后端：http_api、openai_api、ollama_api、ollama、huggingface、tgi、sglang、tensorrt
+      # Synthesizer 用于构建知识图谱并生成数据
+      # Trainee 用于使用生成数据进行训练
+
+      # http_api / openai_api
+      SYNTHESIZER_BACKEND=openai_api
+      SYNTHESIZER_MODEL=gpt-4o-mini
+      SYNTHESIZER_BASE_URL=
+      SYNTHESIZER_API_KEY=
+      TRAINEE_BACKEND=openai_api
+      TRAINEE_MODEL=gpt-4o-mini
+      TRAINEE_BASE_URL=
+      TRAINEE_API_KEY=
+      
+      # azure_openai_api
+      # SYNTHESIZER_BACKEND=azure_openai_api
+      # The following is the same as your "Deployment name" in Azure
+      # SYNTHESIZER_MODEL=<your-deployment-name>
+      # SYNTHESIZER_BASE_URL=https://<your-resource-name>.openai.azure.com/openai/deployments/<your-deployment-name>/chat/completions
+      # SYNTHESIZER_API_KEY=
+      # SYNTHESIZER_API_VERSION=<api-version>
+      
+      # # ollama_api
+      # SYNTHESIZER_BACKEND=ollama_api
+      # SYNTHESIZER_MODEL=gemma3
+      # SYNTHESIZER_BASE_URL=http://localhost:11434
+      #
+      # Note: TRAINEE with ollama_api backend is not supported yet as ollama_api does not support logprobs.
+      
+      # # huggingface
+      # SYNTHESIZER_BACKEND=huggingface
+      # SYNTHESIZER_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+      #
+      # TRAINEE_BACKEND=huggingface
+      # TRAINEE_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+      
+      # # sglang
+      # SYNTHESIZER_BACKEND=sglang
+      # SYNTHESIZER_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+      # SYNTHESIZER_TP_SIZE=1
+      # SYNTHESIZER_NUM_GPUS=1
+      
+      # TRAINEE_BACKEND=sglang
+      # TRAINEE_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+      # SYNTHESIZER_TP_SIZE=1
+      # SYNTHESIZER_NUM_GPUS=1
+      
+      # # vllm
+      # SYNTHESIZER_BACKEND=vllm
+      # SYNTHESIZER_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+      # SYNTHESIZER_NUM_GPUS=1
+      
+      # TRAINEE_BACKEND=vllm
+      # TRAINEE_MODEL=Qwen/Qwen2.5-0.5B-Instruct
+      # TRAINEE_NUM_GPUS=1
      ```
 2. （可选）如需修改默认生成配置，可编辑 `graphgen/configs/` 文件夹中的 YAML 文件.
 
    例如：
 
     ```yaml
-      # configs/cot_config.yaml
-      input_file: resources/input_examples/jsonl_demo.jsonl
-      output_data_type: cot
-      tokenizer: cl100k_base
+      # examples/generate/generate_aggregated_qa/aggregated_config.yaml
+      global_params:
+      working_dir: cache
+      graph_backend: kuzu # graph database backend, support: kuzu, networkx
+      kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+   
+      nodes:
+        - id: read_files # id is unique in the pipeline, and can be referenced by other steps
+          op_name: read
+          type: source
+          dependencies: []
+          params:
+            input_path:
+              - examples/input_examples/jsonl_demo.jsonl # input file path, support json, jsonl, txt, pdf. See examples/input_examples for examples
+
       # 其他设置...
     ```
 
@@ -215,17 +277,19 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
    选择所需格式并运行对应脚本：
    
-   | 格式           | 运行脚本                                           | 说明           |
-   |--------------|------------------------------------------------|--------------|
-   | `cot`        | `bash scripts/generate/generate_cot.sh`        | 思维链问答对       |
-   | `atomic`     | `bash scripts/generate/generate_atomic.sh`     | 覆盖基础知识的原子问答对 |
-   | `aggregated` | `bash scripts/generate/generate_aggregated.sh` | 整合复杂知识的聚合问答对 |
-   | `multi-hop`  | `bash scripts/generate/generate_multihop.sh`   | 多跳推理问答对      |
+   | 格式           | 运行脚本                                                                   | 说明              |
+   | ------------ | ---------------------------------------------------------------------- | --------------- |
+   | `cot`        | `bash examples/generate/generate_cot_qa/generate_cot.sh`               | 思维链问答对          |
+   | `atomic`     | `bash examples/generate/generate_atomic_qa/generate_atomic.sh`         | 覆盖基础知识的原子问答对    |
+   | `aggregated` | `bash examples/generate/generate_aggregated_qa/generate_aggregated.sh` | 整合复杂知识的聚合问答对    |
+   | `multi-hop`  | `bash examples/generate/generate_multi_hop_qa/generate_multi_hop.sh`   | 多跳推理问答对         |
+   | `vqa`        | `bash examples/generate/generate_vqa/generate_vqa.sh`                  | 视觉问答对，结合视觉和文本理解 |
+   
 
 
 4. 查看生成结果
    ```bash
-   ls cache/data/graphgen
+   ls cache/output
    ```
 
 ### 使用 Docker 运行
@@ -273,5 +337,5 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 ## 📅 星标历史
 
-[![Star History Chart](https://api.star-history.com/svg?repos=open-sciencelab/GraphGen&type=Date)](https://www.star-history.com/#open-sciencelab/GraphGen&Date)
+[![Star History Chart](https://api.star-history.com/svg?repos=InternScience/GraphGen&type=Date)](https://www.star-history.com/#InternScience/GraphGen&Date)
 

@@ -1,0 +1,340 @@
+#!/bin/bash
+
+set -e
+
+# Downloads NCBI RefSeq nucleotide sequences and creates BLAST databases.
+# 
+# RefSeq 目录结构说明（按生物分类组织）：
+#   - vertebrate_mammalian (哺乳动物)
+#   - vertebrate_other (其他脊椎动物)
+#   - bacteria (细菌)
+#   - archaea (古菌)
+#   - fungi (真菌)
+#   - invertebrate (无脊椎动物)
+#   - plant (植物)
+#   - viral (病毒)
+#   - protozoa (原生动物)
+#   - mitochondrion (线粒体)
+#   - plastid (质体)
+#   - plasmid (质粒)
+#   - other (其他)
+#   - complete/ (完整基因组，包含所有分类)
+#
+# 每个分类目录下包含：
+#   - {category}.{number}.genomic.fna.gz (基因组序列)
+#   - {category}.{number}.rna.fna.gz (RNA序列)
+#
+# Usage: ./build_dna_blast_db.sh [human_mouse_drosophila_yeast|representative|complete|all]
+#   human_mouse_drosophila_yeast: Download only Homo sapiens, Mus musculus, Drosophila melanogaster, and Saccharomyces cerevisiae sequences (minimal, smallest)
+#   representative: Download genomic sequences from major categories (recommended, smaller)
+#                    Includes: vertebrate_mammalian, vertebrate_other, bacteria, archaea, fungi
+#   complete: Download all complete genomic sequences from complete/ directory (very large)
+#   all: Download all genomic sequences from all categories (very large)
+#
+# We need makeblastdb on our PATH
+# For Ubuntu/Debian: sudo apt install ncbi-blast+
+# For CentOS/RHEL/Fedora: sudo dnf install ncbi-blast+
+# Or download from: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
+
+DOWNLOAD_TYPE=${1:-human_mouse_drosophila_yeast}
+
+# Better to use a stable DOWNLOAD_TMP name to support resuming downloads
+DOWNLOAD_TMP=_downloading_dna
+mkdir -p ${DOWNLOAD_TMP}
+cd ${DOWNLOAD_TMP}
+
+# Download RefSeq release information
+echo "Downloading RefSeq release information..."
+wget -c "https://ftp.ncbi.nlm.nih.gov/refseq/release/RELEASE_NUMBER" || {
+    echo "Warning: Could not download RELEASE_NUMBER, using current date as release identifier"
+    RELEASE=$(date +%Y%m%d)
+}
+
+if [ -f "RELEASE_NUMBER" ]; then
+    RELEASE=$(cat RELEASE_NUMBER | tr -d '\n')
+    echo "RefSeq release: ${RELEASE}"
+else
+    RELEASE=$(date +%Y%m%d)
+    echo "Using date as release identifier: ${RELEASE}"
+fi
+
+# Function to check if a file is already downloaded and complete
+check_file_downloaded() {
+    local filename=$1
+    # Since we're already in ${DOWNLOAD_TMP} directory, use filename directly
+    local local_file="${filename}"
+    
+    # Check if compressed file (.fna.gz) exists
+    if [ -f "${local_file}" ] && [ -s "${local_file}" ]; then
+        # Try to verify it's a valid gzip file by attempting to decompress a small portion
+        if gunzip -t "${local_file}" 2>/dev/null; then
+            return 0  # Compressed file exists and is valid
+        else
+            # File exists but is corrupted, remove it
+            rm -f "${local_file}"
+            return 1
+        fi
+    fi
+    
+    # Check if decompressed file (.fna) exists (may have been extracted previously)
+    local decompressed_file="${local_file%.gz}"
+    if [ -f "${decompressed_file}" ] && [ -s "${decompressed_file}" ]; then
+        # Check if it's a valid FASTA file (starts with >)
+        if head -1 "${decompressed_file}" 2>/dev/null | grep -q "^>"; then
+            return 0  # Decompressed file exists and appears valid
+        else
+            # File exists but doesn't look like a valid FASTA file
+            return 1
+        fi
+    fi
+    
+    return 1  # Neither compressed nor decompressed file exists
+}
+
+# Function to check if a file contains target species
+check_file_for_species() {
+    local url=$1
+    local filename=$2
+    local temp_file="/tmp/check_${filename//\//_}"
+    
+    # First check if file is already downloaded locally
+    if check_file_downloaded "${filename}"; then
+        # File already exists, check if it contains target species
+        # Check both compressed and decompressed versions
+        local decompressed_file="${filename%.gz}"
+        if [ -f "${filename}" ]; then
+            # Compressed file exists
+            if gunzip -c "${filename}" 2>/dev/null | head -2000 | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+                return 0  # Contains target species
+            else
+                return 1  # Does not contain target species
+            fi
+        elif [ -f "${decompressed_file}" ]; then
+            # Decompressed file exists
+            if head -2000 "${decompressed_file}" 2>/dev/null | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+                return 0  # Contains target species
+            else
+                return 1  # Does not contain target species
+            fi
+        fi
+    fi
+    
+    # File not downloaded yet, download first 500KB to check
+    # Download first 500KB (enough to get many sequence headers)
+    # This should be sufficient to identify the species in most cases
+    if curl -s --max-time 30 --range 0-512000 "${url}" -o "${temp_file}" 2>/dev/null && [ -s "${temp_file}" ]; then
+        # Try to decompress and check for species names
+        # Check for: Homo sapiens (人), Mus musculus (小鼠), Drosophila melanogaster (果蝇), Saccharomyces cerevisiae (酵母)
+        if gunzip -c "${temp_file}" 2>/dev/null | head -2000 | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+            rm -f "${temp_file}"
+            return 0  # Contains target species
+        else
+            rm -f "${temp_file}"
+            return 1  # Does not contain target species
+        fi
+    else
+        # If partial download fails, skip this file (don't download it)
+        rm -f "${temp_file}"
+        return 1
+    fi
+}
+
+# Download based on type
+case ${DOWNLOAD_TYPE} in
+    human_mouse_drosophila_yeast)
+        echo "Downloading RefSeq sequences for Homo sapiens, Mus musculus, Drosophila melanogaster, and Saccharomyces cerevisiae (minimal size)..."
+        echo "This will check each file to see if it contains target species sequences..."
+        
+        # Check multiple categories: vertebrate_mammalian (人、小鼠), invertebrate (果蝇), fungi (酵母)
+        categories="vertebrate_mammalian invertebrate fungi"
+        total_file_count=0
+        total_download_count=0
+        
+        for category in ${categories}; do
+            echo "Checking files in ${category} category..."
+            
+            # Get list of files and save to temp file to avoid subshell issues
+            curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
+                grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            file_count=0
+            download_count=0
+            
+            while read filename; do
+                file_count=$((file_count + 1))
+                total_file_count=$((total_file_count + 1))
+                url="https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}"
+                echo -n "[${total_file_count}] Checking ${category}/${filename}... "
+                
+                if check_file_for_species "${url}" "${filename}"; then
+                    # Check if file is already downloaded
+                    if check_file_downloaded "${filename}"; then
+                        echo "✓ already downloaded (contains target species)"
+                        download_count=$((download_count + 1))
+                        total_download_count=$((total_download_count + 1))
+                    else
+                        echo "✓ contains target species, downloading..."
+                        download_count=$((download_count + 1))
+                        total_download_count=$((total_download_count + 1))
+                        wget -c -q --show-progress "${url}" || {
+                            echo "Warning: Failed to download ${filename}"
+                        }
+                    fi
+                else
+                    echo "✗ skipping (no target species data)"
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
+            echo "  ${category}: Checked ${file_count} files, downloaded ${download_count} files."
+        done
+        
+        echo ""
+        echo "Summary: Checked ${total_file_count} files total, downloaded ${total_download_count} files containing target species (human, mouse, fruit fly, yeast)."
+        ;;
+    representative)
+        echo "Downloading RefSeq representative sequences (recommended, smaller size)..."
+        # Download major categories for representative coverage
+        # Note: You can modify this list based on your specific requirements
+        for category in vertebrate_mammalian vertebrate_other bacteria archaea fungi; do
+            echo "Downloading ${category} sequences..."
+            # Get list of files and save to temp file to avoid subshell issues
+            curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
+                grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            while read filename; do
+                if check_file_downloaded "${filename}"; then
+                    echo "  ✓ ${filename} already downloaded, skipping..."
+                else
+                    echo "  Downloading ${filename}..."
+                    wget -c -q --show-progress \
+                        "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}" || {
+                        echo "Warning: Failed to download ${filename}"
+                    }
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
+        done
+        ;;
+    complete)
+        echo "Downloading RefSeq complete genomic sequences (WARNING: very large, may take hours)..."
+        # Get list of files and save to temp file to avoid subshell issues
+        curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/complete/" | \
+            grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
+            sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_complete.txt
+        
+        while read filename; do
+            if check_file_downloaded "${filename}"; then
+                echo "  ✓ ${filename} already downloaded, skipping..."
+            else
+                echo "  Downloading ${filename}..."
+                wget -c -q --show-progress \
+                    "https://ftp.ncbi.nlm.nih.gov/refseq/release/complete/${filename}" || {
+                    echo "Warning: Failed to download ${filename}"
+                }
+            fi
+        done < /tmp/refseq_files_complete.txt
+        
+        rm -f /tmp/refseq_files_complete.txt
+        ;;
+    all)
+        echo "Downloading all RefSeq genomic sequences from all categories (WARNING: extremely large, may take many hours)..."
+        # Download genomic sequences from all categories
+        for category in vertebrate_mammalian vertebrate_other bacteria archaea fungi invertebrate plant viral protozoa mitochondrion plastid plasmid other; do
+            echo "Downloading ${category} genomic sequences..."
+            # Get list of files and save to temp file to avoid subshell issues
+            curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
+                grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            while read filename; do
+                if check_file_downloaded "${filename}"; then
+                    echo "  ✓ ${filename} already downloaded, skipping..."
+                else
+                    echo "  Downloading ${filename}..."
+                    wget -c -q --show-progress \
+                        "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}" || {
+                        echo "Warning: Failed to download ${filename}"
+                    }
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
+        done
+        ;;
+    *)
+        echo "Error: Unknown download type '${DOWNLOAD_TYPE}'"
+        echo "Usage: $0 [human_mouse_drosophila_yeast|representative|complete|all]"
+        echo "  human_mouse_drosophila_yeast: Download only Homo sapiens, Mus musculus, Drosophila melanogaster, and Saccharomyces cerevisiae (minimal)"
+        echo "  representative: Download major categories (recommended)"
+        echo "  complete: Download all complete genomic sequences (very large)"
+        echo "  all: Download all genomic sequences (extremely large)"
+        echo "Note: For RNA sequences, use build_rna_blast_db.sh instead"
+        exit 1
+        ;;
+esac
+
+cd ..
+
+# Create release directory
+mkdir -p refseq_${RELEASE}
+mv ${DOWNLOAD_TMP}/* refseq_${RELEASE}/ 2>/dev/null || true
+rmdir ${DOWNLOAD_TMP} 2>/dev/null || true
+
+cd refseq_${RELEASE}
+
+# Extract and combine sequences
+echo "Extracting and combining sequences..."
+
+# Extract all downloaded genomic sequences
+if [ $(find . -name "*.genomic.fna.gz" -type f | wc -l) -gt 0 ]; then
+    echo "Extracting genomic sequences..."
+    find . -name "*.genomic.fna.gz" -type f -exec gunzip {} \;
+fi
+
+# Combine all FASTA files into one
+echo "Combining all FASTA files..."
+FASTA_FILES=$(find . -name "*.fna" -type f)
+if [ -z "$FASTA_FILES" ]; then
+    FASTA_FILES=$(find . -name "*.fa" -type f)
+fi
+
+if [ -z "$FASTA_FILES" ]; then
+    echo "Error: No FASTA files found to combine"
+    exit 1
+fi
+
+echo "$FASTA_FILES" | while read -r file; do
+    if [ -f "$file" ]; then
+        cat "$file" >> refseq_${RELEASE}.fasta
+    fi
+done
+
+# Check if we have sequences
+if [ ! -s "refseq_${RELEASE}.fasta" ]; then
+    echo "Error: Combined FASTA file is empty"
+    exit 1
+fi
+
+echo "Creating BLAST database..."
+# Create BLAST database for DNA sequences (use -dbtype nucl for nucleotide)
+makeblastdb -in refseq_${RELEASE}.fasta \
+    -out refseq_${RELEASE} \
+    -dbtype nucl \
+    -parse_seqids \
+    -title "RefSeq_${RELEASE}"
+
+echo "BLAST database created successfully!"
+echo "Database location: $(pwd)/refseq_${RELEASE}"
+echo ""
+echo "To use this database, set in your config:"
+echo "  local_blast_db: $(pwd)/refseq_${RELEASE}"
+echo ""
+echo "Note: The database files are:"
+ls -lh refseq_${RELEASE}.*
+
+cd ..
+

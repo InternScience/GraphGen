@@ -1,1 +1,1 @@
-from .extract_info import extract_info
+from .extract_service import ExtractService

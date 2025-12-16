@@ -2,7 +2,7 @@ from typing import Set
 
 from graphgen.bases.datatypes import QAPair
 from graphgen.models.evaluator.base_evaluator import BaseEvaluator
-from graphgen.utils import NLTKHelper, create_event_loop, detect_main_language
+from graphgen.utils import NLTKHelper, detect_main_language
 
 nltk_helper = NLTKHelper()
 
@@ -18,7 +18,9 @@ class MTLDEvaluator(BaseEvaluator):
         self.stopwords_zh: Set[str] = set(nltk_helper.get_stopwords("chinese"))
 
     async def evaluate_single(self, pair: QAPair) -> float:
-        loop = create_event_loop()
+        # In async context, we should use the running loop
+        import asyncio
+        loop = asyncio.get_event_loop()
         return await loop.run_in_executor(None, self._calculate_mtld_score, pair.answer)
 
     def _calculate_mtld_score(self, text: str, threshold=0.72) -> float:

@@ -1,0 +1,55 @@
+global_params:
+  working_dir: cache
+  graph_backend: kuzu # graph database backend, support: kuzu, networkx
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+
+nodes:
+  - id: read
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/json_demo.json
+
+  - id: chunk
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 1024
+      chunk_overlap: 100
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    dependencies:
+      - chunk
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - build_kg
+    params:
+      method: dfs
+      method_params:
+        max_units_per_community: 1
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      method: atomic
+      data_format: Alpaca

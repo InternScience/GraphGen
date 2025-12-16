@@ -1,5 +1,3 @@
-# https://arxiv.org/abs/2305.11952
-
 import argparse
 import asyncio
 import json

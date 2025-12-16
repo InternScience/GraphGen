@@ -138,15 +138,3 @@ class SGLangWrapper(BaseLLMWrapper):
         raise NotImplementedError(
             "SGLangWrapper does not support per-token logprobs yet."
         )
-
-    def shutdown(self) -> None:
-        """Gracefully shutdown the SGLang engine."""
-        if hasattr(self, "engine"):
-            self.engine.shutdown()
-
-    def restart(self) -> None:
-        """Restart the SGLang engine."""
-        self.shutdown()
-        self.engine = self.engine.__class__(
-            model_path=self.model_path, tp_size=self.tp_size
-        )

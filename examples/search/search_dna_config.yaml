@@ -1,0 +1,30 @@
+global_params:
+  working_dir: cache
+
+nodes:
+  - id: read_step
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/search_dna_demo.jsonl # input file path, support json, jsonl, txt, pdf. See examples/input_examples for examples
+
+  - id: search_step
+    op_name: search
+    type: map_batch
+    dependencies:
+      - read_step # search_step depends on read_step
+    execution_params:
+      replicas: 1
+      batch_size: 10
+    params:
+      data_sources: [ncbi] # data source for searcher, support: wikipedia, google, uniprot, ncbi, rnacentral
+      ncbi_params:
+        email: test@example.com # NCBI requires an email address
+        tool: GraphGen # tool name for NCBI API
+        use_local_blast: true # whether to use local blast for DNA search
+        local_blast_db: refseq_release/refseq_release # path to local BLAST database (without .nhr extension)
+        blast_num_threads: 2 # number of threads for BLAST search (reduce to save memory)
+        max_concurrent: 5 # maximum number of concurrent search tasks (reduce to prevent OOM, default: unlimited)
+
