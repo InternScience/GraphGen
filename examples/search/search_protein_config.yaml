@@ -1,12 +1,23 @@
-pipeline:
-  - name: read_step
-    op_key: read
-    params:
-      input_file:  resources/input_examples/search_protein_demo.jsonl # input file path, support json, jsonl, txt, pdf. See resources/input_examples for examples
+global_params:
+  working_dir: cache
 
-  - name: search_step
-    op_key: search
-    deps: [read_step] # search_step depends on read_step
+nodes:
+  - id: read_step
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/search_protein_demo.jsonl # input file path, support json, jsonl, txt, pdf. See examples/input_examples for examples
+
+  - id: search_step
+    op_name: search
+    type: map_batch
+    dependencies:
+      - read_step # search_step depends on read_step
+    execution_params:
+      replicas: 1
+      batch_size: 10
     params:
       data_sources: [uniprot] # data source for searcher, support: wikipedia, google, uniprot
       uniprot_params:
