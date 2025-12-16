@@ -1,5 +1,5 @@
 import asyncio
-from typing import Awaitable, Callable, List, Optional, TypeVar
+from typing import Awaitable, Callable, List, Optional, TypeVar, Union
 
 import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
@@ -22,19 +22,13 @@ def run_concurrent(
     save_interval: int = 0,
     save_callback: Optional[Callable[[List[R], int], None]] = None,
     max_concurrent: Optional[int] = None,
-) -> List[R]:
+) -> Union[List[R], Awaitable[List[R]]]:
     """
     Run coroutines concurrently with optional periodic saving.
-    
-    :param coro_fn: Coroutine function to run for each item
-    :param items: List of items to process
-    :param desc: Description for progress bar
-    :param unit: Unit name for progress bar
-    :param progress_bar: Optional Gradio progress bar
-    :param save_interval: Number of completed tasks before calling save_callback (0 to disable)
-    :param save_callback: Callback function to save intermediate results (results, completed_count)
-    :param max_concurrent: Maximum number of concurrent tasks (None for unlimited, default: None)
-    :return: List of results
+    This function can be used in both sync and async contexts:
+    - In sync context: returns List[R] directly
+    - In async context: returns Awaitable[List[R]] (use with 'await')
+    :return: List of results (in sync context) or coroutine (in async context)
     """
     if not items:
         return []
@@ -110,8 +104,18 @@ def run_concurrent(
         # filter out exceptions
         return [res for res in results if not isinstance(res, Exception)]
 
-    loop = create_event_loop()
+    # Check if we're in an async context (event loop is running)
     try:
-        return loop.run_until_complete(_run_all())
-    finally:
-        loop.close()
+        running_loop = asyncio.get_running_loop()
+        # If we're in an async context, return the coroutine directly
+        # The caller should use 'await run_concurrent(...)'
+        return _run_all()
+    except RuntimeError:
+        # No running loop, we can create one and run until complete
+        loop, created = create_event_loop()
+        try:
+            return loop.run_until_complete(_run_all())
+        finally:
+            # Only close the loop if we created it
+            if created:
+                loop.close()

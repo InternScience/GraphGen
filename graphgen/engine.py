@@ -1,5 +1,7 @@
 import inspect
 import logging
+import os
+import sys
 from collections import defaultdict, deque
 from functools import wraps
 from typing import Any, Callable, Dict, List, Set
@@ -20,11 +22,21 @@ class Engine:
         self.functions = functions
         self.datasets: Dict[str, ray.data.Dataset] = {}
 
+        # Disable Ray Data progress bars and verbose output
+        os.environ.setdefault("RAY_DATA_DISABLE_PROGRESS_BARS", "1")
+        try:
+            from ray.data import DataContext
+            ctx = DataContext.get_current()
+            ctx.enable_rich_progress_bars = False
+            ctx.use_ray_tqdm = False
+        except Exception:
+            pass  # Ray Data context might not be available
+
         if not ray.is_initialized():
             context = ray.init(
                 ignore_reinit_error=True,
                 logging_level=logging.ERROR,
-                log_to_driver=True,
+                log_to_driver=False,  # Disable Ray logs to driver
                 **ray_init_kwargs,
             )
             logger.info("Ray Dashboard URL: %s", context.dashboard_url)

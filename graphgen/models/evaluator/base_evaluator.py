@@ -15,7 +15,16 @@ class BaseEvaluator:
         """
         Evaluate the text and return a score.
         """
-        return create_event_loop().run_until_complete(self.async_evaluate(pairs))
+        loop, created = create_event_loop()
+        try:
+            if loop.is_running():
+                raise RuntimeError(
+                    "Cannot use evaluate when event loop is already running."
+                )
+            return loop.run_until_complete(self.async_evaluate(pairs))
+        finally:
+            if created:
+                loop.close()
 
     async def async_evaluate(self, pairs: list[QAPair]) -> list[float]:
         semaphore = asyncio.Semaphore(self.max_concurrent)

@@ -44,8 +44,8 @@ class OmicsKGBuilder(BaseKGBuilder):
         # Build metadata text for prompt
         metadata_text = self._format_metadata(metadata)
         
-        # Detect language (default to English for biological data)
-        language = "en"  # Most biological metadata is in English
+        # Detect language from metadata text (defaults to English if no Chinese detected)
+        language = detect_main_language(metadata_text)
         
         # Build prompt with sequence and metadata
         hint_prompt = OMICS_KG_EXTRACTION_PROMPT[language]["TEMPLATE"].format(

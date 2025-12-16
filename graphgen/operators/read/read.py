@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional, Union
+from typing import Any, Dict, Iterator, List, Optional, Union
 
 import ray
 
@@ -126,3 +126,75 @@ def read(
     except Exception as e:
         logger.error("[READ] Failed to read files from %s: %s", input_path, e)
         raise
+
+
+def read_files(
+    input_file: str,
+    allowed_suffix: Optional[List[str]] = None,
+    cache_dir: Optional[str] = None,
+    max_workers: int = 4,
+    rescan: bool = False,
+) -> Iterator[Dict[str, Any]]:
+    """
+    Read files from a path using parallel scanning and appropriate readers.
+    Returns an iterator for streaming (backward compatibility with graphgen.py).
+
+    Args:
+        input_file: Path to a file or directory
+        allowed_suffix: List of file suffixes to read. If None, uses all supported types
+        cache_dir: Directory for caching PDF extraction and scan results
+        max_workers: Number of workers for parallel scanning
+        rescan: Whether to force rescan even if cached results exist
+    
+    Returns:
+        Iterator of dictionaries containing the data (for streaming)
+    """
+    path = Path(input_file).expanduser()
+    if not path.exists():
+        raise FileNotFoundError(f"input_path not found: {input_file}")
+
+    if allowed_suffix is None:
+        support_suffix = set(_MAPPING.keys())
+    else:
+        support_suffix = {s.lower().lstrip(".") for s in allowed_suffix}
+
+    with ParallelFileScanner(
+        cache_dir=cache_dir or "cache",
+        allowed_suffix=support_suffix,
+        rescan=rescan,
+        max_workers=max_workers,
+    ) as scanner:
+        scan_results = scanner.scan(str(path), recursive=True)
+
+    # Extract files from scan results
+    files_to_read = []
+    for path_result in scan_results.values():
+        if "error" in path_result:
+            logger.warning("Error scanning %s: %s", path_result.path, path_result.error)
+            continue
+        files_to_read.extend(path_result.get("files", []))
+
+    logger.info(
+        "Found %d eligible file(s) under folder %s (allowed_suffix=%s)",
+        len(files_to_read),
+        input_file,
+        support_suffix,
+    )
+
+    for file_info in files_to_read:
+        try:
+            file_path = file_info["path"]
+            suffix = Path(file_path).suffix.lstrip(".").lower()
+            reader = _build_reader(suffix, cache_dir)
+
+            # Prefer stream reading if available (for memory efficiency)
+            if hasattr(reader, "read_stream"):
+                yield from reader.read_stream(file_path)
+            else:
+                # Fallback to regular read() method - convert Ray Dataset to iterator
+                ds = reader.read([file_path])
+                for record in ds.iter_rows():
+                    yield record
+
+        except Exception as e:  # pylint: disable=broad-except
+            logger.exception("Error reading %s: %s", file_info.get("path"), e)

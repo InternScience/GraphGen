@@ -1,4 +1,5 @@
 import inspect
+import logging
 import os
 from abc import ABC, abstractmethod
 from typing import Iterable, Union
@@ -6,7 +7,7 @@ from typing import Iterable, Union
 import pandas as pd
 import ray
 
-from graphgen.utils import CURRENT_LOGGER_VAR, set_logger
+from graphgen.utils.log import CURRENT_LOGGER_VAR, set_logger
 
 
 class BaseOperator(ABC):
@@ -29,7 +30,8 @@ class BaseOperator(ABC):
         log_file = os.path.join(log_dir, f"{self.op_name}_{worker_id_short}.log")
 
         self.logger = set_logger(
-            log_file=log_file, name=f"{self.op_name}.{worker_id_short}", force=True
+            log_file=log_file, name=f"{self.op_name}.{worker_id_short}", 
+            console_level=logging.ERROR, force=True
         )
 
         self.logger.info(
