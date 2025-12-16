@@ -86,42 +86,60 @@ class OmicsQAGenerator(BaseGenerator):
             elif isinstance(node_data[caption_key], dict):
                 return node_data[caption_key]
         
-        # Extract from metadata or node data based on molecule type
+        # Field mappings for each molecule type
+        field_mapping = {
+            "protein": ["protein_name", "gene_names", "organism", "function", "sequence", "id", "database", "entry_name", "uniprot_id"],
+            "dna": ["gene_name", "gene_description", "organism", "chromosome", "genomic_location", "function", "gene_type", "id", "database", "sequence"],
+            "rna": ["rna_type", "description", "organism", "related_genes", "gene_name", "so_term", "id", "database", "rnacentral_id", "sequence"],
+        }
+        
+        # Extract fields based on molecule type
         caption = {}
+        caption_fields = field_mapping.get(molecule_type_lower, [])
+        for field in caption_fields:
+            if field in node_data and node_data[field]:
+                caption[field] = node_data[field]
         
+        # Special handling for protein: check search results and existing protein field
         if molecule_type_lower == "protein":
-            # Extract protein-specific fields
-            if "protein" in node_data and node_data["protein"]:
-                if isinstance(node_data["protein"], list) and len(node_data["protein"]) > 0:
-                    return node_data["protein"][0] if isinstance(node_data["protein"][0], dict) else node_data["protein"]
-                elif isinstance(node_data["protein"], dict):
-                    return node_data["protein"]
+            # Check for search result data (from UniProt search)
+            if "_search_results" in node_data:
+                search_results = node_data["_search_results"]
+                if isinstance(search_results, list) and len(search_results) > 0:
+                    first_result = search_results[0]
+                    if isinstance(first_result, dict):
+                        search_caption = {
+                            "id": first_result.get("id", ""),
+                            "protein_name": first_result.get("protein_name", ""),
+                            "gene_names": first_result.get("gene_names", []),
+                            "organism": first_result.get("organism", ""),
+                            "function": first_result.get("function", []),
+                            "sequence": node_data.get("sequence") or first_result.get("sequence", ""),
+                            "database": "UniProt"
+                        }
+                        # Remove empty fields and return if any data exists
+                        search_caption = {k: v for k, v in search_caption.items() if v}
+                        if search_caption:
+                            return search_caption
             
-            # Fallback: extract from node data fields
-            caption_fields = ["protein_name", "gene_names", "organism", "function", "sequence", "id", "database"]
-            for field in caption_fields:
-                if field in node_data:
-                    caption[field] = node_data[field]
+            # Merge with existing protein field if present
+            if "protein" in node_data and node_data["protein"]:
+                existing_protein = node_data["protein"]
+                if isinstance(existing_protein, list) and len(existing_protein) > 0:
+                    existing_protein = existing_protein[0] if isinstance(existing_protein[0], dict) else existing_protein
+                if isinstance(existing_protein, dict):
+                    for key, value in existing_protein.items():
+                        if key not in caption and value:
+                            caption[key] = value
+                    # Ensure sequence from node_data takes precedence
+                    if "sequence" in node_data and node_data["sequence"]:
+                        caption["sequence"] = node_data["sequence"]
         
-        elif molecule_type_lower == "dna":
-            # Extract DNA-specific fields
-            caption_fields = [
-                "gene_name", "gene_description", "organism", "chromosome", 
-                "genomic_location", "function", "gene_type", "id", "database"
-            ]
-            for field in caption_fields:
-                if field in node_data:
-                    caption[field] = node_data[field]
-        
-        elif molecule_type_lower == "rna":
-            # Extract RNA-specific fields
-            caption_fields = [
-                "rna_type", "description", "organism", "related_genes", 
-                "gene_name", "so_term", "id", "database", "rnacentral_id"
-            ]
-            for field in caption_fields:
-                if field in node_data:
-                    caption[field] = node_data[field]
+        # Fallback to description if no caption found
+        if not caption and "description" in node_data:
+            description = node_data["description"]
+            if isinstance(description, str) and len(description) > 10:
+                caption["description"] = description
         
         return caption if caption else None
 
@@ -134,24 +152,58 @@ class OmicsQAGenerator(BaseGenerator):
         :param nodes: List of (node_id, node_data) tuples
         :return: Detected molecule type ("dna", "rna", "protein", or "unknown")
         """
+        if not nodes:
+            return "unknown"
+        
+        # Type indicators for each molecule type
+        type_indicators = {
+            "protein": {
+                "fields": ["protein_name", "uniprot_id", "entry_name", "protein_caption"],
+                "source_prefix": "protein-",
+                "description_keywords": ["protein"],
+            },
+            "dna": {
+                "fields": ["gene_name", "chromosome", "genomic_location"],
+                "source_prefix": "dna-",
+                "description_keywords": ["gene", "dna", "chromosome"],
+            },
+            "rna": {
+                "fields": ["rna_type", "rnacentral_id"],
+                "source_prefix": "rna-",
+                "description_keywords": ["rna", "transcript"],
+            },
+        }
+            
         for _, node_data in nodes:
-            # Check node type field
-            node_type = node_data.get("type", "").lower()
-            if node_type in ("dna", "rna", "protein"):
-                return node_type
+            # Priority 1: Check explicit type fields (most reliable)
+            for field in ["type", "molecule_type"]:
+                value = node_data.get(field, "").lower()
+                if value in ("dna", "rna", "protein"):
+                    return value
             
-            # Check molecule_type in metadata or node data
-            molecule_type = node_data.get("molecule_type", "").lower()
-            if molecule_type in ("dna", "rna", "protein"):
-                return molecule_type
+            # Priority 2: Check source_id prefix
+            source_id = node_data.get("source_id", "").lower()
+            for mol_type, indicators in type_indicators.items():
+                if source_id.startswith(indicators["source_prefix"]):
+                    return mol_type
             
-            # Check for type-specific fields
-            if "protein" in node_data or "protein_name" in node_data or "protein_caption" in node_data:
-                return "protein"
-            if "gene_name" in node_data and "chromosome" in node_data:
-                return "dna"
-            if "rna_type" in node_data or "rnacentral_id" in node_data:
-                return "rna"
+            # Priority 3: Check type-specific fields
+            for mol_type, indicators in type_indicators.items():
+                if any(key in node_data for key in indicators["fields"]):
+                    # Special check for DNA: need chromosome or genomic_location
+                    if mol_type == "dna" and not any(key in node_data for key in ["chromosome", "genomic_location"]):
+                        continue
+                    return mol_type
+            
+            # Priority 4: Check description keywords
+            description = node_data.get("description", "").lower()
+            for mol_type, indicators in type_indicators.items():
+                keywords = indicators["description_keywords"]
+                if any(kw in description for kw in keywords):
+                    # Special check: "protein" in description but not "gene"
+                    if mol_type == "protein" and "gene" in description:
+                        continue
+                    return mol_type
         
         return "unknown"
 
@@ -182,7 +234,7 @@ class OmicsQAGenerator(BaseGenerator):
         # Only attach caption once per batch (from the first relevant node)
         caption_attached = False
         for node in nodes:
-            node_data = node[1]
+            node_id, node_data = node
             caption = self._extract_caption(node_data, molecule_type)
             
             if caption and not caption_attached:
@@ -192,6 +244,14 @@ class OmicsQAGenerator(BaseGenerator):
                     qa[molecule_type] = caption
                 caption_attached = True
                 break  # Only need to attach once per batch
+        
+        if not caption_attached:
+            logger.warning(f"No caption extracted for molecule_type={molecule_type}. Node data sample: {dict(list(nodes[0][1].items())[:5]) if nodes else 'No nodes'}")
+            # Still attach empty captions to maintain format consistency
+            for qa in qa_pairs.values():
+                qa.setdefault("dna", "")
+                qa.setdefault("rna", "")
+                qa.setdefault("protein", "")
         
         result.update(qa_pairs)
         return result
@@ -204,61 +264,71 @@ class OmicsQAGenerator(BaseGenerator):
         Format generation results with molecule-specific caption fields.
         Supports dna, rna, and protein fields in output.
         """
+        # Extract QA pairs and molecule captions
+        qa_items = [
+            {
+                "question": v["question"],
+                "answer": v["answer"],
+                "dna": v.get("dna", ""),
+                "rna": v.get("rna", ""),
+                "protein": v.get("protein", ""),
+            }
+            for item in results
+            for k, v in item.items()
+        ]
+        
+        # Format based on output format
         if output_data_format == "Alpaca":
-            results = [
+            return [
                 {
-                    "instruction": v["question"],
+                    "instruction": qa["question"],
                     "input": "",
-                    "output": v["answer"],
-                    "dna": v.get("dna", ""),
-                    "rna": v.get("rna", ""),
-                    "protein": v.get("protein", ""),
+                    "output": qa["answer"],
+                    "dna": qa["dna"],
+                    "rna": qa["rna"],
+                    "protein": qa["protein"],
                 }
-                for item in results
-                for k, v in item.items()
+                for qa in qa_items
             ]
         elif output_data_format == "Sharegpt":
-            results = [
+            return [
                 {
                     "conversations": [
                         {
                             "from": "human",
                             "value": [
                                 {
-                                    "text": v["question"],
-                                    "dna": v.get("dna", ""),
-                                    "rna": v.get("rna", ""),
-                                    "protein": v.get("protein", ""),
+                                    "text": qa["question"],
+                                    "dna": qa["dna"],
+                                    "rna": qa["rna"],
+                                    "protein": qa["protein"],
                                 }
                             ],
                         },
-                        {"from": "gpt", "value": v["answer"]},
+                        {"from": "gpt", "value": qa["answer"]},
                     ]
                 }
-                for item in results
-                for k, v in item.items()
+                for qa in qa_items
             ]
         elif output_data_format == "ChatML":
-            results = [
+            return [
                 {
                     "messages": [
                         {
                             "role": "user",
                             "content": [
                                 {
-                                    "text": v["question"],
-                                    "dna": v.get("dna", ""),
-                                    "rna": v.get("rna", ""),
-                                    "protein": v.get("protein", ""),
+                                    "text": qa["question"],
+                                    "dna": qa["dna"],
+                                    "rna": qa["rna"],
+                                    "protein": qa["protein"],
                                 }
                             ],
                         },
-                        {"role": "assistant", "content": v["answer"]},
+                        {"role": "assistant", "content": qa["answer"]},
                     ]
                 }
-                for item in results
-                for k, v in item.items()
+                for qa in qa_items
             ]
         else:
             raise ValueError(f"Unknown output data format: {output_data_format}")
-        return results

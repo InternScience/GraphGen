@@ -131,6 +131,7 @@ class PartitionService(BaseOperator):
 
         for node_id, node_data in nodes_data:
             entity_type = (node_data.get("entity_type") or "").lower()
+            
             if not entity_type:
                 continue
 
@@ -139,6 +140,9 @@ class PartitionService(BaseOperator):
                 for sid in node_data.get("source_id", "").split("<SEP>")
                 if sid.strip()
             ]
+            
+            if not source_ids:
+                continue
 
             # Handle images
             if "image" in entity_type:
@@ -153,5 +157,72 @@ class PartitionService(BaseOperator):
                     # We'll use the first image chunk found for this node.
                     node_data["image_data"] = json.loads(image_chunks[0]["content"])
                     logger.debug("Attached image data to node %s", node_id)
+            
+            # Handle omics data (protein/dna/rna)
+            molecule_type = None
+            if entity_type in ("protein", "dna", "rna"):
+                molecule_type = entity_type
+            else:
+                # Infer from source_id prefix
+                for sid in source_ids:
+                    sid_lower = sid.lower()
+                    if sid_lower.startswith("protein-"):
+                        molecule_type = "protein"
+                        break
+                    elif sid_lower.startswith("dna-"):
+                        molecule_type = "dna"
+                        break
+                    elif sid_lower.startswith("rna-"):
+                        molecule_type = "rna"
+                        break
+            
+            if molecule_type:
+                omics_chunks = [
+                    data
+                    for sid in source_ids
+                    if (data := self.chunk_storage.get_by_id(sid))
+                ]
+                
+                if not omics_chunks:
+                    logger.warning("No chunks found for node %s (type: %s) with source_ids: %s", node_id, molecule_type, source_ids)
+                    continue
+                
+                first_chunk = omics_chunks[0]
+                def get_chunk_value(field: str):
+                    # First check root level of chunk
+                    if field in first_chunk:
+                        return first_chunk[field]
+                    # Then check metadata if it exists and is a dict
+                    chunk_metadata = first_chunk.get("metadata")
+                    if isinstance(chunk_metadata, dict) and field in chunk_metadata:
+                        return chunk_metadata[field]
+                    return None
+                
+                # Attach sequence if not already present
+                if "sequence" not in node_data:
+                    sequence = get_chunk_value("sequence")
+                    if sequence:
+                        node_data["sequence"] = sequence
+                    else:
+                        logger.warning("No sequence found in chunk for node %s. Chunk keys: %s", node_id, list(first_chunk.keys())[:15])
+                
+                # Attach molecule_type if not present
+                if "molecule_type" not in node_data:
+                    chunk_molecule_type = get_chunk_value("molecule_type")
+                    if chunk_molecule_type:
+                        node_data["molecule_type"] = chunk_molecule_type
+                
+                # Attach molecule-specific fields
+                field_mapping = {
+                    "protein": ["protein_name", "gene_names", "organism", "function", "id", "database", "entry_name", "uniprot_id"],
+                    "dna": ["gene_name", "gene_description", "organism", "chromosome", "genomic_location", "function", "gene_type", "id", "database"],
+                    "rna": ["rna_type", "description", "organism", "related_genes", "gene_name", "so_term", "id", "database", "rnacentral_id"],
+                }
+                
+                for field in field_mapping.get(molecule_type, []):
+                    if field not in node_data:
+                        value = get_chunk_value(field)
+                        if value:
+                            node_data[field] = value
 
         return nodes_data, edges_data
