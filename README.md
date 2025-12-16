@@ -62,13 +62,16 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 
 ## 📌 Latest Updates
 
-- **2025.12.1**: Added search support for [NCBI](https://www.ncbi.nlm.nih.gov/) and [RNAcentral](https://rnacentral.org/) databases, enabling extraction of DNA and RNA data from these bioinformatics databases.
-- **2025.10.30**: We support several new LLM clients and inference backends including [Ollama_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/ollama_client.py), [http_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/http_client.py), [HuggingFace Transformers](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/hf_wrapper.py) and [SGLang](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/sglang_wrapper.py).
-- **2025.10.23**: We support VQA(Visual Question Answering) data generation now. Run script: `bash scripts/generate/generate_vqa.sh`.
+- **2025.12.16**: Added [rocksdb](https://github.com/facebook/rocksdb) for key-value storage backend and [kuzudb](https://github.com/kuzudb/kuzu) for graph database backend support.
+- **2025.12.16**: Added [vllm](https://github.com/vllm-project/vllm) for local inference backend support.
+- **2025.12.16**: Refactored the data generation pipeline using [ray](https://github.com/ray-project/ray) to improve the efficiency of distributed execution and resource management.
 
 <details>
 <summary>History</summary>
 
+- **2025.12.1**: Added search support for [NCBI](https://www.ncbi.nlm.nih.gov/) and [RNAcentral](https://rnacentral.org/) databases, enabling extraction of DNA and RNA data from these bioinformatics databases.
+- **2025.10.30**: We support several new LLM clients and inference backends including [Ollama_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/ollama_client.py), [http_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/http_client.py), [HuggingFace Transformers](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/hf_wrapper.py) and [SGLang](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/sglang_wrapper.py).
+- **2025.10.23**: We support VQA(Visual Question Answering) data generation now. Run script: `bash scripts/generate/generate_vqa.sh`.
 - **2025.10.21**: We support PDF as input format for data generation now via [MinerU](https://github.com/opendatalab/MinerU).
 - **2025.09.29**: We auto-update gradio demo on [Hugging Face](https://huggingface.co/spaces/chenzihong/GraphGen) and [ModelScope](https://modelscope.cn/studios/chenzihong/GraphGen).
 - **2025.08.14**: We have added support for community detection in knowledge graphs using the Leiden algorithm, enabling the synthesis of Chain-of-Thought (CoT) data.
@@ -84,13 +87,14 @@ We support various LLM inference servers, API servers, inference clients, input 
 Users can flexibly configure according to the needs of synthetic data.
 
 
-| Inference Server                             | Api Server                                                                     | Inference Client                                           | Data Source                                                                                                                                                                                                                                                                           | Data Modal    | Data Type                                       |
-|----------------------------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|-------------------------------------------------|
-| [![hf-icon]HF][hf]<br>[![sg-icon]SGLang][sg] | [![sif-icon]Silicon][sif]<br>[![oai-icon]OpenAI][oai]<br>[![az-icon]Azure][az] | HTTP<br>[![ol-icon]Ollama][ol]<br>[![oai-icon]OpenAI][oai] | Files(CSV, JSON, PDF, TXT, etc.)<br>Databases([![uniprot-icon]UniProt][uniprot], [![ncbi-icon]NCBI][ncbi], [![rnacentral-icon]RNAcentral][rnacentral])<br>Search Engines([![bing-icon]Bing][bing], [![google-icon]Google][google])<br>Knowledge Graphs([![wiki-icon]Wikipedia][wiki]) | TEXT<br>IMAGE | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
+| Inference Server                                                         | Api Server                                                                     | Inference Client                                           | Data Source                                                                                                                                                                                                                                                                           | Data Modal    | Data Type                                       |
+|--------------------------------------------------------------------------|--------------------------------------------------------------------------------|------------------------------------------------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|---------------|-------------------------------------------------|
+| [![hf-icon]HF][hf]<br>[![sg-icon]SGLang][sg]<br>[![vllm-icon]vllm][vllm] | [![sif-icon]Silicon][sif]<br>[![oai-icon]OpenAI][oai]<br>[![az-icon]Azure][az] | HTTP<br>[![ol-icon]Ollama][ol]<br>[![oai-icon]OpenAI][oai] | Files(CSV, JSON, PDF, TXT, etc.)<br>Databases([![uniprot-icon]UniProt][uniprot], [![ncbi-icon]NCBI][ncbi], [![rnacentral-icon]RNAcentral][rnacentral])<br>Search Engines([![bing-icon]Bing][bing], [![google-icon]Google][google])<br>Knowledge Graphs([![wiki-icon]Wikipedia][wiki]) | TEXT<br>IMAGE | Aggregated<br>Atomic<br>CoT<br>Multi-hop<br>VQA |
 
 <!-- links -->
 [hf]: https://huggingface.co/docs/transformers/index
 [sg]: https://docs.sglang.ai
+[vllm]: https://github.com/vllm-project/vllm
 [sif]: https://siliconflow.cn
 [oai]: https://openai.com
 [az]: https://azure.microsoft.com/en-us/services/cognitive-services/openai-service/
@@ -106,6 +110,7 @@ Users can flexibly configure according to the needs of synthetic data.
 <!-- icons -->
 [hf-icon]: https://www.google.com/s2/favicons?domain=https://huggingface.co
 [sg-icon]: https://www.google.com/s2/favicons?domain=https://docs.sglang.ai
+[vllm-icon]: https://www.google.com/s2/favicons?domain=https://docs.vllm.ai
 [sif-icon]: https://www.google.com/s2/favicons?domain=siliconflow.com
 [oai-icon]: https://www.google.com/s2/favicons?domain=https://openai.com
 [az-icon]: https://www.google.com/s2/favicons?domain=https://azure.microsoft.com
