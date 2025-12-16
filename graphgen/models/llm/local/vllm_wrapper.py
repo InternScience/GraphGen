@@ -33,7 +33,7 @@ class VLLMWrapper(BaseLLMWrapper):
             tensor_parallel_size=tensor_parallel_size,
             gpu_memory_utilization=gpu_memory_utilization,
             trust_remote_code=kwargs.get("trust_remote_code", True),
-            disable_log_stats=False, 
+            disable_log_stats=False,
         )
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         self.temperature = temperature
