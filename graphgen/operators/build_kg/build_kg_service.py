@@ -12,11 +12,11 @@ from .build_text_kg import build_text_kg
 
 
 class BuildKGService(BaseOperator):
-    def __init__(self, working_dir: str = "cache"):
+    def __init__(self, working_dir: str = "cache", graph_backend: str = "kuzu"):
         super().__init__(working_dir=working_dir, op_name="build_kg_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
-            backend="kuzu", working_dir=working_dir, namespace="graph"
+            backend=graph_backend, working_dir=working_dir, namespace="graph"
         )
 
     def process(self, batch: pd.DataFrame) -> pd.DataFrame:

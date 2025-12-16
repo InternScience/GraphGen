@@ -1,13 +1,16 @@
-import uuid
 import math
+import uuid
 from typing import Any, List, Optional
+
 from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
+
 
 class VLLMWrapper(BaseLLMWrapper):
     """
     Async inference backend based on vLLM.
     """
+
     def __init__(
         self,
         model: str,
@@ -33,7 +36,7 @@ class VLLMWrapper(BaseLLMWrapper):
             tensor_parallel_size=tensor_parallel_size,
             gpu_memory_utilization=gpu_memory_utilization,
             trust_remote_code=kwargs.get("trust_remote_code", True),
-            disable_log_stats=False, 
+            disable_log_stats=False,
         )
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         self.temperature = temperature
@@ -96,7 +99,11 @@ class VLLMWrapper(BaseLLMWrapper):
         async for request_output in result_generator:
             final_output = request_output
 
-        if not final_output or not final_output.outputs or not final_output.outputs[0].logprobs:
+        if (
+            not final_output
+            or not final_output.outputs
+            or not final_output.outputs[0].logprobs
+        ):
             return []
 
         top_logprobs = final_output.outputs[0].logprobs[0]

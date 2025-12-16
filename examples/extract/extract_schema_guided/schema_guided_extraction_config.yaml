@@ -1,5 +1,6 @@
 global_params:
   working_dir: cache
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
 
 nodes:
   - id: read
