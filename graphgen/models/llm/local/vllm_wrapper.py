@@ -113,9 +113,9 @@ class VLLMWrapper(BaseLLMWrapper):
             tok_str = logprob_obj.decoded_token.strip() if logprob_obj.decoded_token else ""
             prob = float(math.exp(logprob_obj.logprob))
             candidate_tokens.append(Token(tok_str, prob))
-        
+
         candidate_tokens.sort(key=lambda x: -x.prob)
-        
+
         if candidate_tokens:
             main_token = Token(
                 text=candidate_tokens[0].text,
@@ -123,8 +123,7 @@ class VLLMWrapper(BaseLLMWrapper):
                 top_candidates=candidate_tokens
             )
             return [main_token]
-        else:
-            return []
+        return []
 
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
