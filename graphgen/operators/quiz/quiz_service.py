@@ -19,7 +19,7 @@ class QuizService(BaseOperator):
         self.quiz_samples = quiz_samples
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
-            backend="networkx", working_dir=working_dir, namespace="graph"
+            backend="kuzu", working_dir=working_dir, namespace="graph"
         )
         # { _quiz_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
         self.quiz_storage: BaseKVStorage = init_storage(
