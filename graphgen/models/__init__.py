@@ -4,7 +4,7 @@ from .generator import (
     AtomicGenerator,
     CoTGenerator,
     MultiHopGenerator,
-    ProteinQAGenerator,
+    OmicsQAGenerator,
     QuizGenerator,
     VQAGenerator,
 )

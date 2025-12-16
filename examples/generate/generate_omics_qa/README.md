@@ -1,66 +1,52 @@
 # Multi-omics Knowledge Graph QA Generation
 
-This example demonstrates how to build knowledge graphs from multi-omics data (DNA, RNA, protein) and generate question-answer pairs using different QA generation methods.
+This example demonstrates how to build knowledge graphs from multi-omics data (DNA, RNA, protein) and generate question-answer pairs using the unified `omics_qa` method.
 
 ## Pipeline Overview
 
 The pipeline includes the following steps:
 
-1. **read**: Read input files (JSONL format with sequence queries)
-2. **search**: Search biological databases (NCBI for DNA, RNAcentral for RNA, UniProt for protein)
+1. **read**: Read input files (JSON/JSONL format with sequence queries or protein data)
+2. **search**: Search biological databases (NCBI for DNA, RNAcentral for RNA, UniProt for protein) - *optional if input already contains search results*
 3. **chunk**: Chunk sequences and metadata
 4. **build_kg**: Extract entities and relationships to build knowledge graph
-5. **quiz** (optional): Generate quiz questions for KG nodes and edges
-6. **judge** (optional): Judge the correctness of KG descriptions
-7. **partition**: Partition the knowledge graph into communities
-8. **generate**: Generate QA pairs from partitioned communities
+5. **partition**: Partition the knowledge graph into communities using anchor-based BFS
+6. **generate**: Generate QA pairs from partitioned communities with automatic molecule caption extraction
 
-## Available QA Generation Methods
+## Key Features
 
-This example provides configurations for different QA generation methods:
-
-### 1. Atomic QA (`omics_atomic_config.yaml`)
-- **Method**: `atomic`
-- **Format**: Alpaca
-- **Partition**: DFS with max_units_per_community=1
-- **Use case**: Simple, single-fact questions
-- **Run**: `./generate_omics_atomic.sh`
-
-### 2. Aggregated QA (`omics_aggregated_config.yaml`)
-- **Method**: `aggregated`
-- **Format**: ChatML
-- **Partition**: ECE with comprehension loss
-- **Includes**: quiz and judge steps
-- **Use case**: Comprehensive questions covering multiple facts
-- **Run**: `./generate_omics_aggregated.sh`
-
-### 3. Chain of Thought (CoT) QA (`omics_cot_config.yaml`)
-- **Method**: `cot`
-- **Format**: ShareGPT
-- **Partition**: Leiden algorithm
-- **Use case**: Questions requiring step-by-step reasoning
-- **Run**: `./generate_omics_cot.sh`
-
-### 4. Multi-hop QA (`omics_multi_hop_config.yaml`)
-- **Method**: `multi_hop`
-- **Format**: ChatML
-- **Partition**: ECE with random sampling
-- **Use case**: Questions requiring reasoning across multiple KG relationships
-- **Run**: `./generate_omics_multi_hop.sh`
+- **Unified QA Generation**: Single `omics_qa` method supports DNA, RNA, and Protein
+- **Automatic Caption Extraction**: Automatically extracts and attaches molecule-specific information (dna/rna/protein captions) to each QA pair
+- **Flexible Configuration**: Easy to switch between DNA, RNA, and Protein by changing input file and data source
+- **Anchor-based Partitioning**: Uses molecule type as anchor for BFS partitioning (dna/rna/protein)
 
 ## Quick Start
 
 ### 1. Configure Input Data
 
-Edit the config file to set:
-- **Input file**: Change `input_path` in the `read_files` node
-  - DNA: `examples/input_examples/search_dna_demo.jsonl`
-  - RNA: `examples/input_examples/search_rna_demo.jsonl`
-  - Protein: `examples/input_examples/search_protein_demo.jsonl`
+Edit `omics_qa_config.yaml` to set the input file path:
+
+**For DNA:**
+```yaml
+input_path:
+  - examples/input_examples/search_dna_demo.jsonl
+```
+
+**For RNA:**
+```yaml
+input_path:
+  - examples/input_examples/search_rna_demo.jsonl
+```
+
+**For Protein:**
+```yaml
+input_path:
+  - examples/input_examples/search_protein_demo.jsonl
+```
 
 ### 2. Configure Data Source
 
-Set the appropriate data source and parameters:
+Set the appropriate data source and parameters in the `search_data` node:
 
 **For DNA (NCBI):**
 ```yaml
@@ -68,7 +54,9 @@ data_sources: [ncbi]
 ncbi_params:
   email: your_email@example.com  # Required!
   tool: GraphGen
-  use_local_blast: false
+  use_local_blast: true
+  local_blast_db: refseq_release/refseq_release
+  blast_num_threads: 2
   max_concurrent: 5
 ```
 
@@ -76,7 +64,9 @@ ncbi_params:
 ```yaml
 data_sources: [rnacentral]
 rnacentral_params:
-  use_local_blast: false
+  use_local_blast: true
+  local_blast_db: rnacentral_ensembl_gencode_YYYYMMDD/ensembl_gencode_YYYYMMDD
+  blast_num_threads: 2
   max_concurrent: 5
 ```
 
@@ -84,47 +74,101 @@ rnacentral_params:
 ```yaml
 data_sources: [uniprot]
 uniprot_params:
-  use_local_blast: false
+  use_local_blast: true
+  local_blast_db: /your_path/2024_01/uniprot_sprot
+  blast_num_threads: 2
   max_concurrent: 5
 ```
 
-### 3. Run the Pipeline
+### 3. Configure Anchor Type
 
-Use individual scripts for each QA method:
+Set the `anchor_type` in the `partition` node to match your molecule type:
 
-```bash
-# Atomic QA
-./generate_omics_atomic.sh
-
-# Aggregated QA (includes quiz & judge)
-./generate_omics_aggregated.sh
-
-# Chain of Thought QA
-./generate_omics_cot.sh
-
-# Multi-hop QA
-./generate_omics_multi_hop.sh
+```yaml
+partition:
+  params:
+    method: anchor_bfs
+    method_params:
+      anchor_type: protein  # Change to "dna" or "rna" as needed
+      max_units_per_community: 10
 ```
 
-#### Direct Python Command
+### 4. Run the Pipeline
+
+```bash
+./generate_omics_qa.sh
+```
 
 Or run directly with Python:
 
 ```bash
 python3 -m graphgen.run \
-  --config_file examples/generate/generate_omics_qa/omics_atomic_config.yaml \
+  --config_file examples/generate/generate_omics_qa/omics_qa_config.yaml \
   --output_dir cache/
 ```
 
 ## Input Format
 
-Input files should be JSONL format with one query per line:
-
+### For DNA/RNA (JSONL format):
 ```jsonl
 {"type": "text", "content": "BRCA1"}
 {"type": "text", "content": ">query\nATGCGATCG..."}
 {"type": "text", "content": "ATGCGATCG..."}
 ```
+
+### For Protein (JSONL format):
+```jsonl
+{"type": "text", "content": "P01308"}
+{"type": "text", "content": "insulin"}
+{"type": "text", "content": "MHHHHHHSSGVDLGTENLYFQSNAMDFPQQLEACVKQANQALSRFIAPLPFQNTPVVETMQYGALLGGKRLRPFLVYATGHMFGVSTNTLDAPAAAVECIHAYSLIHDDLPAMDDDDLRRGLPTCHVKFGEANAILAGDALQTLAFSILSDANMPEVSDRDRISMISELASASGIAGMCGGQALDLDAEGKHVPLDALERIHRHKTGALIRAAVRLGALSAGDKGRRALPVLDKYAESIGLAFQVQDDILDVVGDTATLGKRQGADQQLGKSTYPALLGLEQARKKARDLIDDARQALKQLAEQSLDTSALEALADYIIQRNK"}
+```
+
+## Output Format
+
+The `omics_qa` method automatically extracts and attaches molecule-specific captions to QA pairs:
+
+### Alpaca Format:
+```json
+{
+  "instruction": "What is the function of this protein?",
+  "input": "",
+  "output": "The protein functions as...",
+  "dna": {...},      # DNA caption (if molecule_type is DNA)
+  "rna": {...},      # RNA caption (if molecule_type is RNA)
+  "protein": {...}   # Protein caption (if molecule_type is protein)
+}
+```
+
+### ChatML Format:
+```json
+{
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {
+          "text": "What is the function of this protein?",
+          "dna": {...},
+          "rna": {...},
+          "protein": {...}
+        }
+      ]
+    },
+    {
+      "role": "assistant",
+      "content": "The protein functions as..."
+    }
+  ]
+}
+```
+
+## Caption Information
+
+The generator automatically extracts relevant caption information based on molecule type:
+
+- **DNA**: gene_name, gene_description, organism, chromosome, genomic_location, function, gene_type, etc.
+- **RNA**: rna_type, description, organism, related_genes, gene_name, so_term, modifications, etc.
+- **Protein**: protein_name, gene_names, organism, function, sequence, entry_name, etc.
 
 ## Configuration Options
 
@@ -134,34 +178,39 @@ Input files should be JSONL format with one query per line:
 - `sequence_chunk_size`: Size for sequence chunks (default: 1000)
 - `sequence_chunk_overlap`: Overlap for sequence chunks (default: 100)
 
-### Partition Methods
-- `dfs`: Depth-first search partitioning
-- `bfs`: Breadth-first search partitioning
-- `ece`: Error Comprehension Estimation (requires quiz & judge)
-- `leiden`: Leiden community detection algorithm
+### Partition Parameters
+- `method`: `anchor_bfs` (recommended for omics data)
+- `anchor_type`: `dna`, `rna`, or `protein` (must match your data type)
+- `max_units_per_community`: Maximum nodes and edges per community (default: 10)
 
-### QA Generation Methods
-- `atomic`: Single-fact questions
-- `aggregated`: Multi-fact comprehensive questions
-- `cot`: Chain of thought reasoning questions
-- `multi_hop`: Multi-hop reasoning questions
-- `vqa`: Visual question answering (not applicable for sequences)
-
-### Output Formats
-- `Alpaca`: Alpaca instruction format
-- `ChatML`: ChatML conversation format
-- `Sharegpt`: ShareGPT format
-
-## Output
-
-The pipeline generates:
-- Knowledge graph with biological entities (genes, RNAs, proteins, organisms, etc.) and relationships
-- QA pairs in the specified format (ChatML, Alpaca, or ShareGPT)
-- Output location: `cache/` directory (configurable via `working_dir`)
+### Generation Parameters
+- `method`: `omics_qa` (unified method for DNA/RNA/Protein)
+- `data_format`: `Alpaca`, `ChatML`, or `Sharegpt`
 
 ## Notes
 
 - **NCBI requires an email address** - Make sure to set `email` in `ncbi_params`
-- **Quiz & Judge steps** are only included in the aggregated config (required for ECE partition with loss-based sampling)
+- **Anchor type must match molecule type** - Set `anchor_type` to match your data (dna/rna/protein)
 - **Local BLAST** can be enabled if you have local databases set up (see `examples/search/build_db/`)
+- **Caption extraction** is automatic - The generator detects molecule type and extracts relevant caption information
 - Adjust `max_concurrent` based on your system resources and API rate limits
+
+## Examples
+
+### Generate QA for Protein Data
+1. Set `input_path` to `examples/input_examples/search_protein_demo.jsonl`
+2. Set `data_sources: [uniprot]`
+3. Set `anchor_type: protein`
+4. Run `./generate_omics_qa.sh`
+
+### Generate QA for DNA Data
+1. Set `input_path` to `examples/input_examples/search_dna_demo.jsonl`
+2. Set `data_sources: [ncbi]`
+3. Set `anchor_type: dna`
+4. Run `./generate_omics_qa.sh`
+
+### Generate QA for RNA Data
+1. Set `input_path` to `examples/input_examples/search_rna_demo.jsonl`
+2. Set `data_sources: [rnacentral]`
+3. Set `anchor_type: rna`
+4. Run `./generate_omics_qa.sh`

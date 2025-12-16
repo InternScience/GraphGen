@@ -30,10 +30,9 @@ def run_concurrent(
     - In async context: returns Awaitable[List[R]] (use with 'await')
     :return: List of results (in sync context) or coroutine (in async context)
     """
-    if not items:
-        return []
-    
     async def _run_all():
+        if not items:
+            return []
         # Use semaphore to limit concurrent tasks if max_concurrent is specified
         semaphore = asyncio.Semaphore(max_concurrent) if max_concurrent is not None and max_concurrent > 0 else None
         
@@ -112,6 +111,8 @@ def run_concurrent(
         return _run_all()
     except RuntimeError:
         # No running loop, we can create one and run until complete
+        if not items:
+            return []
         loop, created = create_event_loop()
         try:
             return loop.run_until_complete(_run_all())

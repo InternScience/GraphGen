@@ -1,0 +1,92 @@
+global_params:
+  working_dir: cache
+  graph_backend: kuzu # graph database backend, support: kuzu, networkx
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+
+nodes:
+  - id: read_files
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        # For DNA: examples/input_examples/search_dna_demo.jsonl
+        # For RNA: examples/input_examples/search_rna_demo.jsonl
+        # For Protein: examples/input_examples/search_protein_demo.jsonl
+        - examples/input_examples/search_protein_demo.jsonl # Change this to dna/rna/protein demo file as needed
+
+  - id: search_data
+    op_name: search
+    type: map_batch
+    dependencies:
+      - read_files
+    execution_params:
+      replicas: 1
+      batch_size: 10
+    params:
+      data_sources: [uniprot] # Change to [ncbi] for DNA or [rnacentral] for RNA
+      # DNA search parameters
+      ncbi_params:
+        email: your_email@example.com # Required for NCBI
+        tool: GraphGen
+        use_local_blast: true
+        local_blast_db: refseq_release/refseq_release
+        blast_num_threads: 2
+        max_concurrent: 5
+      # RNA search parameters
+      rnacentral_params:
+        use_local_blast: true
+        local_blast_db: rnacentral_ensembl_gencode_YYYYMMDD/ensembl_gencode_YYYYMMDD
+        blast_num_threads: 2
+        max_concurrent: 5
+      # Protein search parameters
+      uniprot_params:
+        use_local_blast: true
+        local_blast_db: ${RELEASE}/uniprot_sprot
+        blast_num_threads: 2
+        max_concurrent: 5 
+
+  - id: chunk_documents
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - search_data
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 1024 # chunk size for text splitting
+      chunk_overlap: 100 # chunk overlap for text splitting
+      sequence_chunk_size: 1000 # For sequence chunks (bp for DNA/RNA, aa for protein)
+      sequence_chunk_overlap: 100
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    dependencies:
+      - chunk_documents
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - build_kg
+    params:
+      method: anchor_bfs # partition method
+      method_params:
+        anchor_type: protein # node type (dna, rna, or protein)
+        max_units_per_community: 10 # max nodes and edges per community
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      method: omics_qa # unified QA generation method for DNA/RNA/Protein
+      data_format: ChatML # Alpaca, Sharegpt, ChatML
