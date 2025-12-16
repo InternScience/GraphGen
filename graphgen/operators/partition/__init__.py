@@ -1,1 +1,1 @@
-from .partition_kg import partition_kg
+from .partition_service import PartitionService

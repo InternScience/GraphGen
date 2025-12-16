@@ -13,7 +13,7 @@ class LeidenPartitioner(BasePartitioner):
     Leiden partitioner that partitions the graph into communities using the Leiden algorithm.
     """
 
-    async def partition(
+    def partition(
         self,
         g: BaseGraphStorage,
         max_size: int = 20,
@@ -37,12 +37,10 @@ class LeidenPartitioner(BasePartitioner):
         nodes = g.get_all_nodes()  # List[Tuple[str, dict]]
         edges = g.get_all_edges()  # List[Tuple[str, str, dict]]
 
-        node2cid: Dict[str, int] = await self._run_leiden(
-            nodes, edges, use_lcc, random_seed
-        )
+        node2cid: Dict[str, int] = self._run_leiden(nodes, edges, use_lcc, random_seed)
 
         if max_size is not None and max_size > 0:
-            node2cid = await self._split_communities(node2cid, max_size)
+            node2cid = self._split_communities(node2cid, max_size)
 
         cid2nodes: Dict[int, List[str]] = defaultdict(list)
         for n, cid in node2cid.items():
@@ -58,7 +56,7 @@ class LeidenPartitioner(BasePartitioner):
         return communities
 
     @staticmethod
-    async def _run_leiden(
+    def _run_leiden(
         nodes: List[Tuple[str, dict]],
         edges: List[Tuple[str, str, dict]],
         use_lcc: bool = False,
@@ -92,9 +90,7 @@ class LeidenPartitioner(BasePartitioner):
         return node2cid
 
     @staticmethod
-    async def _split_communities(
-        node2cid: Dict[str, int], max_size: int
-    ) -> Dict[str, int]:
+    def _split_communities(node2cid: Dict[str, int], max_size: int) -> Dict[str, int]:
         """
         Split communities larger than max_size into smaller sub-communities.
         """

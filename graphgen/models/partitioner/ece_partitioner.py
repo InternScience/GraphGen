@@ -1,8 +1,8 @@
-import asyncio
 import random
-from typing import Any, Dict, List, Optional, Set, Tuple
+from collections import deque
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
 
-from tqdm.asyncio import tqdm as tqdm_async
+from tqdm import tqdm
 
 from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -51,7 +51,7 @@ class ECEPartitioner(BFSPartitioner):
             raise ValueError(f"Invalid edge sampling: {edge_sampling}")
         return units
 
-    async def partition(
+    def partition(
         self,
         g: BaseGraphStorage,
         max_units_per_community: int = 10,
@@ -59,7 +59,7 @@ class ECEPartitioner(BFSPartitioner):
         max_tokens_per_community: int = 10240,
         unit_sampling: str = "random",
         **kwargs: Any,
-    ) -> List[Community]:
+    ) -> Iterable[Community]:
         nodes: List[Tuple[str, dict]] = g.get_all_nodes()
         edges: List[Tuple[str, str, dict]] = g.get_all_edges()
 
@@ -73,21 +73,18 @@ class ECEPartitioner(BFSPartitioner):
 
         used_n: Set[str] = set()
         used_e: Set[frozenset[str]] = set()
-        communities: List = []
 
         all_units = self._sort_units(all_units, unit_sampling)
 
-        async def _grow_community(
-            seed_unit: Tuple[str, Any, dict]
-        ) -> Optional[Community]:
+        def _grow_community(seed_unit: Tuple[str, Any, dict]) -> Optional[Community]:
             nonlocal used_n, used_e
 
             community_nodes: Dict[str, dict] = {}
             community_edges: Dict[frozenset[str], dict] = {}
-            queue: asyncio.Queue = asyncio.Queue()
+            queue = deque()
             token_sum = 0
 
-            async def _add_unit(u):
+            def _add_unit(u):
                 nonlocal token_sum
                 t, i, d = u
                 if t == NODE_UNIT:  # node
@@ -103,11 +100,11 @@ class ECEPartitioner(BFSPartitioner):
                 token_sum += d.get("length", 0)
                 return True
 
-            await _add_unit(seed_unit)
-            await queue.put(seed_unit)
+            _add_unit(seed_unit)
+            queue.append(seed_unit)
 
             # BFS
-            while not queue.empty():
+            while queue:
                 if (
                     len(community_nodes) + len(community_edges)
                     >= max_units_per_community
@@ -115,7 +112,7 @@ class ECEPartitioner(BFSPartitioner):
                 ):
                     break
 
-                cur_type, cur_id, _ = await queue.get()
+                cur_type, cur_id, _ = queue.popleft()
 
                 neighbors: List[Tuple[str, Any, dict]] = []
                 if cur_type == NODE_UNIT:
@@ -136,26 +133,24 @@ class ECEPartitioner(BFSPartitioner):
                         or token_sum >= max_tokens_per_community
                     ):
                         break
-                    if await _add_unit(nb):
-                        await queue.put(nb)
+                    if _add_unit(nb):
+                        queue.append(nb)
 
             if len(community_nodes) + len(community_edges) < min_units_per_community:
                 return None
 
             return Community(
-                id=len(communities),
+                id=seed_unit[1],
                 nodes=list(community_nodes.keys()),
                 edges=[(u, v) for (u, v), _ in community_edges.items()],
             )
 
-        async for unit in tqdm_async(all_units, desc="ECE partition"):
+        for unit in tqdm(all_units, desc="ECE partition"):
             utype, uid, _ = unit
             if (utype == NODE_UNIT and uid in used_n) or (
                 utype == EDGE_UNIT and uid in used_e
             ):
                 continue
-            comm = await _grow_community(unit)
-            if comm is not None:
-                communities.append(comm)
-
-        return communities
+            comm = _grow_community(unit)
+            if comm:
+                yield comm
