@@ -1,5 +1,5 @@
+from graphgen.bases.base_evaluator import BaseEvaluator
 from graphgen.bases.datatypes import QAPair
-from graphgen.models.evaluator.base_evaluator import BaseEvaluator
 from graphgen.models.tokenizer import Tokenizer
 from graphgen.utils import create_event_loop
 

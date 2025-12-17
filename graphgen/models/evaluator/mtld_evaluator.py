@@ -1,7 +1,7 @@
 from typing import Set
 
+from graphgen.bases.base_evaluator import BaseEvaluator
 from graphgen.bases.datatypes import QAPair
-from graphgen.models.evaluator.base_evaluator import BaseEvaluator
 from graphgen.utils import NLTKHelper, create_event_loop, detect_main_language
 
 nltk_helper = NLTKHelper()
