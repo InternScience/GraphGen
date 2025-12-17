@@ -1,6 +1,6 @@
 # pylint: disable=C0301
 TEMPLATE_EN: str = """You are given a text passage. Your task is to generate a question and answer (QA) pair based on the content of that text.
-The answer should be accurate and directly derived from the text. Make sure the QA pair is relevant to the main theme or important details of the given text. 
+The answer should be accurate and directly derived from the text. Make sure the QA pair is relevant to the main theme or important details of the given text.
 For example:
 Question: What is the effect of overexpressing the BG1 gene on grain size and development?
 Answer: Overexpression of the BG1 gene leads to significantly increased grain size, demonstrating its role in grain development.

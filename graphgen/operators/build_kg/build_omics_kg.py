@@ -15,7 +15,7 @@ def build_omics_kg(
 ):
     """
     Build knowledge graph from multi-omics chunks (DNA, RNA, protein).
-    
+
     :param llm_client: Synthesizer LLM model to extract entities and relationships
     :param kg_instance: Graph storage instance
     :param chunks: List of omics chunks

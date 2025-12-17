@@ -30,7 +30,7 @@ class BaseOperator(ABC):
         log_file = os.path.join(log_dir, f"{self.op_name}_{worker_id_short}.log")
 
         self.logger = set_logger(
-            log_file=log_file, name=f"{self.op_name}.{worker_id_short}", 
+            log_file=log_file, name=f"{self.op_name}.{worker_id_short}",
             console_level=logging.ERROR, force=True
         )
 

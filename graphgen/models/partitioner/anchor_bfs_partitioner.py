@@ -18,7 +18,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
     2. Expand the community using BFS until the max unit size is reached.(A unit is a node or an edge.)
     3. Non-anchor units can only be "pulled" into a community and never become seeds themselves.
     For example, for VQA tasks, we may want to use image nodes as anchors and expand to nearby text nodes and edges.
-    
+
     Supports multiple anchor types for multi-omics data: anchor_type can be a single string or a list of strings.
     When a list is provided, nodes matching any of the types in the list can serve as anchors.
     """
@@ -79,11 +79,11 @@ class AnchorBFSPartitioner(BFSPartitioner):
 
         anchor_ids: Set[str] = set()
         anchor_types_lower = [at.lower() for at in self.anchor_types]
-        
+
         for node_id, meta in nodes:
             # Check if node matches any of the anchor types
             matched = False
-            
+
             # Check 1: entity_type (for image, etc.)
             node_type = str(meta.get("entity_type", "")).lower()
             for anchor_type_lower in anchor_types_lower:
@@ -91,16 +91,16 @@ class AnchorBFSPartitioner(BFSPartitioner):
                     anchor_ids.add(node_id)
                     matched = True
                     break
-            
+
             if matched:
                 continue
-            
+
             # Check 2: molecule_type (for omics data: dna, rna, protein)
             molecule_type = str(meta.get("molecule_type", "")).lower()
             if molecule_type in anchor_types_lower:
                 anchor_ids.add(node_id)
                 continue
-            
+
             # Check 3: source_id prefix (for omics data: dna-, rna-, protein-)
             source_id = str(meta.get("source_id", "")).lower()
             for anchor_type_lower in anchor_types_lower:
@@ -108,10 +108,10 @@ class AnchorBFSPartitioner(BFSPartitioner):
                     anchor_ids.add(node_id)
                     matched = True
                     break
-            
+
             if matched:
                 continue
-            
+
             # Check 4: Check if source_id contains multiple IDs separated by <SEP>
             if "<sep>" in source_id:
                 source_ids = source_id.split("<sep>")
@@ -124,7 +124,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
                             break
                     if matched:
                         break
-        
+
         return anchor_ids
 
     @staticmethod

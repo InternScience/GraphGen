@@ -35,9 +35,9 @@ class RNACentralSearch(BaseSearcher):
     """
 
     def __init__(
-        self, 
-        use_local_blast: bool = False, 
-        local_blast_db: str = "rna_db", 
+        self,
+        use_local_blast: bool = False,
+        local_blast_db: str = "rna_db",
         api_timeout: int = 30,
         blast_num_threads: int = 4,
         working_dir: str = "cache",
@@ -49,7 +49,7 @@ class RNACentralSearch(BaseSearcher):
         self.local_blast_db = local_blast_db
         self.api_timeout = api_timeout
         self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
-        
+
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
             self.logger.error("Local BLAST database files not found. Please check the path.")
             self.use_local_blast = False
@@ -254,14 +254,14 @@ class RNACentralSearch(BaseSearcher):
                 "-num_threads", str(self.blast_num_threads),
                 "-outfmt", "6 sacc"  # Only accession, tab-separated
             ]
-            self.logger.debug("Running local blastn for RNA (threads=%d): %s", 
+            self.logger.debug("Running local blastn for RNA (threads=%d): %s",
                         self.blast_num_threads, " ".join(cmd))
-            
+
             # Run BLAST with timeout to avoid hanging
             try:
                 out = subprocess.check_output(
-                    cmd, 
-                    text=True, 
+                    cmd,
+                    text=True,
                     timeout=300,  # 5 minute timeout for BLAST search
                     stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
                 ).strip()
@@ -269,7 +269,7 @@ class RNACentralSearch(BaseSearcher):
                 self.logger.warning("BLAST search timed out after 5 minutes for sequence")
                 os.remove(tmp_name)
                 return None
-            
+
             os.remove(tmp_name)
             return out.split("\n", maxsplit=1)[0] if out else None
         except Exception as exc:
@@ -378,7 +378,7 @@ class RNACentralSearch(BaseSearcher):
         # check if RNA sequence (AUCG or ATCG characters, contains U or T)
         # Note: Sequences with T are also RNA sequences
         is_rna_sequence = query.startswith(">") or (
-            re.fullmatch(r"[AUCGTN\s]+", query, re.I) and 
+            re.fullmatch(r"[AUCGTN\s]+", query, re.I) and
             ("U" in query.upper() or "T" in query.upper())
         )
         if is_rna_sequence:

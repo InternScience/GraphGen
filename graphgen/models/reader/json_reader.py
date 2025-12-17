@@ -48,13 +48,13 @@ class JSONReader(BaseReader):
         """
         Stream read JSONL files line by line without loading entire file into memory.
         Returns an iterator that yields filtered documents.
-        
+
         :param file_path: Path to the JSONL file.
         :return: Iterator of dictionaries containing the data.
         """
         if not file_path.endswith(".jsonl"):
             raise ValueError("read_stream only supports JSONL files, not JSON files")
-        
+
         with open(file_path, "r", encoding="utf-8") as f:
             for line in f:
                 try:
@@ -64,7 +64,7 @@ class JSONReader(BaseReader):
                         raise ValueError(
                             f"Missing '{self.text_column}' in document: {doc}"
                         )
-                    
+
                     # Apply filtering logic inline (similar to BaseReader.filter)
                     if doc.get("type") == "text":
                         content = doc.get(self.text_column, "").strip()

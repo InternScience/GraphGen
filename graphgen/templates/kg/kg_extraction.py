@@ -92,7 +92,7 @@ TEMPLATE_ZH: str = """你是一个NLP专家，擅长分析文本提取命名实�
    - entity_type：以下类型之一：[{entity_types}]
    - entity_summary：实体的属性与活动的全面总结
    将每个实体格式化为("entity"{tuple_delimiter}<entity_name>{tuple_delimiter}<entity_type>{tuple_delimiter}<entity_summary>)
-   
+
 2. 从步骤1中识别的实体中，识别所有（源实体，目标实体）对，这些实体彼此之间*明显相关*。
    对于每对相关的实体，提取以下信息：
    - source_entity：步骤1中识别的源实体名称

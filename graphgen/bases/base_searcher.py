@@ -24,7 +24,7 @@ class BaseSearcher(ABC):
         log_file = os.path.join(log_dir, f"{searcher_name}.log")
 
         self.logger = set_logger(
-            log_file=log_file, name=searcher_name, 
+            log_file=log_file, name=searcher_name,
             console_level=logging.ERROR, force=True
         )
 

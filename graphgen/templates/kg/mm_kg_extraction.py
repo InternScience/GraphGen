@@ -26,7 +26,7 @@ Use English as the output language.
     - target_entity: The name of the target entity identified in Step 1
     - relationship_summary: Explain why you think the source entity and target entity are related to each other
     Format each relationship as ("relationship"{tuple_delimiter}<source_entity>{tuple_delimiter}<target_entity>{tuple_delimiter}<relationship_summary>)
-    
+
 3. Return the output list of all entities and relationships identified in Steps 1 and 2 in English. Use **{record_delimiter}** as the list separator.
 
 4. Upon completion, output {completion_delimiter}

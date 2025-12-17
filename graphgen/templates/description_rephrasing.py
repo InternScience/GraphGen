@@ -19,7 +19,7 @@ The bright sunshine made everyone feel tired and sad.
 ################
 -Real Data-
 ################
-Input: 
+Input:
 {input_sentence}
 ################
 Please directly output the rewritten sentence without any additional information.

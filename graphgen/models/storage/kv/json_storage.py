@@ -54,7 +54,7 @@ class JsonKVStorage(BaseKVStorage):
     def get_batch(self, keys: list[str]) -> dict[str, dict]:
         """
         Get a batch of items by their keys.
-        
+
         :param keys: List of keys to retrieve.
         :return: Dictionary of {key: value} for the requested keys.
         """
@@ -63,7 +63,7 @@ class JsonKVStorage(BaseKVStorage):
     def iter_batches(self, batch_size: int = 10000) -> Iterator[dict[str, dict]]:
         """
         Iterate over items in batches to avoid loading everything into memory.
-        
+
         :param batch_size: Number of items per batch.
         :return: Iterator of dictionaries, each containing up to batch_size items.
         """
