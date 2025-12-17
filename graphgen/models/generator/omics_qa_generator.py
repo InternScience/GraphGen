@@ -82,8 +82,9 @@ class OmicsQAGenerator(BaseGenerator):
         caption_key = f"{molecule_type_lower}_caption"
         if caption_key in node_data and node_data[caption_key]:
             if isinstance(node_data[caption_key], list) and len(node_data[caption_key]) > 0:
-                caption_val = node_data[caption_key]
-                return caption_val[0] if isinstance(caption_val[0], dict) else caption_val
+                # Always return the first element if it's a dict, otherwise return None for consistency
+                caption_val = node_data[caption_key][0]
+                return caption_val if isinstance(caption_val, dict) else None
             if isinstance(node_data[caption_key], dict):
                 return node_data[caption_key]
 

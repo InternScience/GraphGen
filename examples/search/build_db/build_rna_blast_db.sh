@@ -367,8 +367,8 @@ if [ ${#DATABASES[@]} -gt 1 ] && [ "${DATABASES[0]}" != "all" ]; then
         next
     }
     {
-        # Accumulate sequence data (preserve newlines)
-        current_seq = (current_seq == "" ? $0 : current_seq "\n" $0)
+        # Accumulate sequence data by concatenating lines
+        current_seq = current_seq $0
     }
     END {
         # Process last sequence

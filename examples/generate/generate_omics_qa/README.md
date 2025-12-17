@@ -75,7 +75,7 @@ rnacentral_params:
 data_sources: [uniprot]
 uniprot_params:
   use_local_blast: true
-  local_blast_db: /your_path/2024_01/uniprot_sprot
+  local_blast_db: ${RELEASE}/uniprot_sprot
   blast_num_threads: 2
   max_concurrent: 5
 ```
