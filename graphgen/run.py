@@ -74,21 +74,13 @@ def main():
         .joinpath("aggregated_config.yaml"),
         type=str,
     )
-    parser.add_argument(
-        "--output_dir",
-        help="Output directory for GraphGen.",
-        default=sys_path,
-        required=True,
-        type=str,
-    )
 
     args = parser.parse_args()
-
-    working_dir = args.output_dir
 
     with open(args.config_file, "r", encoding="utf-8") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
+    working_dir = config.get("global_params", {}).get("working_dir", "cache")
     unique_id = int(time.time())
     output_path = os.path.join(working_dir, "output", f"{unique_id}")
     set_working_dir(output_path)
