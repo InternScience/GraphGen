@@ -174,9 +174,35 @@ cython_debug/
 .pypirc
 
 cache
+cache_*
+databases/
 *.pyc
 *.html
 .gradio
+*.sst
+*.db/
+*.nhr
+*.ndb
+*.nin
+*.njs
+*.nog
+*.nos
+*.not
+*.nsq
+*.ntf
+*.nto
+*.phr
+*.pin
+*.pdb
+*.pjs
+*.pog
+*.pos
+*.psq
+*.ptf
+*.pto
+*.wal
+graph_kuzu*
+resources/
 
 # macOS
 .DS_Store
