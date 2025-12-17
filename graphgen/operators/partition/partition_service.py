@@ -64,8 +64,13 @@ class PartitionService(BaseOperator):
             partitioner = LeidenPartitioner()
         elif method == "anchor_bfs":
             logger.info("Partitioning knowledge graph using Anchor BFS method.")
+            anchor_type = method_params.get("anchor_type")
+            if isinstance(anchor_type, list):
+                logger.info("Using multiple anchor types: %s", anchor_type)
+            else:
+                logger.info("Using single anchor type: %s", anchor_type)
             partitioner = AnchorBFSPartitioner(
-                anchor_type=method_params.get("anchor_type"),
+                anchor_type=anchor_type,
                 anchor_ids=set(method_params.get("anchor_ids", []))
                 if method_params.get("anchor_ids")
                 else None,
@@ -187,41 +192,86 @@ class PartitionService(BaseOperator):
                     logger.warning("No chunks found for node %s (type: %s) with source_ids: %s", node_id, molecule_type, source_ids)
                     continue
                 
-                first_chunk = omics_chunks[0]
-                def get_chunk_value(field: str):
+                def get_chunk_value(chunk: dict, field: str):
                     # First check root level of chunk
-                    if field in first_chunk:
-                        return first_chunk[field]
+                    if field in chunk:
+                        return chunk[field]
                     # Then check metadata if it exists and is a dict
-                    chunk_metadata = first_chunk.get("metadata")
+                    chunk_metadata = chunk.get("metadata")
                     if isinstance(chunk_metadata, dict) and field in chunk_metadata:
                         return chunk_metadata[field]
                     return None
                 
-                # Attach sequence if not already present
+                # Group chunks by molecule type to preserve all types of sequences
+                chunks_by_type = {"dna": [], "rna": [], "protein": []}
+                for chunk in omics_chunks:
+                    chunk_id = chunk.get("_chunk_id", "").lower()
+                    if chunk_id.startswith("dna-"):
+                        chunks_by_type["dna"].append(chunk)
+                    elif chunk_id.startswith("rna-"):
+                        chunks_by_type["rna"].append(chunk)
+                    elif chunk_id.startswith("protein-"):
+                        chunks_by_type["protein"].append(chunk)
+                
+                # Field mappings for each molecule type
+                field_mapping = {
+                    "protein": ["protein_name", "gene_names", "organism", "function", "sequence", "id", "database", "entry_name", "uniprot_id"],
+                    "dna": ["gene_name", "gene_description", "organism", "chromosome", "genomic_location", "function", "gene_type", "sequence", "id", "database"],
+                    "rna": ["rna_type", "description", "organism", "related_genes", "gene_name", "so_term", "sequence", "id", "database", "rnacentral_id"],
+                }
+                
+                # Extract and store captions for each molecule type
+                for mol_type in ["dna", "rna", "protein"]:
+                    type_chunks = chunks_by_type[mol_type]
+                    if not type_chunks:
+                        continue
+                    
+                    # Use the first chunk of this type
+                    type_chunk = type_chunks[0]
+                    caption = {}
+                    
+                    # Extract all relevant fields for this molecule type
+                    for field in field_mapping.get(mol_type, []):
+                        value = get_chunk_value(type_chunk, field)
+                        if value:
+                            caption[field] = value
+                    
+                    # Store caption if it has any data
+                    if caption:
+                        caption_key = f"{mol_type}_caption"
+                        node_data[caption_key] = caption
+                        logger.debug("Stored %s caption for node %s with %d fields", mol_type, node_id, len(caption))
+                
+                # For backward compatibility, also attach sequence and other fields from the primary molecule type
+                # Use the detected molecule_type or default to the first available type
+                primary_chunk = None
+                if chunks_by_type.get(molecule_type):
+                    primary_chunk = chunks_by_type[molecule_type][0]
+                elif chunks_by_type["dna"]:
+                    primary_chunk = chunks_by_type["dna"][0]
+                elif chunks_by_type["rna"]:
+                    primary_chunk = chunks_by_type["rna"][0]
+                elif chunks_by_type["protein"]:
+                    primary_chunk = chunks_by_type["protein"][0]
+                else:
+                    primary_chunk = omics_chunks[0]
+                
+                # Attach sequence if not already present (for backward compatibility)
                 if "sequence" not in node_data:
-                    sequence = get_chunk_value("sequence")
+                    sequence = get_chunk_value(primary_chunk, "sequence")
                     if sequence:
                         node_data["sequence"] = sequence
-                    else:
-                        logger.warning("No sequence found in chunk for node %s. Chunk keys: %s", node_id, list(first_chunk.keys())[:15])
                 
                 # Attach molecule_type if not present
                 if "molecule_type" not in node_data:
-                    chunk_molecule_type = get_chunk_value("molecule_type")
+                    chunk_molecule_type = get_chunk_value(primary_chunk, "molecule_type")
                     if chunk_molecule_type:
                         node_data["molecule_type"] = chunk_molecule_type
                 
-                # Attach molecule-specific fields
-                field_mapping = {
-                    "protein": ["protein_name", "gene_names", "organism", "function", "id", "database", "entry_name", "uniprot_id"],
-                    "dna": ["gene_name", "gene_description", "organism", "chromosome", "genomic_location", "function", "gene_type", "id", "database"],
-                    "rna": ["rna_type", "description", "organism", "related_genes", "gene_name", "so_term", "id", "database", "rnacentral_id"],
-                }
-                
+                # Attach molecule-specific fields from primary chunk (for backward compatibility)
                 for field in field_mapping.get(molecule_type, []):
                     if field not in node_data:
-                        value = get_chunk_value(field)
+                        value = get_chunk_value(primary_chunk, field)
                         if value:
                             node_data[field] = value
 

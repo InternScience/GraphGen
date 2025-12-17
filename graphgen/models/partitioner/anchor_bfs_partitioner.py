@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Any, Iterable, List, Literal, Set, Tuple
+from typing import Any, Iterable, List, Literal, Set, Tuple, Union
 
 from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -18,16 +18,26 @@ class AnchorBFSPartitioner(BFSPartitioner):
     2. Expand the community using BFS until the max unit size is reached.(A unit is a node or an edge.)
     3. Non-anchor units can only be "pulled" into a community and never become seeds themselves.
     For example, for VQA tasks, we may want to use image nodes as anchors and expand to nearby text nodes and edges.
+    
+    Supports multiple anchor types for multi-omics data: anchor_type can be a single string or a list of strings.
+    When a list is provided, nodes matching any of the types in the list can serve as anchors.
     """
 
     def __init__(
         self,
         *,
-        anchor_type: Literal["image"] = "image",
+        anchor_type: Union[
+            Literal["image", "dna", "rna", "protein"],
+            List[Literal["dna", "rna", "protein"]],
+        ] = "image",
         anchor_ids: Set[str] | None = None,
     ) -> None:
         super().__init__()
-        self.anchor_type = anchor_type
+        # Normalize anchor_type to always be a list for internal processing
+        if isinstance(anchor_type, str):
+            self.anchor_types = [anchor_type]
+        else:
+            self.anchor_types = list(anchor_type)
         self.anchor_ids = anchor_ids
 
     def partition(
@@ -68,10 +78,53 @@ class AnchorBFSPartitioner(BFSPartitioner):
             return self.anchor_ids
 
         anchor_ids: Set[str] = set()
+        anchor_types_lower = [at.lower() for at in self.anchor_types]
+        
         for node_id, meta in nodes:
+            # Check if node matches any of the anchor types
+            matched = False
+            
+            # Check 1: entity_type (for image, etc.)
             node_type = str(meta.get("entity_type", "")).lower()
-            if self.anchor_type.lower() in node_type:
+            for anchor_type_lower in anchor_types_lower:
+                if anchor_type_lower in node_type:
+                    anchor_ids.add(node_id)
+                    matched = True
+                    break
+            
+            if matched:
+                continue
+            
+            # Check 2: molecule_type (for omics data: dna, rna, protein)
+            molecule_type = str(meta.get("molecule_type", "")).lower()
+            if molecule_type in anchor_types_lower:
                 anchor_ids.add(node_id)
+                continue
+            
+            # Check 3: source_id prefix (for omics data: dna-, rna-, protein-)
+            source_id = str(meta.get("source_id", "")).lower()
+            for anchor_type_lower in anchor_types_lower:
+                if source_id.startswith(f"{anchor_type_lower}-"):
+                    anchor_ids.add(node_id)
+                    matched = True
+                    break
+            
+            if matched:
+                continue
+            
+            # Check 4: Check if source_id contains multiple IDs separated by <SEP>
+            if "<sep>" in source_id:
+                source_ids = source_id.split("<sep>")
+                for sid in source_ids:
+                    sid = sid.strip()
+                    for anchor_type_lower in anchor_types_lower:
+                        if sid.startswith(f"{anchor_type_lower}-"):
+                            anchor_ids.add(node_id)
+                            matched = True
+                            break
+                    if matched:
+                        break
+        
         return anchor_ids
 
     @staticmethod
@@ -113,7 +166,21 @@ class AnchorBFSPartitioner(BFSPartitioner):
                 if it in used_e:
                     continue
                 used_e.add(it)
-                u, v = it
+                # Convert frozenset to tuple for edge representation
+                # Note: Self-loops should be filtered during graph construction,
+                # but we handle edge cases defensively
+                try:
+                    u, v = tuple(it)
+                except ValueError:
+                    # Handle edge case: frozenset with unexpected number of elements
+                    # This should not happen if graph construction is correct
+                    edge_nodes = list(it)
+                    if len(edge_nodes) == 1:
+                        # Self-loop edge (should have been filtered during graph construction)
+                        u, v = edge_nodes[0], edge_nodes[0]
+                    else:
+                        # Invalid edge, skip it
+                        continue
                 comm_e.append((u, v))
                 cnt += 1
                 for n in it:

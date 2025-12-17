@@ -242,8 +242,11 @@ class SearchService(BaseOperator):
                 if doc_type not in ["text", "dna", "rna", "protein"]:
                     doc_type = "text"
                 
-                # Generate document ID from result ID or search query
-                doc_id = result.get("id") or result.get("_search_query") or f"search-{len(result_rows)}"
+                # Convert to string to handle Ray Data ListElement and other types
+                raw_doc_id = result.get("id") or result.get("_search_query") or f"search-{len(result_rows)}"
+                doc_id = str(raw_doc_id)
+                
+                # Ensure doc_id starts with "doc-" prefix
                 if not doc_id.startswith("doc-"):
                     doc_id = f"doc-{doc_id}"
                 

@@ -10,10 +10,10 @@ nodes:
     dependencies: []
     params:
       input_path:
-        # For DNA: examples/input_examples/search_dna_demo.jsonl
-        # For RNA: examples/input_examples/search_rna_demo.jsonl
-        # For Protein: examples/input_examples/search_protein_demo.jsonl
-        - examples/input_examples/search_protein_demo.jsonl # Change this to dna/rna/protein demo file as needed
+        # three input files to generate DNA, RNA, and Protein data together
+        - examples/input_examples/search_dna_demo.jsonl
+        - examples/input_examples/search_rna_demo.jsonl
+        - examples/input_examples/search_protein_demo.jsonl
 
   - id: search_data
     op_name: search
@@ -24,25 +24,26 @@ nodes:
       replicas: 1
       batch_size: 10
     params:
-      data_sources: [uniprot] # Change to [ncbi] for DNA or [rnacentral] for RNA
+      data_sources: [ncbi, rnacentral, uniprot] # Multi-omics: use all three data sources
       # DNA search parameters
       ncbi_params:
         email: your_email@example.com # Required for NCBI
         tool: GraphGen
         use_local_blast: true
-        local_blast_db: refseq_release/refseq_release
+        local_blast_db: databases/refseq_232_old/refseq_232
         blast_num_threads: 2
         max_concurrent: 5
       # RNA search parameters
       rnacentral_params:
         use_local_blast: true
-        local_blast_db: rnacentral_ensembl_gencode_YYYYMMDD/ensembl_gencode_YYYYMMDD
+        local_blast_db: databases/rnacentral_merged_20251213/rnacentral_merged_20251213
         blast_num_threads: 2
         max_concurrent: 5
       # Protein search parameters
       uniprot_params:
         use_local_blast: true
-        local_blast_db: ${RELEASE}/uniprot_sprot
+        # local_blast_db: ${RELEASE}/uniprot_sprot
+        local_blast_db: databases/2025_04/uniprot_sprot
         blast_num_threads: 2
         max_concurrent: 5 
 
@@ -76,7 +77,7 @@ nodes:
     params:
       method: anchor_bfs # partition method
       method_params:
-        anchor_type: protein # node type (dna, rna, or protein)
+        anchor_type: [dna, rna, protein] # Multi-omics: support multiple anchor types (list or single string)
         max_units_per_community: 10 # max nodes and edges per community
 
   - id: generate

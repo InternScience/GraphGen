@@ -179,12 +179,17 @@ class OmicsKGBuilder(BaseKGBuilder):
             set([dp["source_id"] for dp in node_data] + source_ids)
         )
 
-        node_data = {
+        node_data_dict = {
             "entity_type": entity_type,
             "description": description,
             "source_id": source_id,
         }
-        kg_instance.upsert_node(entity_name, node_data=node_data)
+        
+        # Preserve sequence from existing node if present (e.g., added by partition_service)
+        if node is not None and "sequence" in node and node["sequence"]:
+            node_data_dict["sequence"] = node["sequence"]
+            
+        kg_instance.upsert_node(entity_name, node_data=node_data_dict)
 
     async def merge_edges(
         self,
@@ -193,6 +198,12 @@ class OmicsKGBuilder(BaseKGBuilder):
     ) -> None:
         """Merge extracted edges into the knowledge graph."""
         (src_id, tgt_id), edge_data = edges_data
+
+        # Skip self-loops (edges where source and target are the same)
+        # This can happen when LLM extracts invalid relationships
+        if src_id == tgt_id:
+            logger.debug("Skipping self-loop edge: (%s, %s)", src_id, tgt_id)
+            return
 
         source_ids = []
         descriptions = []

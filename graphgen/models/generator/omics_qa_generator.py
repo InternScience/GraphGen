@@ -230,28 +230,36 @@ class OmicsQAGenerator(BaseGenerator):
         # Detect molecule type from nodes
         molecule_type = self._detect_molecule_type(nodes)
         
-        # Extract caption for each node and attach to QA pairs
-        # Only attach caption once per batch (from the first relevant node)
+        # Extract captions for all molecule types from nodes
+        captions = {"dna": None, "rna": None, "protein": None}
         caption_attached = False
+        
         for node in nodes:
             node_id, node_data = node
-            caption = self._extract_caption(node_data, molecule_type)
             
-            if caption and not caption_attached:
-                # Attach caption to all QA pairs
-                for qa in qa_pairs.values():
-                    # Use molecule_type as the key (dna, rna, or protein)
-                    qa[molecule_type] = caption
-                caption_attached = True
-                break  # Only need to attach once per batch
+            # Check for pre-extracted captions (from partition_service)
+            for mol_type in ["dna", "rna", "protein"]:
+                caption_key = f"{mol_type}_caption"
+                if caption_key in node_data and node_data[caption_key]:
+                    captions[mol_type] = node_data[caption_key]
+                    caption_attached = True
+            
+            # If no pre-extracted captions, extract from node_data using the detected molecule_type
+            if not caption_attached:
+                caption = self._extract_caption(node_data, molecule_type)
+                if caption:
+                    captions[molecule_type] = caption
+                    caption_attached = True
+                    break  # Only need to extract once per batch
+        
+        # Attach all captions to QA pairs
+        for qa in qa_pairs.values():
+            qa["dna"] = captions["dna"] if captions["dna"] else ""
+            qa["rna"] = captions["rna"] if captions["rna"] else ""
+            qa["protein"] = captions["protein"] if captions["protein"] else ""
         
         if not caption_attached:
             logger.warning(f"No caption extracted for molecule_type={molecule_type}. Node data sample: {dict(list(nodes[0][1].items())[:5]) if nodes else 'No nodes'}")
-            # Still attach empty captions to maintain format consistency
-            for qa in qa_pairs.values():
-                qa.setdefault("dna", "")
-                qa.setdefault("rna", "")
-                qa.setdefault("protein", "")
         
         result.update(qa_pairs)
         return result
