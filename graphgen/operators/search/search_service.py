@@ -172,16 +172,147 @@ class SearchService(BaseOperator):
 
         return results
 
+    def _is_already_searched(self, doc: dict) -> bool:
+        """
+        Check if a document already contains search results.
+        
+        :param doc: Document dictionary
+        :return: True if document appears to already contain search results
+        """
+        # Check for data_source field (added by search_service)
+        if "data_source" in doc and doc["data_source"]:
+            return True
+        
+        # Check for database field (added by search operations)
+        if "database" in doc and doc["database"] in ["UniProt", "NCBI", "RNAcentral"]:
+            # Also check for molecule_type to confirm it's a search result
+            if "molecule_type" in doc and doc["molecule_type"] in ["DNA", "RNA", "protein"]:
+                return True
+        
+        # Check for search-specific fields that indicate search results
+        search_indicators = [
+            "uniprot_id", "entry_name",  # UniProt
+            "gene_id", "gene_name", "chromosome",  # NCBI
+            "rnacentral_id", "rna_type",  # RNAcentral
+        ]
+        if any(indicator in doc for indicator in search_indicators):
+            # Make sure it's not just metadata by checking for database or molecule_type
+            if "database" in doc or "molecule_type" in doc:
+                return True
+        
+        return False
+
+    def _normalize_searched_data(self, doc: dict) -> dict:
+        """
+        Normalize a document that already contains search results to the expected format.
+        
+        :param doc: Document dictionary with search results
+        :return: Normalized document dictionary
+        """
+        # Ensure required fields exist
+        doc_id = doc.get("_doc_id")
+        if not doc_id:
+            # Generate doc_id from id or other fields
+            raw_doc_id = doc.get("id") or doc.get("_search_query") or f"doc-{hash(str(doc))}"
+            doc_id = str(raw_doc_id)
+        
+        # Ensure doc_id starts with "doc-" prefix
+        if not doc_id.startswith("doc-"):
+            doc_id = f"doc-{doc_id}"
+        
+        # Determine document type from molecule_type or existing type
+        doc_type = doc.get("type", "text")
+        if doc_type == "text" and "molecule_type" in doc:
+            molecule_type = doc.get("molecule_type", "").lower()
+            if molecule_type in ["dna", "rna", "protein"]:
+                doc_type = molecule_type
+        
+        # Ensure data_source field exists
+        data_source = doc.get("data_source")
+        if not data_source:
+            # Infer from database field
+            database = doc.get("database", "").lower()
+            if "uniprot" in database:
+                data_source = "uniprot"
+            elif "ncbi" in database:
+                data_source = "ncbi"
+            elif "rnacentral" in database or "rna" in database:
+                data_source = "rnacentral"
+        
+        # Build or preserve content field
+        content = doc.get("content")
+        if not content or content.strip() == "":
+            # Build content from available fields if missing
+            content_parts = []
+            if doc.get("title"):
+                content_parts.append(f"Title: {doc['title']}")
+            if doc.get("description"):
+                content_parts.append(f"Description: {doc['description']}")
+            if doc.get("function"):
+                func = doc["function"]
+                if isinstance(func, list):
+                    func = ", ".join(str(f) for f in func)
+                content_parts.append(f"Function: {func}")
+            if doc.get("sequence"):
+                content_parts.append(f"Sequence: {doc['sequence']}")
+            
+            if not content_parts:
+                # Fallback: create content from key fields
+                key_fields = ["protein_name", "gene_name", "gene_description", "organism"]
+                for field in key_fields:
+                    if field in doc and doc[field]:
+                        content_parts.append(f"{field}: {doc[field]}")
+            
+            content = "\n".join(content_parts) if content_parts else str(doc)
+        
+        # Create normalized row
+        normalized_doc = {
+            "_doc_id": doc_id,
+            "type": doc_type,
+            "content": content,
+            "data_source": data_source,
+            **doc,  # Include all original fields for metadata
+        }
+        
+        return normalized_doc
+
     def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         """
         Process a batch of documents and perform searches.
         This is the Ray Data operator interface.
+        
+        If input data already contains search results (detected by presence of 
+        data_source, database, or search-specific fields), the search step is 
+        skipped and the data is normalized and returned directly.
 
         :param batch: DataFrame containing documents with at least '_doc_id' and 'content' columns
         :return: DataFrame containing search results
         """
         # Convert DataFrame to dictionary format
         docs = batch.to_dict(orient="records")
+        
+        # Check if data already contains search results
+        already_searched = all(self._is_already_searched(doc) for doc in docs if doc)
+        
+        if already_searched:
+            # Data already contains search results, normalize and return directly
+            self.logger.info(
+                "Input data already contains search results. Skipping search step and normalizing data."
+            )
+            result_rows = []
+            for doc in docs:
+                if not doc:
+                    continue
+                normalized_doc = self._normalize_searched_data(doc)
+                result_rows.append(normalized_doc)
+            
+            if not result_rows:
+                self.logger.warning("No documents found in batch")
+                return pd.DataFrame(columns=["_doc_id", "type", "content", "data_source"])
+            
+            return pd.DataFrame(result_rows)
+        
+        # Data doesn't contain search results, perform search as usual
         seed_data = {doc.get("_doc_id", f"doc-{i}"): doc for i, doc in enumerate(docs)}
         
         # Perform searches asynchronously
