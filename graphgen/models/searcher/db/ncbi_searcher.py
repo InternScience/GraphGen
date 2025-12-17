@@ -380,7 +380,7 @@ class NCBISearch(BaseSearcher):
                     search_results = Entrez.read(search_handle)
                 
                 if len(gene_id := search_results.get("IdList", [])) > 0:
-                    result = self.get_by_gene_id(gene_id)
+                    result = self.get_by_gene_id(gene_id[0])
                     return result
         except (RequestException, IncompleteRead):
             raise

@@ -20,7 +20,7 @@ class MTLDEvaluator(BaseEvaluator):
     async def evaluate_single(self, pair: QAPair) -> float:
         # In async context, we should use the running loop
         import asyncio
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._calculate_mtld_score, pair.answer)
 
     def _calculate_mtld_score(self, text: str, threshold=0.72) -> float:

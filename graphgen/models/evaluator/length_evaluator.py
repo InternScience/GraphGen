@@ -13,7 +13,7 @@ class LengthEvaluator(BaseEvaluator):
 
     async def evaluate_single(self, pair: QAPair) -> float:
         # In async context, we should use the running loop
-        loop = asyncio.get_event_loop()
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._calculate_length, pair.answer)
 
     def _calculate_length(self, text: str) -> float:
