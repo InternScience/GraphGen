@@ -8,7 +8,7 @@ from .generator import (
     QuizGenerator,
     VQAGenerator,
 )
-from .kg_builder import LightRAGKGBuilder, MMKGBuilder, MOKGBuilder, OmicsKGBuilder
+from .kg_builder import LightRAGKGBuilder, MMKGBuilder, OmicsKGBuilder
 from .llm import HTTPClient, OllamaClient, OpenAIClient
 from .partitioner import (
     AnchorBFSPartitioner,
