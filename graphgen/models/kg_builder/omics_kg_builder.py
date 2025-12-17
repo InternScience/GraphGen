@@ -29,7 +29,7 @@ class OmicsKGBuilder(BaseKGBuilder):
     ) -> Tuple[Dict[str, List[dict]], Dict[Tuple[str, str], List[dict]]]:
         """
         Extract entities and relationships from a sequence chunk using the LLM client.
-        
+
         :param chunk: Sequence chunk with metadata
         :return: (nodes_data, edges_data)
         """
@@ -39,14 +39,15 @@ class OmicsKGBuilder(BaseKGBuilder):
 
         # Extract sequence and metadata information
         sequence_chunk = content or metadata.get("sequence", "")
-        molecule_type = metadata.get("molecule_type", "").lower()
-        
+        # molecule_type is used in _format_metadata indirectly via metadata dict
+        _ = metadata.get("molecule_type", "").lower()
+
         # Build metadata text for prompt
         metadata_text = self._format_metadata(metadata)
-        
+
         # Detect language from metadata text (defaults to English if no Chinese detected)
         language = detect_main_language(metadata_text)
-        
+
         # Build prompt with sequence and metadata
         hint_prompt = OMICS_KG_EXTRACTION_PROMPT[language]["TEMPLATE"].format(
             **OMICS_KG_EXTRACTION_PROMPT["FORMAT"],
@@ -116,7 +117,7 @@ class OmicsKGBuilder(BaseKGBuilder):
     def _format_metadata(metadata: dict) -> str:
         """
         Format metadata dictionary into a readable text string for the prompt.
-        
+
         :param metadata: Metadata dictionary from chunk
         :return: Formatted metadata text
         """
@@ -131,7 +132,7 @@ class OmicsKGBuilder(BaseKGBuilder):
             "content",
             "sequence",
         }
-        
+
         metadata_items = []
         for key, value in metadata.items():
             if key in exclude_fields:
@@ -141,7 +142,7 @@ class OmicsKGBuilder(BaseKGBuilder):
             if isinstance(value, list):
                 value = ", ".join(str(v) for v in value)
             metadata_items.append(f"{key}: {value}")
-        
+
         return "\n".join(metadata_items) if metadata_items else "No additional metadata available."
 
     async def merge_nodes(
@@ -184,11 +185,11 @@ class OmicsKGBuilder(BaseKGBuilder):
             "description": description,
             "source_id": source_id,
         }
-        
+
         # Preserve sequence from existing node if present (e.g., added by partition_service)
         if node is not None and "sequence" in node and node["sequence"]:
             node_data_dict["sequence"] = node["sequence"]
-            
+
         kg_instance.upsert_node(entity_name, node_data=node_data_dict)
 
     async def merge_edges(

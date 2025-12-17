@@ -65,7 +65,10 @@ class BuildKGService(BaseOperator):
         if len(omics_chunks) == 0:
             logger.info("All omics chunks are already in the storage")
         else:
-            logger.info("[Omics Entity and Relation Extraction] processing %d chunks (DNA/RNA/protein)...", len(omics_chunks))
+            logger.info(
+                "[Omics Entity and Relation Extraction] processing %d chunks (DNA/RNA/protein)...",
+                len(omics_chunks)
+            )
             build_omics_kg(
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,

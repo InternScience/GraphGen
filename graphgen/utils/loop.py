@@ -12,7 +12,8 @@ def create_event_loop() -> Tuple[asyncio.AbstractEventLoop, bool]:
     it creates a new event loop and sets it as the current event loop.
 
     Returns:
-        Tuple[asyncio.AbstractEventLoop, bool]: The event loop and a flag indicating if we created it (True) or it was already running (False).
+        Tuple[asyncio.AbstractEventLoop, bool]: The event loop and a flag
+        indicating if we created it (True) or it was already running (False).
     """
     try:
         # Try to get the running event loop (Python 3.7+)
@@ -24,7 +25,7 @@ def create_event_loop() -> Tuple[asyncio.AbstractEventLoop, bool]:
         try:
             current_loop = asyncio.get_event_loop()
             if current_loop.is_closed():
-                raise RuntimeError("Event loop is closed.")
+                raise RuntimeError("Event loop is closed.") from None
             # Loop exists but not running, we can use it
             return current_loop, False
         except RuntimeError:

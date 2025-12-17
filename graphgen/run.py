@@ -109,7 +109,7 @@ def main():
     # Temporarily suppress non-error output (print statements, third-party libraries, Ray Data progress)
     # Only redirect stdout to preserve stderr for logger error output
     global _devnull
-    _devnull = open(os.devnull, 'w')
+    _devnull = open(os.devnull, 'w', encoding='utf-8')
     sys.stdout = _devnull
 
     try:
@@ -139,7 +139,7 @@ def main():
         if _devnull:
             _devnull.close()
             _devnull = None
-        
+
         # Print save information to console
         if 'results' in locals() and results:
             print("\n" + "="*60)

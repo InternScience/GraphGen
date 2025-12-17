@@ -6,7 +6,7 @@ import tempfile
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 from io import StringIO
-from typing import Dict, Optional, List
+from typing import Dict, Optional
 
 from Bio import ExPASy, SeqIO, SwissProt, UniProt
 from Bio.Blast import NCBIWWW, NCBIXML
@@ -39,8 +39,8 @@ class UniProtSearch(BaseSearcher):
     """
 
     def __init__(
-        self, 
-        use_local_blast: bool = False, 
+        self,
+        use_local_blast: bool = False,
         local_blast_db: str = "sp_db",
         blast_num_threads: int = 4,
         working_dir: str = "cache",
@@ -49,7 +49,7 @@ class UniProtSearch(BaseSearcher):
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
         self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
-        
+
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.phr"):
             self.logger.error("Local BLAST database files not found. Please check the path.")
             self.use_local_blast = False
@@ -214,14 +214,14 @@ class UniProtSearch(BaseSearcher):
                 "-outfmt",
                 "6 sacc",  # Only accession, tab-separated
             ]
-            self.logger.debug("Running local blastp (threads=%d): %s", 
+            self.logger.debug("Running local blastp (threads=%d): %s",
                         self.blast_num_threads, " ".join(cmd))
-            
+
             # Run BLAST with timeout to avoid hanging
             try:
                 out = subprocess.check_output(
-                    cmd, 
-                    text=True, 
+                    cmd,
+                    text=True,
                     timeout=300,  # 5 minute timeout for BLAST search
                     stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
                 ).strip()
@@ -229,7 +229,7 @@ class UniProtSearch(BaseSearcher):
                 self.logger.warning("BLAST search timed out after 5 minutes for sequence")
                 os.remove(tmp_name)
                 return None
-            
+
             os.remove(tmp_name)
             if out:
                 return out.split("\n", maxsplit=1)[0]

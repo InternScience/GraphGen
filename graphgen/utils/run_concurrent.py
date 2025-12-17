@@ -35,7 +35,7 @@ def run_concurrent(
             return []
         # Use semaphore to limit concurrent tasks if max_concurrent is specified
         semaphore = asyncio.Semaphore(max_concurrent) if max_concurrent is not None and max_concurrent > 0 else None
-        
+
         async def run_with_semaphore(item: T) -> R:
             """Wrapper to apply semaphore if needed."""
             if semaphore:
@@ -43,7 +43,7 @@ def run_concurrent(
                     return await coro_fn(item)
             else:
                 return await coro_fn(item)
-        
+
         # Create tasks with concurrency limit
         if max_concurrent is not None and max_concurrent > 0:
             # Use semaphore-controlled wrapper
@@ -105,7 +105,7 @@ def run_concurrent(
 
     # Check if we're in an async context (event loop is running)
     try:
-        running_loop = asyncio.get_running_loop()
+        _ = asyncio.get_running_loop()
         # If we're in an async context, return the coroutine directly
         # The caller should use 'await run_concurrent(...)'
         return _run_all()

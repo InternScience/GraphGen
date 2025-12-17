@@ -145,7 +145,7 @@ def read_files(
         cache_dir: Directory for caching PDF extraction and scan results
         max_workers: Number of workers for parallel scanning
         rescan: Whether to force rescan even if cached results exist
-    
+
     Returns:
         Iterator of dictionaries containing the data (for streaming)
     """
@@ -193,8 +193,7 @@ def read_files(
             else:
                 # Fallback to regular read() method - convert Ray Dataset to iterator
                 ds = reader.read([file_path])
-                for record in ds.iter_rows():
-                    yield record
+                yield from ds.iter_rows()
 
         except Exception as e:  # pylint: disable=broad-except
             logger.exception("Error reading %s: %s", file_info.get("path"), e)

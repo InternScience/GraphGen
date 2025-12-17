@@ -279,7 +279,7 @@ class NCBISearch(BaseSearcher):
             # If using local BLAST, use local database
             if self.use_local_blast:
                 sequence = self._extract_sequence_from_local_db(accession)
-                
+
                 if sequence:
                     result["sequence"] = sequence
                     result["sequence_length"] = len(sequence)
@@ -295,18 +295,18 @@ class NCBISearch(BaseSearcher):
             else:
                 # Use NCBI API to fetch sequence
                 result = _extract_sequence_from_fasta(result, accession)
-            
+
             return result
 
         try:
             with Entrez.efetch(db="gene", id=gene_id, retmode="xml") as handle:
                 gene_record = Entrez.read(handle)
-            
+
             if not gene_record:
                 return None
 
             result = self._gene_record_to_dict(gene_record, gene_id)
-            
+
             if accession := (preferred_accession or result.get("_representative_accession")):
                 result = _extract_metadata_from_genbank(result, accession)
                 # Extract sequence using appropriate method
@@ -351,11 +351,11 @@ class NCBISearch(BaseSearcher):
                 return None
 
             result = self.get_by_gene_id(gene_id, preferred_accession=accession)
-            
+
             if result:
                 result["id"] = accession
                 result["url"] = f"https://www.ncbi.nlm.nih.gov/nuccore/{accession}"
-            
+
             return result
         except (RequestException, IncompleteRead):
             raise
@@ -378,7 +378,7 @@ class NCBISearch(BaseSearcher):
             for search_term in [f"{keyword}[Gene] OR {keyword}[All Fields]", keyword]:
                 with Entrez.esearch(db="gene", term=search_term, retmax=1, sort="relevance") as search_handle:
                     search_results = Entrez.read(search_handle)
-                
+
                 if len(gene_id := search_results.get("IdList", [])) > 0:
                     result = self.get_by_gene_id(gene_id[0])
                     return result
@@ -433,14 +433,14 @@ class NCBISearch(BaseSearcher):
                 "-num_threads", str(self.blast_num_threads),
                 "-outfmt", "6 sacc"  # Only accession, tab-separated
             ]
-            self.logger.debug("Running local blastn (threads=%d): %s", 
+            self.logger.debug("Running local blastn (threads=%d): %s",
                         self.blast_num_threads, " ".join(cmd))
-            
+
             # Run BLAST with timeout to avoid hanging
             try:
                 out = subprocess.check_output(
-                    cmd, 
-                    text=True, 
+                    cmd,
+                    text=True,
                     timeout=300,  # 5 minute timeout for BLAST search
                     stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
                 ).strip()
@@ -448,7 +448,7 @@ class NCBISearch(BaseSearcher):
                 self.logger.warning("BLAST search timed out after 5 minutes for sequence")
                 os.remove(tmp_name)
                 return None
-            
+
             os.remove(tmp_name)
             return out.split("\n", maxsplit=1)[0] if out else None
         except Exception as exc:
@@ -509,15 +509,18 @@ class NCBISearch(BaseSearcher):
             # Try local BLAST first if enabled
             if self.use_local_blast:
                 accession = self._local_blast(seq, threshold)
-                
+
                 if accession:
                     self.logger.debug("Local BLAST found accession: %s", accession)
                     # When using local BLAST, skip sequence fetching by default (faster, fewer API calls)
                     # Sequence is already known from the query, so we only need metadata
                     result = self.get_by_accession(accession)
                     return result
-                
-                self.logger.info("Local BLAST found no match for sequence. API fallback disabled when using local database.")
+
+                self.logger.info(
+                    "Local BLAST found no match for sequence. "
+                    "API fallback disabled when using local database."
+                )
                 return None
 
             # Fall back to network BLAST only if local BLAST is not enabled

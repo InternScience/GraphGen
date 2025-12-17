@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Union
 
 from graphgen.bases.base_reader import BaseReader
 from graphgen.utils import logger
@@ -14,27 +14,30 @@ class JSONLReader(BaseReader):
         - if type is "text", "content" column must be present.
     """
 
-    def read(self, file_path: str) -> List[Dict[str, Any]]:
+    def read(self, input_path: Union[str, List[str]]) -> List[Dict[str, Any]]:
         docs = []
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    doc = json.loads(line)
-                    assert "type" in doc, f"Missing 'type' in document: {doc}"
-                    if doc.get("type") == "text" and self.text_column not in doc:
-                        raise ValueError(
-                            f"Missing '{self.text_column}' in document: {doc}"
-                        )
-                    docs.append(doc)
-                except json.JSONDecodeError as e:
-                    logger.error("Error decoding JSON line: %s. Error: %s", line, e)
+        # Handle both single file and list of files
+        file_paths = input_path if isinstance(input_path, list) else [input_path]
+        for file_path in file_paths:
+            with open(file_path, "r", encoding="utf-8") as f:
+                for line in f:
+                    try:
+                        doc = json.loads(line)
+                        assert "type" in doc, f"Missing 'type' in document: {doc}"
+                        if doc.get("type") == "text" and self.text_column not in doc:
+                            raise ValueError(
+                                f"Missing '{self.text_column}' in document: {doc}"
+                            )
+                        docs.append(doc)
+                    except json.JSONDecodeError as e:
+                        logger.error("Error decoding JSON line: %s. Error: %s", line, e)
         return self.filter(docs)
 
     def read_stream(self, file_path: str) -> Iterator[Dict[str, Any]]:
         """
         Stream read JSONL files line by line without loading entire file into memory.
         Returns an iterator that yields filtered documents.
-        
+
         :param file_path: Path to the JSONL file.
         :return: Iterator of dictionaries containing the data.
         """
@@ -47,7 +50,7 @@ class JSONLReader(BaseReader):
                         raise ValueError(
                             f"Missing '{self.text_column}' in document: {doc}"
                         )
-                    
+
                     # Apply filtering logic inline (similar to BaseReader.filter)
                     if doc.get("type") == "text":
                         content = doc.get(self.text_column, "").strip()

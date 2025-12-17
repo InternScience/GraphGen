@@ -71,35 +71,47 @@ class OmicsQAGenerator(BaseGenerator):
     def _extract_caption(node_data: dict, molecule_type: str) -> Optional[dict]:
         """
         Extract molecule-specific caption information from node data.
-        
+
         :param node_data: Node data dictionary
         :param molecule_type: Type of molecule ("dna", "rna", or "protein")
         :return: Caption dictionary or None
         """
         molecule_type_lower = molecule_type.lower()
-        
+
         # Check if there's already a caption field (e.g., protein_caption, dna_caption, rna_caption)
         caption_key = f"{molecule_type_lower}_caption"
         if caption_key in node_data and node_data[caption_key]:
             if isinstance(node_data[caption_key], list) and len(node_data[caption_key]) > 0:
-                return node_data[caption_key][0] if isinstance(node_data[caption_key][0], dict) else node_data[caption_key]
-            elif isinstance(node_data[caption_key], dict):
+                caption_val = node_data[caption_key]
+                return caption_val[0] if isinstance(caption_val[0], dict) else caption_val
+            if isinstance(node_data[caption_key], dict):
                 return node_data[caption_key]
-        
+
         # Field mappings for each molecule type
         field_mapping = {
-            "protein": ["protein_name", "gene_names", "organism", "function", "sequence", "id", "database", "entry_name", "uniprot_id"],
-            "dna": ["gene_name", "gene_description", "organism", "chromosome", "genomic_location", "function", "gene_type", "id", "database", "sequence"],
-            "rna": ["rna_type", "description", "organism", "related_genes", "gene_name", "so_term", "id", "database", "rnacentral_id", "sequence"],
+            "protein": [
+                "protein_name", "gene_names", "organism", "function",
+                "sequence", "id", "database", "entry_name", "uniprot_id"
+            ],
+            "dna": [
+                "gene_name", "gene_description", "organism", "chromosome",
+                "genomic_location", "function", "gene_type", "id",
+                "database", "sequence"
+            ],
+            "rna": [
+                "rna_type", "description", "organism", "related_genes",
+                "gene_name", "so_term", "id", "database",
+                "rnacentral_id", "sequence"
+            ],
         }
-        
+
         # Extract fields based on molecule type
         caption = {}
         caption_fields = field_mapping.get(molecule_type_lower, [])
         for field in caption_fields:
             if field in node_data and node_data[field]:
                 caption[field] = node_data[field]
-        
+
         # Special handling for protein: check search results and existing protein field
         if molecule_type_lower == "protein":
             # Check for search result data (from UniProt search)
@@ -121,12 +133,16 @@ class OmicsQAGenerator(BaseGenerator):
                         search_caption = {k: v for k, v in search_caption.items() if v}
                         if search_caption:
                             return search_caption
-            
+
             # Merge with existing protein field if present
             if "protein" in node_data and node_data["protein"]:
                 existing_protein = node_data["protein"]
                 if isinstance(existing_protein, list) and len(existing_protein) > 0:
-                    existing_protein = existing_protein[0] if isinstance(existing_protein[0], dict) else existing_protein
+                    existing_protein = (
+                        existing_protein[0]
+                        if isinstance(existing_protein[0], dict)
+                        else existing_protein
+                    )
                 if isinstance(existing_protein, dict):
                     for key, value in existing_protein.items():
                         if key not in caption and value:
@@ -134,13 +150,13 @@ class OmicsQAGenerator(BaseGenerator):
                     # Ensure sequence from node_data takes precedence
                     if "sequence" in node_data and node_data["sequence"]:
                         caption["sequence"] = node_data["sequence"]
-        
+
         # Fallback to description if no caption found
         if not caption and "description" in node_data:
             description = node_data["description"]
             if isinstance(description, str) and len(description) > 10:
                 caption["description"] = description
-        
+
         return caption if caption else None
 
     @staticmethod
@@ -148,13 +164,13 @@ class OmicsQAGenerator(BaseGenerator):
         """
         Detect molecule type from nodes.
         Priority: Check node type, then check metadata, then check node data fields.
-        
+
         :param nodes: List of (node_id, node_data) tuples
         :return: Detected molecule type ("dna", "rna", "protein", or "unknown")
         """
         if not nodes:
             return "unknown"
-        
+
         # Type indicators for each molecule type
         type_indicators = {
             "protein": {
@@ -173,20 +189,20 @@ class OmicsQAGenerator(BaseGenerator):
                 "description_keywords": ["rna", "transcript"],
             },
         }
-            
+
         for _, node_data in nodes:
             # Priority 1: Check explicit type fields (most reliable)
             for field in ["type", "molecule_type"]:
                 value = node_data.get(field, "").lower()
                 if value in ("dna", "rna", "protein"):
                     return value
-            
+
             # Priority 2: Check source_id prefix
             source_id = node_data.get("source_id", "").lower()
             for mol_type, indicators in type_indicators.items():
                 if source_id.startswith(indicators["source_prefix"]):
                     return mol_type
-            
+
             # Priority 3: Check type-specific fields
             for mol_type, indicators in type_indicators.items():
                 if any(key in node_data for key in indicators["fields"]):
@@ -194,7 +210,7 @@ class OmicsQAGenerator(BaseGenerator):
                     if mol_type == "dna" and not any(key in node_data for key in ["chromosome", "genomic_location"]):
                         continue
                     return mol_type
-            
+
             # Priority 4: Check description keywords
             description = node_data.get("description", "").lower()
             for mol_type, indicators in type_indicators.items():
@@ -204,7 +220,7 @@ class OmicsQAGenerator(BaseGenerator):
                     if mol_type == "protein" and "gene" in description:
                         continue
                     return mol_type
-        
+
         return "unknown"
 
     async def generate(
@@ -216,7 +232,7 @@ class OmicsQAGenerator(BaseGenerator):
         """
         Generate QAs based on a given batch.
         Automatically extracts and attaches molecule-specific caption information.
-        
+
         :param batch
         :return: QA pairs with attached molecule captions
         """
@@ -224,26 +240,26 @@ class OmicsQAGenerator(BaseGenerator):
         prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(prompt)
         qa_pairs = self.parse_response(response)  # generate one or more QA pairs
-        
+
         nodes, _ = batch
-        
+
         # Detect molecule type from nodes
         molecule_type = self._detect_molecule_type(nodes)
-        
+
         # Extract captions for all molecule types from nodes
         captions = {"dna": None, "rna": None, "protein": None}
         caption_attached = False
-        
+
         for node in nodes:
-            node_id, node_data = node
-            
+            _, node_data = node
+
             # Check for pre-extracted captions (from partition_service)
             for mol_type in ["dna", "rna", "protein"]:
                 caption_key = f"{mol_type}_caption"
                 if caption_key in node_data and node_data[caption_key]:
                     captions[mol_type] = node_data[caption_key]
                     caption_attached = True
-            
+
             # If no pre-extracted captions, extract from node_data using the detected molecule_type
             if not caption_attached:
                 caption = self._extract_caption(node_data, molecule_type)
@@ -251,16 +267,22 @@ class OmicsQAGenerator(BaseGenerator):
                     captions[molecule_type] = caption
                     caption_attached = True
                     break  # Only need to extract once per batch
-        
+
         # Attach all captions to QA pairs
         for qa in qa_pairs.values():
             qa["dna"] = captions["dna"] if captions["dna"] else ""
             qa["rna"] = captions["rna"] if captions["rna"] else ""
             qa["protein"] = captions["protein"] if captions["protein"] else ""
-        
+
         if not caption_attached:
-            logger.warning(f"No caption extracted for molecule_type={molecule_type}. Node data sample: {dict(list(nodes[0][1].items())[:5]) if nodes else 'No nodes'}")
-        
+            node_sample = (
+                dict(list(nodes[0][1].items())[:5]) if nodes else 'No nodes'
+            )
+            logger.warning(
+                "No caption extracted for molecule_type=%s. Node data sample: %s",
+                molecule_type, node_sample
+            )
+
         result.update(qa_pairs)
         return result
 
@@ -284,7 +306,7 @@ class OmicsQAGenerator(BaseGenerator):
             for item in results
             for k, v in item.items()
         ]
-        
+
         # Format based on output format
         if output_data_format == "Alpaca":
             return [
@@ -298,7 +320,7 @@ class OmicsQAGenerator(BaseGenerator):
                 }
                 for qa in qa_items
             ]
-        elif output_data_format == "Sharegpt":
+        if output_data_format == "Sharegpt":
             return [
                 {
                     "conversations": [
@@ -318,7 +340,7 @@ class OmicsQAGenerator(BaseGenerator):
                 }
                 for qa in qa_items
             ]
-        elif output_data_format == "ChatML":
+        if output_data_format == "ChatML":
             return [
                 {
                     "messages": [
