@@ -33,8 +33,8 @@ class VLLMWrapper(BaseLLMWrapper):
 
         engine_args = AsyncEngineArgs(
             model=model,
-            tensor_parallel_size=tensor_parallel_size,
-            gpu_memory_utilization=gpu_memory_utilization,
+            tensor_parallel_size=int(tensor_parallel_size),
+            gpu_memory_utilization=float(gpu_memory_utilization),
             trust_remote_code=kwargs.get("trust_remote_code", True),
             disable_log_stats=False,
         )
@@ -82,15 +82,15 @@ class VLLMWrapper(BaseLLMWrapper):
 
     async def generate_topk_per_token(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
-    ) -> List[Token]:
+        ) -> List[Token]:
         full_prompt = self._build_inputs(text, history)
-
         request_id = f"graphgen_topk_{uuid.uuid4()}"
 
         sp = self.SamplingParams(
             temperature=0,
             max_tokens=1,
             logprobs=self.topk,
+            prompt_logprobs=1,
         )
 
         result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
@@ -108,14 +108,22 @@ class VLLMWrapper(BaseLLMWrapper):
 
         top_logprobs = final_output.outputs[0].logprobs[0]
 
-        tokens = []
+        candidate_tokens = []
         for _, logprob_obj in top_logprobs.items():
-            tok_str = logprob_obj.decoded_token
+            tok_str = logprob_obj.decoded_token.strip() if logprob_obj.decoded_token else ""
             prob = float(math.exp(logprob_obj.logprob))
-            tokens.append(Token(tok_str, prob))
+            candidate_tokens.append(Token(tok_str, prob))
 
-        tokens.sort(key=lambda x: -x.prob)
-        return tokens
+        candidate_tokens.sort(key=lambda x: -x.prob)
+
+        if candidate_tokens:
+            main_token = Token(
+                text=candidate_tokens[0].text,
+                prob=candidate_tokens[0].prob,
+                top_candidates=candidate_tokens
+            )
+            return [main_token]
+        return []
 
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
