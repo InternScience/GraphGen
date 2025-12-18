@@ -1,6 +1,6 @@
 import json
 import os
-from typing import Any, Dict, Iterator, List, Union
+from typing import Any, Dict, List, Union
 
 import ray
 import ray.data
@@ -43,41 +43,6 @@ class JSONReader(BaseReader):
         ds = ds.map_batches(self._validate_batch, batch_format="pandas")
         ds = ds.filter(self._should_keep_item)
         return ds
-
-    def read_stream(self, file_path: str) -> Iterator[Dict[str, Any]]:
-        """
-        Stream read JSONL files line by line without loading entire file into memory.
-        Returns an iterator that yields filtered documents.
-
-        :param file_path: Path to the JSONL file.
-        :return: Iterator of dictionaries containing the data.
-        """
-        if not file_path.endswith(".jsonl"):
-            raise ValueError("read_stream only supports JSONL files, not JSON files")
-
-        with open(file_path, "r", encoding="utf-8") as f:
-            for line in f:
-                try:
-                    doc = json.loads(line)
-                    assert "type" in doc, f"Missing 'type' in document: {doc}"
-                    if doc.get("type") == "text" and self.text_column not in doc:
-                        raise ValueError(
-                            f"Missing '{self.text_column}' in document: {doc}"
-                        )
-
-                    # Apply filtering logic inline (similar to BaseReader.filter)
-                    if doc.get("type") == "text":
-                        content = doc.get(self.text_column, "").strip()
-                        if content:
-                            yield doc
-                    elif doc.get("type") in ("image", "table", "equation"):
-                        img_path = doc.get("img_path")
-                        if self._image_exists(img_path):
-                            yield doc
-                    else:
-                        yield doc
-                except json.JSONDecodeError as e:
-                    logger.error("Error decoding JSON line: %s. Error: %s", line, e)
 
     @staticmethod
     def _image_exists(path_or_url: str, timeout: int = 3) -> bool:
