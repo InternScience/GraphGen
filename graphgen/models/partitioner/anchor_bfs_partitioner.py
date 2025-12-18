@@ -18,6 +18,10 @@ class AnchorBFSPartitioner(BFSPartitioner):
     2. Expand the community using BFS until the max unit size is reached.(A unit is a node or an edge.)
     3. Non-anchor units can only be "pulled" into a community and never become seeds themselves.
     For example, for VQA tasks, we may want to use image nodes as anchors and expand to nearby text nodes and edges.
+    """
+
+    def __init__(
+        self,
         anchor_type: Union[
             Literal["image", "dna", "rna", "protein"],
             List[Literal["dna", "rna", "protein"]],

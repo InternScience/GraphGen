@@ -68,7 +68,7 @@ class UniProtSearch(BaseSearcher):
 
     @staticmethod
     def _swissprot_to_dict(record: SwissProt.Record) -> dict:
-        """error
+        """
         Convert a SwissProt.Record to a dictionary.
         """
         functions = []
@@ -182,6 +182,13 @@ class UniProtSearch(BaseSearcher):
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
         """
         Perform local BLAST search using local BLAST database.
+        Optimized with multi-threading and faster output format.
+        """
+        try:
+            with tempfile.NamedTemporaryFile(mode="w+", suffix=".fa", delete=False) as tmp:
+                tmp.write(f">query\n{seq}\n")
+                tmp_name = tmp.name
+
             # Optimized BLAST command with:
             # - num_threads: Use multiple threads for faster search
             # - outfmt 6 sacc: Only return accession (minimal output)

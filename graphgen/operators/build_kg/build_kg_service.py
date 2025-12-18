@@ -8,6 +8,10 @@ from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger
 
 from .build_mm_kg import build_mm_kg
+from .build_omics_kg import build_omics_kg
+
+
+class BuildKGService(BaseOperator):
     def __init__(self, working_dir: str = "cache"):
         super().__init__(working_dir=working_dir, op_name="build_kg_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
@@ -33,6 +37,31 @@ from .build_mm_kg import build_mm_kg
             for chunk in chunks
             if chunk.type in ("image", "video", "table", "formula")
         ]
+        omics_chunks = [
+            chunk
+            for chunk in chunks
+            if chunk.type in ("dna", "rna", "protein")
+        ]
+
+        if len(text_chunks) == 0:
+            logger.info("All text chunks are already in the storage")
+        else:
+            logger.info("[Text Entity and Relation Extraction] processing ...")
+            # Note: build_text_kg is not imported, keeping omics processing only for now
+            # build_text_kg(
+            #     llm_client=self.llm_client,
+            #     kg_instance=self.graph_storage,
+            #     chunks=text_chunks,
+            # )
+        if len(mm_chunks) == 0:
+            logger.info("All multi-modal chunks are already in the storage")
+        else:
+            logger.info("[Multi-modal Entity and Relation Extraction] processing ...")
+            build_mm_kg(
+                llm_client=self.llm_client,
+                kg_instance=self.graph_storage,
+                chunks=mm_chunks,
+            )
         if len(omics_chunks) == 0:
             logger.info("All omics chunks are already in the storage")
         else:

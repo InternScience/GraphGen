@@ -23,7 +23,149 @@ from graphgen.bases import BaseSearcher
 
 @lru_cache(maxsize=None)
 def _get_pool():
+    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
 
+
+# ensure only one NCBI request at a time
+_blast_lock = asyncio.Lock()
+
+
+class NCBISearch(BaseSearcher):
+    """
+    NCBI Search client to search DNA/GenBank/Entrez databases.
+    1) Get the gene/DNA by accession number or gene ID.
+    2) Search with keywords or gene names (fuzzy search).
+    3) Search with FASTA sequence (BLAST search for DNA sequences).
+
+    API Documentation: https://www.ncbi.nlm.nih.gov/home/develop/api/
+    Note: NCBI has rate limits (max 3 requests per second), delays are required between requests.
+    """
+
+    def __init__(
+        self,
+        use_local_blast: bool = False,
+        local_blast_db: str = "nt_db",
+        email: str = "email@example.com",
+        api_key: str = "",
+        tool: str = "GraphGen",
+        blast_num_threads: int = 4,
+        working_dir: str = "cache",
+    ):
+        """
+        Initialize the NCBI Search client.
+
+        Args:
+            use_local_blast (bool): Whether to use local BLAST database.
+            local_blast_db (str): Path to the local BLAST database.
+            email (str): Email address for NCBI API requests.
+            api_key (str): API key for NCBI API requests, see https://account.ncbi.nlm.nih.gov/settings/.
+            tool (str): Tool name for NCBI API requests.
+            blast_num_threads (int): Number of threads for BLAST search.
+            working_dir (str): Working directory for log files.
+        """
+        super().__init__(working_dir=working_dir)
+        Entrez.timeout = 60  # 60 seconds timeout
+        Entrez.email = email
+        Entrez.tool = tool
+        if api_key:
+            Entrez.api_key = api_key
+        Entrez.max_tries = 10 if api_key else 3
+        Entrez.sleep_between_tries = 5
+        self.use_local_blast = use_local_blast
+        self.local_blast_db = local_blast_db
+        self.blast_num_threads = blast_num_threads
+        if self.use_local_blast:
+            # Check for single-file database (.nhr) or multi-file database (.00.nhr)
+            db_exists = (
+                os.path.isfile(f"{self.local_blast_db}.nhr") or
+                os.path.isfile(f"{self.local_blast_db}.00.nhr")
+            )
+            if not db_exists:
+                self.logger.error("Local BLAST database files not found. Please check the path.")
+                self.logger.error("Expected: %s.nhr or %s.00.nhr", self.local_blast_db, self.local_blast_db)
+                self.use_local_blast = False
+
+    @staticmethod
+    def _nested_get(data: dict, *keys, default=None):
+        """Safely traverse nested dictionaries."""
+        for key in keys:
+            if not isinstance(data, dict):
+                return default
+            data = data.get(key, default)
+        return data
+
+    @staticmethod
+    def _infer_molecule_type_detail(accession: Optional[str], gene_type: Optional[int] = None) -> Optional[str]:
+        """Infer molecule_type_detail from accession prefix or gene type."""
+        if accession:
+            # Map accession prefixes to molecule types
+            prefix_map = {
+                ("NM_", "XM_"): "mRNA",
+                ("NC_", "NT_"): "genomic DNA",
+                ("NR_", "XR_"): "RNA",
+                ("NG_",): "genomic region",
+            }
+            for prefixes, mol_type in prefix_map.items():
+                if accession.startswith(prefixes):
+                    return mol_type
+        # Fallback: infer from gene type if available
+        if gene_type is not None:
+            gene_type_map = {
+                3: "rRNA",
+                4: "tRNA",
+                5: "snRNA",
+                6: "ncRNA",
+            }
+            return gene_type_map.get(gene_type)
+        return None
+
+    def _gene_record_to_dict(self, gene_record, gene_id: str) -> dict:
+        """
+        Convert an Entrez gene record to a dictionary.
+        All extraction logic is inlined for maximum clarity and performance.
+        """
+        if not gene_record:
+            raise ValueError("Empty gene record")
+
+        data = gene_record[0]
+        locus = (data.get("Entrezgene_locus") or [{}])[0]
+
+        # Extract common nested paths once
+        gene_ref = self._nested_get(data, "Entrezgene_gene", "Gene-ref", default={})
+        biosource = self._nested_get(data, "Entrezgene_source", "BioSource", default={})
+
+        # Process synonyms
+        synonyms_raw = gene_ref.get("Gene-ref_syn", [])
+        gene_synonyms = []
+        if isinstance(synonyms_raw, list):
+            for syn in synonyms_raw:
+                gene_synonyms.append(syn.get("Gene-ref_syn_E") if isinstance(syn, dict) else str(syn))
+        elif synonyms_raw:
+            gene_synonyms.append(str(synonyms_raw))
+
+        # Extract location info
+        label = locus.get("Gene-commentary_label", "")
+        chromosome_match = re.search(r"Chromosome\s+(\S+)", str(label)) if label else None
+
+        seq_interval = self._nested_get(
+            locus, "Gene-commentary_seqs", 0, "Seq-loc_int", "Seq-interval", default={}
+        )
+        genomic_location = (
+            f"{seq_interval.get('Seq-interval_from')}-{seq_interval.get('Seq-interval_to')}"
+            if seq_interval.get('Seq-interval_from') and seq_interval.get('Seq-interval_to')
+            else None
+        )
+
+        # Extract representative accession (prefer type 3 = mRNA/transcript)
+        representative_accession = next(
+            (
+                product.get("Gene-commentary_accession")
+                for product in locus.get("Gene-commentary_products", [])
+                if product.get("Gene-commentary_type") == "3"
+            ),
+            None,
+        )
+        # Fallback: if no type 3 accession, try any available accession
         if not representative_accession:
             representative_accession = next(
                 (

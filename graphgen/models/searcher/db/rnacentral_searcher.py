@@ -151,6 +151,16 @@ class RNACentralSearch(BaseSearcher):
 
         return hashlib.md5(normalized_seq.encode("ascii")).hexdigest()
 
+    def get_by_rna_id(self, rna_id: str) -> Optional[dict]:
+        """
+        Get RNA information by RNAcentral ID.
+        :param rna_id: RNAcentral ID (e.g., URS0000000001).
+        :return: A dictionary containing RNA information or None if not found.
+        """
+        try:
+            url = f"{self.base_url}/rna/{rna_id}"
+            url += "?flat=true"
+
             resp = requests.get(url, headers=self.headers, timeout=self.api_timeout)
             resp.raise_for_status()
 

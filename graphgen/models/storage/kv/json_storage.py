@@ -1,5 +1,48 @@
 import os
 from dataclasses import dataclass
+from typing import Iterator, Tuple
+
+from graphgen.bases.base_storage import BaseKVStorage
+from graphgen.utils import load_json, write_json
+
+
+@dataclass
+class JsonKVStorage(BaseKVStorage):
+    _data: dict[str, dict] = None
+
+    def __post_init__(self):
+        self._file_name = os.path.join(self.working_dir, f"{self.namespace}.json")
+        self._data = load_json(self._file_name) or {}
+        print(f"Load KV {self.namespace} with {len(self._data)} data")
+
+    @property
+    def data(self):
+        return self._data
+
+    def all_keys(self) -> list[str]:
+        return list(self._data.keys())
+
+    def index_done_callback(self):
+        write_json(self._data, self._file_name)
+
+    def get_by_id(self, id):
+        return self._data.get(id, None)
+
+    def get_by_ids(self, ids, fields=None) -> list:
+        if fields is None:
+            return [self._data.get(id, None) for id in ids]
+        return [
+            (
+                {k: v for k, v in self._data[id].items() if k in fields}
+                if self._data.get(id, None)
+                else None
+            )
+            for id in ids
+        ]
+
+    def get_all(self) -> dict[str, dict]:
+        return self._data
+
     def iter_items(self) -> Iterator[Tuple[str, dict]]:
         """
         Iterate over all items without loading everything into memory at once.

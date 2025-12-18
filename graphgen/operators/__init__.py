@@ -5,7 +5,7 @@ from .generate import GenerateService
 from .judge import JudgeService
 from .partition import PartitionService
 from .quiz import QuizService
-from .read import read, read_files
+from .read import read
 from .search import SearchService
 
 operators = {
