@@ -1,12 +1,10 @@
 import json
-import os
-from typing import Any, Dict, List, Union
+from typing import List, Union
 
 import ray
 import ray.data
 
 from graphgen.bases.base_reader import BaseReader
-from graphgen.utils import logger
 
 
 class JSONReader(BaseReader):
@@ -43,27 +41,6 @@ class JSONReader(BaseReader):
         ds = ds.map_batches(self._validate_batch, batch_format="pandas")
         ds = ds.filter(self._should_keep_item)
         return ds
-
-    @staticmethod
-    def _image_exists(path_or_url: str, timeout: int = 3) -> bool:
-        """
-        Check if an image exists at the given local path or URL.
-        :param path_or_url: Local file path or remote URL of the image.
-        :param timeout: Timeout for remote URL requests in seconds.
-        :return: True if the image exists, False otherwise.
-        """
-        if not path_or_url:
-            return False
-        if not path_or_url.startswith(("http://", "https://", "ftp://")):
-            path = path_or_url.replace("file://", "", 1)
-            path = os.path.abspath(path)
-            return os.path.isfile(path)
-        try:
-            import requests
-            resp = requests.head(path_or_url, allow_redirects=True, timeout=timeout)
-            return resp.status_code == 200
-        except Exception:
-            return False
 
     @staticmethod
     def _unify_schema(data):
