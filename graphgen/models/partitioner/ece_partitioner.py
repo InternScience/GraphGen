@@ -142,7 +142,7 @@ class ECEPartitioner(BFSPartitioner):
             return Community(
                 id=seed_unit[1],
                 nodes=list(community_nodes.keys()),
-                edges=[(u, v) for (u, v), _ in community_edges.items()],
+                edges=[tuple(edge) for edge in community_edges if isinstance(edge, frozenset) and len(edge)==2],
             )
 
         for unit in tqdm(all_units, desc="ECE partition"):
