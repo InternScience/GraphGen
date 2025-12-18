@@ -12,7 +12,6 @@ class QuizService(BaseOperator):
     def __init__(
         self,
         working_dir: str = "cache",
->>>>>>> feature/multi-omics-qa
         quiz_samples: int = 1,
         concurrency_limit: int = 200,
     ):

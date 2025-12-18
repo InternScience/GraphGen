@@ -18,7 +18,6 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
->>>>>>> feature/multi-omics-qa
 
 
 @lru_cache(maxsize=None)

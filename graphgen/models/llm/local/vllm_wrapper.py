@@ -8,7 +8,6 @@ class VLLMWrapper(BaseLLMWrapper):
     """
     Async inference backend based on vLLM.
     """
->>>>>>> feature/multi-omics-qa
     def __init__(
         self,
         model: str,
