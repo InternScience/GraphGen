@@ -7,36 +7,8 @@ from graphgen.models import (
     AtomicGenerator,
     CoTGenerator,
     MultiHopGenerator,
-    VQAGenerator,
-)
-from graphgen.utils import logger, run_concurrent
-
-
-class GenerateService(BaseOperator):
-    """
-    Generate question-answer pairs based on nodes and edges.
-    """
-
-    def __init__(
-        self,
-        working_dir: str = "cache",
-        method: str = "aggregated",
-        data_format: str = "ChatML",
-    ):
-        super().__init__(working_dir=working_dir, op_name="generate_service")
-        self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
-
-        self.method = method
-        self.data_format = data_format
-
-        if self.method == "atomic":
-            self.generator = AtomicGenerator(self.llm_client)
-        elif self.method == "aggregated":
-            self.generator = AggregatedGenerator(self.llm_client)
-        elif self.method == "multi_hop":
-            self.generator = MultiHopGenerator(self.llm_client)
-        elif self.method == "cot":
-            self.generator = CoTGenerator(self.llm_client)
+        elif self.method == "omics_qa":
+            self.generator = OmicsQAGenerator(self.llm_client)
         elif self.method in ["vqa"]:
             self.generator = VQAGenerator(self.llm_client)
         else:

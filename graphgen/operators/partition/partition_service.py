@@ -18,21 +18,15 @@ from graphgen.utils import logger
 
 
 class PartitionService(BaseOperator):
-    def __init__(
-        self,
-        working_dir: str = "cache",
-        graph_backend: str = "kuzu",
-        kv_backend: str = "rocksdb",
-        **partition_kwargs,
-    ):
+    def __init__(self, working_dir: str = "cache", **partition_kwargs):
         super().__init__(working_dir=working_dir, op_name="partition_service")
         self.kg_instance: BaseGraphStorage = init_storage(
-            backend=graph_backend,
+            backend="kuzu",
             working_dir=working_dir,
             namespace="graph",
         )
         self.chunk_storage: BaseKVStorage = init_storage(
-            backend=kv_backend,
+            backend="rocksdb",
             working_dir=working_dir,
             namespace="chunk",
         )
@@ -70,8 +64,13 @@ class PartitionService(BaseOperator):
             partitioner = LeidenPartitioner()
         elif method == "anchor_bfs":
             logger.info("Partitioning knowledge graph using Anchor BFS method.")
+            anchor_type = method_params.get("anchor_type")
+            if isinstance(anchor_type, list):
+                logger.info("Using multiple anchor types: %s", anchor_type)
+            else:
+                logger.info("Using single anchor type: %s", anchor_type)
             partitioner = AnchorBFSPartitioner(
-                anchor_type=method_params.get("anchor_type"),
+                anchor_type=anchor_type,
                 anchor_ids=set(method_params.get("anchor_ids", []))
                 if method_params.get("anchor_ids")
                 else None,
@@ -137,14 +136,8 @@ class PartitionService(BaseOperator):
 
         for node_id, node_data in nodes_data:
             entity_type = (node_data.get("entity_type") or "").lower()
-            if not entity_type:
+            if not source_ids:
                 continue
-
-            source_ids = [
-                sid.strip()
-                for sid in node_data.get("source_id", "").split("<SEP>")
-                if sid.strip()
-            ]
 
             # Handle images
             if "image" in entity_type:
@@ -159,5 +152,6 @@ class PartitionService(BaseOperator):
                     # We'll use the first image chunk found for this node.
                     node_data["image_data"] = json.loads(image_chunks[0]["content"])
                     logger.debug("Attached image data to node %s", node_id)
+
 
         return nodes_data, edges_data

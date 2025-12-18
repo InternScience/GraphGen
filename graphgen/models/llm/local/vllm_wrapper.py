@@ -1,16 +1,14 @@
-import math
 import uuid
+import math
 from typing import Any, List, Optional
-
 from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
-
 
 class VLLMWrapper(BaseLLMWrapper):
     """
     Async inference backend based on vLLM.
     """
-
+>>>>>>> feature/multi-omics-qa
     def __init__(
         self,
         model: str,
@@ -99,11 +97,7 @@ class VLLMWrapper(BaseLLMWrapper):
         async for request_output in result_generator:
             final_output = request_output
 
-        if (
-            not final_output
-            or not final_output.outputs
-            or not final_output.outputs[0].logprobs
-        ):
+        if not final_output or not final_output.outputs or not final_output.outputs[0].logprobs:
             return []
 
         top_logprobs = final_output.outputs[0].logprobs[0]

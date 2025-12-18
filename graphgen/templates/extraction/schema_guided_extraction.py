@@ -7,7 +7,7 @@ Instructions:
 3. Present your findings in JSON format as specified below.
 
 Important Notes:
-- Extract only relevant information. 
+- Extract only relevant information.
 - Consider the context of the entire document when determining relevance.
 - Do not be verbose, only respond with the correct format and information.
 - Some docs may have multiple relevant excerpts -- include all that apply.

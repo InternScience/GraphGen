@@ -42,14 +42,12 @@ def split_chunks(text: str, language: str = "en", **kwargs) -> list:
 
 
 class ChunkService(BaseOperator):
-    def __init__(
-        self, working_dir: str = "cache", kv_backend: str = "rocksdb", **chunk_kwargs
-    ):
+    def __init__(self, working_dir: str = "cache", **chunk_kwargs):
         super().__init__(working_dir=working_dir, op_name="chunk_service")
         tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
         self.tokenizer_instance: Tokenizer = Tokenizer(model_name=tokenizer_model)
         self.chunk_storage = init_storage(
-            backend=kv_backend,
+            backend="rocksdb",
             working_dir=working_dir,
             namespace="chunk",
         )

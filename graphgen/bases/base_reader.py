@@ -39,6 +39,7 @@ class BaseReader(ABC):
             "table",
             "equation",
             "protein",
+
         ], f"Unsupported item type: {item_type}"
         if item_type == "text":
             content = item.get(self.text_column, "").strip()

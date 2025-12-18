@@ -1,7 +1,7 @@
 # pylint: disable=C0301
 
 TEMPLATE: str = """-Goal-
-Please select the most relevant searcher result for the given entity. 
+Please select the most relevant searcher result for the given entity.
 The name and description of the entity are provided. The searcher results are provided as a list.
 Please select the most relevant searcher result from the list. If none of the searcher results are relevant, please select 'None of the above'.
 
