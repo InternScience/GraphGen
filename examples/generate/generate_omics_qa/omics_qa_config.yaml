@@ -30,20 +30,19 @@ nodes:
         email: your_email@example.com # Required for NCBI
         tool: GraphGen
         use_local_blast: true
-        local_blast_db: databases/refseq_232_old/refseq_232
+        local_blast_db: path_to_your_local_blast_db/refseq_version/refseq_version
         blast_num_threads: 2
         max_concurrent: 5
       # RNA search parameters
       rnacentral_params:
         use_local_blast: true
-        local_blast_db: databases/rnacentral_merged_20251213/rnacentral_merged_20251213
+        local_blast_db: path_to_your_local_blast_db/rnacentral_YYYYMMDD/rnacentral_YYYYMMDD
         blast_num_threads: 2
         max_concurrent: 5
       # Protein search parameters
       uniprot_params:
         use_local_blast: true
-        # local_blast_db: ${RELEASE}/uniprot_sprot
-        local_blast_db: databases/2025_04/uniprot_sprot
+        local_blast_db: path_to_your_local_blast_db/${RELEASE}/uniprot_sprot
         blast_num_threads: 2
         max_concurrent: 5 
 
