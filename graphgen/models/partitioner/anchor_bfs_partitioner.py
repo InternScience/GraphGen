@@ -66,7 +66,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
             if comm_n or comm_e:
                 yield Community(id=seed_node, nodes=comm_n, edges=comm_e)
 
-    def _pick_anchor_ids(
+    def _pick_anchor_ids(  # pylint: disable=too-many-branches
         self,
         nodes: List[tuple[str, dict]],
     ) -> Set[str]:

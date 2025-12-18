@@ -215,7 +215,18 @@ class SearchService(BaseOperator):
 
         return False
 
-    def _normalize_searched_data(self, doc: dict) -> dict:
+    @staticmethod
+    def _clean_value(v):
+        """Recursively convert numpy arrays and other problematic types to Python-native types."""
+        if isinstance(v, np.ndarray):
+            return v.tolist()
+        if isinstance(v, (list, tuple)):
+            return [SearchService._clean_value(item) for item in v]
+        if isinstance(v, dict):
+            return {k: SearchService._clean_value(val) for k, val in v.items()}
+        return v
+
+    def _normalize_searched_data(self, doc: dict) -> dict:  # pylint: disable=too-many-branches
         """
         Normalize a document that already contains search results to the expected format.
 
@@ -289,7 +300,7 @@ class SearchService(BaseOperator):
 
         return normalized_doc
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:  # pylint: disable=too-many-branches
         """
         Process a batch of documents and perform searches.
         This is the Ray Data operator interface.
@@ -397,18 +408,7 @@ class SearchService(BaseOperator):
 
                 # Convert numpy arrays and complex types to Python-native types
                 # to avoid Ray Data tensor extension casting issues
-                def clean_value(v):
-                    """Recursively convert numpy arrays and other problematic types to Python-native types."""
-                    if isinstance(v, np.ndarray):
-                        return v.tolist()
-                    elif isinstance(v, (list, tuple)):
-                        return [clean_value(item) for item in v]
-                    elif isinstance(v, dict):
-                        return {k: clean_value(val) for k, val in v.items()}
-                    else:
-                        return v
-
-                cleaned_result = {k: clean_value(v) for k, v in result.items()}
+                cleaned_result = {k: self._clean_value(v) for k, v in result.items()}
 
                 # Create document row with all result fields plus required fields
                 row = {

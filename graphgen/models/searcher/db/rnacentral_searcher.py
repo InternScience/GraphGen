@@ -276,7 +276,7 @@ class RNACentralSearch(BaseSearcher):
                 pass
             return None
 
-    def get_by_fasta(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:
+    def get_by_fasta(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:  # pylint: disable=too-many-return-statements
         """
         Search RNAcentral with an RNA sequence.
         Tries local BLAST first if enabled, falls back to RNAcentral API.

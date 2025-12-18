@@ -111,7 +111,7 @@ class UniProtSearch(BaseSearcher):
             self.logger.error("Keyword %s not found: %s", keyword, e)
         return None
 
-    def get_by_fasta(self, fasta_sequence: str, threshold: float) -> Optional[Dict]:
+    def get_by_fasta(self, fasta_sequence: str, threshold: float) -> Optional[Dict]:  # pylint: disable=too-many-return-statements
         """
         Search UniProt with a FASTA sequence and return the best hit.
         :param fasta_sequence: The FASTA sequence.

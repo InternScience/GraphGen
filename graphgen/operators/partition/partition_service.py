@@ -127,7 +127,7 @@ class PartitionService(BaseOperator):
         self.kg_instance.index_done_callback()
         logger.info("Pre-tokenization completed.")
 
-    def _attach_additional_data_to_node(self, batch: tuple) -> tuple:
+    def _attach_additional_data_to_node(self, batch: tuple) -> tuple:  # pylint: disable=too-many-branches,too-many-statements
         """
         Attach additional data from chunk_storage to nodes in the batch.
         :param batch: tuple of (nodes_data, edges_data)

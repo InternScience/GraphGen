@@ -68,7 +68,7 @@ class OmicsQAGenerator(BaseGenerator):
         return qa_pairs
 
     @staticmethod
-    def _extract_caption(node_data: dict, molecule_type: str) -> Optional[dict]:
+    def _extract_caption(node_data: dict, molecule_type: str) -> Optional[dict]:  # pylint: disable=too-many-branches
         """
         Extract molecule-specific caption information from node data.
 
@@ -341,7 +341,7 @@ class OmicsQAGenerator(BaseGenerator):
                 }
                 for qa in qa_items
             ]
-        if output_data_format == "ChatML":
+        elif output_data_format == "ChatML":
             return [
                 {
                     "messages": [
