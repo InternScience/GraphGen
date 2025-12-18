@@ -341,7 +341,7 @@ class OmicsQAGenerator(BaseGenerator):
                 }
                 for qa in qa_items
             ]
-        elif output_data_format == "ChatML":
+        if output_data_format == "ChatML":
             return [
                 {
                     "messages": [
