@@ -361,5 +361,4 @@ class OmicsQAGenerator(BaseGenerator):
                 }
                 for qa in qa_items
             ]
-        else:
-            raise ValueError(f"Unknown output data format: {output_data_format}")
+        raise ValueError(f"Unknown output data format: {output_data_format}")
