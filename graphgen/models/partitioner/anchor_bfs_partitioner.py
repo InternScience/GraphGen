@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Any, Iterable, List, Literal, Set, Tuple, Union
+from typing import Any, Iterable, List, Set, Tuple
 
 from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -22,10 +22,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
 
     def __init__(
         self,
-        anchor_type: Union[
-            Literal["image", "dna", "rna", "protein"],
-            List[Literal["dna", "rna", "protein"]],
-        ] = "image",
+        anchor_type: list = ["image"],
         anchor_ids: Set[str] | None = None,
     ) -> None:
         super().__init__()
