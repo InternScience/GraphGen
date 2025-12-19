@@ -22,11 +22,12 @@ class AnchorBFSPartitioner(BFSPartitioner):
 
     def __init__(
         self,
-        anchor_type: list = ["image"],
+        anchor_type: list | None = None,
         anchor_ids: Set[str] | None = None,
     ) -> None:
         super().__init__()
-        # Normalize anchor_type to always be a list for internal processing
+        if anchor_type is None:
+            anchor_type = ["image"]
         if isinstance(anchor_type, str):
             self.anchor_types = [anchor_type]
         else:
