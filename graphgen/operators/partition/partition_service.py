@@ -19,15 +19,21 @@ from graphgen.utils import logger
 
 
 class PartitionService(BaseOperator):
-    def __init__(self, working_dir: str = "cache", **partition_kwargs):
+    def __init__(
+        self,
+        working_dir: str = "cache",
+        graph_backend: str = "kuzu",
+        kv_backend: str = "rocksdb",
+        **partition_kwargs,
+    ):
         super().__init__(working_dir=working_dir, op_name="partition_service")
         self.kg_instance: BaseGraphStorage = init_storage(
-            backend="kuzu",
+            backend=graph_backend,
             working_dir=working_dir,
             namespace="graph",
         )
         self.chunk_storage: BaseKVStorage = init_storage(
-            backend="rocksdb",
+            backend=kv_backend,
             working_dir=working_dir,
             namespace="chunk",
         )
@@ -65,13 +71,8 @@ class PartitionService(BaseOperator):
             partitioner = LeidenPartitioner()
         elif method == "anchor_bfs":
             logger.info("Partitioning knowledge graph using Anchor BFS method.")
-            anchor_type = method_params.get("anchor_type")
-            if isinstance(anchor_type, list):
-                logger.info("Using multiple anchor types: %s", anchor_type)
-            else:
-                logger.info("Using single anchor type: %s", anchor_type)
             partitioner = AnchorBFSPartitioner(
-                anchor_type=anchor_type,
+                anchor_type=method_params.get("anchor_type"),
                 anchor_ids=set(method_params.get("anchor_ids", []))
                 if method_params.get("anchor_ids")
                 else None,

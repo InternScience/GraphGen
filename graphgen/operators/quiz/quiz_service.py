@@ -12,6 +12,8 @@ class QuizService(BaseOperator):
     def __init__(
         self,
         working_dir: str = "cache",
+        graph_backend: str = "kuzu",
+        kv_backend: str = "rocksdb",
         quiz_samples: int = 1,
         concurrency_limit: int = 200,
     ):
@@ -19,11 +21,11 @@ class QuizService(BaseOperator):
         self.quiz_samples = quiz_samples
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
-            backend="networkx", working_dir=working_dir, namespace="graph"
+            backend=graph_backend, working_dir=working_dir, namespace="graph"
         )
         # { _quiz_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
         self.quiz_storage: BaseKVStorage = init_storage(
-            backend="rocksdb", working_dir=working_dir, namespace="quiz"
+            backend=kv_backend, working_dir=working_dir, namespace="quiz"
         )
         self.generator = QuizGenerator(self.llm_client)
         self.concurrency_limit = concurrency_limit
