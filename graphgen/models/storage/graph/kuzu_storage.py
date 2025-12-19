@@ -111,10 +111,18 @@ class KuzuStorage(BaseGraphStorage):
         result = self._conn.execute(
             "MATCH (a:Entity {id: $id}) RETURN a.data", {"id": node_id}
         )
-        if result.has_next():
-            data_str = result.get_next()[0]
-            return json.loads(data_str) if data_str else {}
-        return None
+        if not result.has_next():
+            return None
+
+        data_str = result.get_next()[0]
+
+        if not isinstance(data_str, str) or not data_str.strip():
+            return {}
+        try:
+            return json.loads(data_str)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON for node {node_id}: {e}")
+            return None
 
     def update_node(self, node_id: str, node_data: dict[str, str]):
         current_data = self.get_node(node_id)
@@ -137,7 +145,13 @@ class KuzuStorage(BaseGraphStorage):
         nodes = []
         while result.has_next():
             row = result.get_next()
-            nodes.append((row[0], json.loads(row[1])))
+            node_id, data_str = row[0], row[1]
+            try:
+                data = json.loads(data_str) if data_str and data_str.strip() else {}
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON for node {node_id}: {e}")
+                continue
+            nodes.append((node_id, data))
         return nodes
 
     def get_edge(self, source_node_id: str, target_node_id: str):
@@ -149,10 +163,21 @@ class KuzuStorage(BaseGraphStorage):
         result = self._conn.execute(
             query, {"src": source_node_id, "dst": target_node_id}
         )
-        if result.has_next():
-            data_str = result.get_next()[0]
-            return json.loads(data_str) if data_str else {}
-        return None
+        if not result.has_next():
+            return None
+
+        data_str = result.get_next()[0]
+
+        if not isinstance(data_str, str) or not data_str.strip():
+            return {}
+
+        try:
+            return json.loads(data_str)
+        except json.JSONDecodeError as e:
+            print(
+                f"Error decoding JSON for edge {source_node_id}->{target_node_id}: {e}"
+            )
+            return None
 
     def update_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
@@ -180,7 +205,13 @@ class KuzuStorage(BaseGraphStorage):
         edges = []
         while result.has_next():
             row = result.get_next()
-            edges.append((row[0], row[1], json.loads(row[2])))
+            src, dst, data_str = row[0], row[1], row[2]
+            try:
+                data = json.loads(data_str) if data_str and data_str.strip() else {}
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON for edge {src}->{dst}: {e}")
+                continue
+            edges.append((src, dst, data))
         return edges
 
     def get_node_edges(self, source_node_id: str) -> Any:
@@ -193,7 +224,13 @@ class KuzuStorage(BaseGraphStorage):
         edges = []
         while result.has_next():
             row = result.get_next()
-            edges.append((row[0], row[1], json.loads(row[2])))
+            src, dst, data_str = row[0], row[1], row[2]
+            try:
+                data = json.loads(data_str) if data_str and data_str.strip() else {}
+            except json.JSONDecodeError as e:
+                print(f"Error decoding JSON for edge {src}->{dst}: {e}")
+                continue
+            edges.append((src, dst, data))
         return edges
 
     def upsert_node(self, node_id: str, node_data: dict[str, str]):
@@ -250,7 +287,19 @@ class KuzuStorage(BaseGraphStorage):
         """For databases that need reloading, KuzuDB auto-manages this."""
 
     def drop(self):
-        """Completely remove the database folder."""
-        if self.db_path and os.path.exists(self.db_path):
+        if not self.db_path:
+            return
+        self._conn = None
+        self._db = None
+
+        if os.path.isdir(self.db_path):
             shutil.rmtree(self.db_path)
-            print(f"Dropped KuzuDB at {self.db_path}")
+            print(f"Dropped KuzuDB directory at {self.db_path}")
+        elif os.path.isfile(self.db_path):
+            os.remove(self.db_path)
+            print(f"Dropped KuzuDB file at {self.db_path}")
+        elif os.path.exists(self.db_path):
+            os.unlink(self.db_path)
+            print(f"Dropped KuzuDB path at {self.db_path}")
+        else:
+            print(f"Database path {self.db_path} does not exist")
