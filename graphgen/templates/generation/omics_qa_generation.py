@@ -37,12 +37,14 @@ Create multiple sets of omics-centric QA pairs that satisfy the following:
 {relationships}
 ################
 Directly output the generated QA pairs below. Do NOT copy any example questions, and do NOT include extraneous text.
+IMPORTANT: Generate actual questions and answers, NOT placeholders. Do NOT include angle brackets or placeholder text like <Question1> or <Answer1>.
+Simply output your generated questions and answers in the following format:
 
-Question: <Question1>
-Answer: <Answer1>
+Question: [Your actual question here]
+Answer: [Your actual answer here]
 
-Question: <Question2>
-Answer: <Answer2>
+Question: [Your actual question here]
+Answer: [Your actual answer here]
 
 """
 
@@ -84,12 +86,14 @@ OMICS_QA_TEMPLATE_ZH: str = """你是一位资深的多组学数据计算生物�
 {relationships}
 ################
 请直接在下方输出生成的问答对，不要复制任何示例，不要输出无关内容。
+重要提示：请生成实际的问题和答案，不要使用占位符。不要包含尖括号或占位符文本（如 <问题1> 或 <答案1>）。
+请直接按照以下格式输出生成的问题和答案：
 
-问题： <问题1>
-答案： <答案1>
+问题： [你生成的实际问题]
+答案： [你生成的实际答案]
 
-问题： <问题2>
-答案： <答案2>
+问题： [你生成的实际问题]
+答案： [你生成的实际答案]
 
 """
 
