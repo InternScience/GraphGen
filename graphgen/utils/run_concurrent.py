@@ -1,7 +1,6 @@
 import asyncio
 from typing import Awaitable, Callable, List, Optional, TypeVar, Union
 
-import gradio as gr
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.utils.log import logger
@@ -18,7 +17,6 @@ def run_concurrent(
     *,
     desc: str = "processing",
     unit: str = "item",
-    progress_bar: Optional[gr.Progress] = None,
     save_interval: int = 0,
     save_callback: Optional[Callable[[List[R], int], None]] = None,
     max_concurrent: Optional[int] = None,
@@ -71,10 +69,6 @@ def run_concurrent(
             completed_count += 1
             pbar.update(1)
 
-            if progress_bar is not None:
-                progress = completed_count / len(items)
-                progress_bar(progress, desc=f"{desc} ({completed_count}/{len(items)})")
-
             # Periodic save
             if save_interval > 0 and save_callback is not None and completed_count % save_interval == 0:
                 try:
@@ -87,9 +81,6 @@ def run_concurrent(
                     logger.warning("Failed to save intermediate results: %s", e)
 
         pbar.close()
-
-        if progress_bar is not None:
-            progress_bar(1.0, desc=f"{desc} (completed)")
 
         # Save remaining results if any
         if save_interval > 0 and save_callback is not None and pending_save_results:
