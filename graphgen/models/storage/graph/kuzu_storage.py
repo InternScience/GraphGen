@@ -1,6 +1,5 @@
 import json
 import os
-import shutil
 from dataclasses import dataclass
 from typing import Any
 
@@ -69,6 +68,16 @@ class KuzuStorage(BaseGraphStorage):
     def index_done_callback(self):
         """KuzuDB is ACID, changes are immediate, but we can verify generic persistence here."""
 
+    @staticmethod
+    def _safe_json_loads(data_str: str) -> dict:
+        if not isinstance(data_str, str) or not data_str.strip():
+            return {}
+        try:
+            return json.loads(data_str)
+        except json.JSONDecodeError as e:
+            print(f"Error decoding JSON: {e}")
+            return {}
+
     def has_node(self, node_id: str) -> bool:
         result = self._conn.execute(
             "MATCH (a:Entity {id: $id}) RETURN count(a)", {"id": node_id}
@@ -115,14 +124,7 @@ class KuzuStorage(BaseGraphStorage):
             return None
 
         data_str = result.get_next()[0]
-
-        if not isinstance(data_str, str) or not data_str.strip():
-            return {}
-        try:
-            return json.loads(data_str)
-        except json.JSONDecodeError as e:
-            print(f"Error decoding JSON for node {node_id}: {e}")
-            return None
+        return self._safe_json_loads(data_str)
 
     def update_node(self, node_id: str, node_data: dict[str, str]):
         current_data = self.get_node(node_id)
@@ -132,7 +134,11 @@ class KuzuStorage(BaseGraphStorage):
 
         # Merge existing data with new data
         current_data.update(node_data)
-        json_data = json.dumps(current_data, ensure_ascii=False)
+        try:
+            json_data = json.dumps(current_data, ensure_ascii=False)
+        except (TypeError, ValueError) as e:
+            print(f"Error serializing JSON for node {node_id}: {e}")
+            return
 
         self._conn.execute(
             "MATCH (a:Entity {id: $id}) SET a.data = $data",
@@ -145,12 +151,10 @@ class KuzuStorage(BaseGraphStorage):
         nodes = []
         while result.has_next():
             row = result.get_next()
-            node_id, data_str = row[0], row[1]
-            try:
-                data = json.loads(data_str) if data_str and data_str.strip() else {}
-            except json.JSONDecodeError as e:
-                print(f"Error decoding JSON for node {node_id}: {e}")
+            if row is None or len(row) < 2:
                 continue
+            node_id, data_str = row[0], row[1]
+            data = self._safe_json_loads(data_str)
             nodes.append((node_id, data))
         return nodes
 
@@ -167,17 +171,7 @@ class KuzuStorage(BaseGraphStorage):
             return None
 
         data_str = result.get_next()[0]
-
-        if not isinstance(data_str, str) or not data_str.strip():
-            return {}
-
-        try:
-            return json.loads(data_str)
-        except json.JSONDecodeError as e:
-            print(
-                f"Error decoding JSON for edge {source_node_id}->{target_node_id}: {e}"
-            )
-            return None
+        return self._safe_json_loads(data_str)
 
     def update_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
@@ -188,14 +182,20 @@ class KuzuStorage(BaseGraphStorage):
             return
 
         current_data.update(edge_data)
-        json_data = json.dumps(current_data, ensure_ascii=False)
+        try:
+            json_data = json.dumps(current_data, ensure_ascii=False)
+        except (TypeError, ValueError) as e:
+            print(
+                f"Error serializing JSON for edge {source_node_id}->{target_node_id}: {e}"
+            )
+            return
 
-        query = """
+        self._conn.execute(
+            """
             MATCH (a:Entity {id: $src})-[e:Relation]->(b:Entity {id: $dst})
             SET e.data = $data
-        """
-        self._conn.execute(
-            query, {"src": source_node_id, "dst": target_node_id, "data": json_data}
+            """,
+            {"src": source_node_id, "dst": target_node_id, "data": json_data},
         )
 
     def get_all_edges(self) -> Any:
@@ -205,12 +205,10 @@ class KuzuStorage(BaseGraphStorage):
         edges = []
         while result.has_next():
             row = result.get_next()
-            src, dst, data_str = row[0], row[1], row[2]
-            try:
-                data = json.loads(data_str) if data_str and data_str.strip() else {}
-            except json.JSONDecodeError as e:
-                print(f"Error decoding JSON for edge {src}->{dst}: {e}")
+            if row is None or len(row) < 3:
                 continue
+            src, dst, data_str = row[0], row[1], row[2]
+            data = self._safe_json_loads(data_str)
             edges.append((src, dst, data))
         return edges
 
@@ -224,12 +222,10 @@ class KuzuStorage(BaseGraphStorage):
         edges = []
         while result.has_next():
             row = result.get_next()
-            src, dst, data_str = row[0], row[1], row[2]
-            try:
-                data = json.loads(data_str) if data_str and data_str.strip() else {}
-            except json.JSONDecodeError as e:
-                print(f"Error decoding JSON for edge {src}->{dst}: {e}")
+            if row is None or len(row) < 3:
                 continue
+            src, dst, data_str = row[0], row[1], row[2]
+            data = self._safe_json_loads(data_str)
             edges.append((src, dst, data))
         return edges
 
@@ -238,7 +234,11 @@ class KuzuStorage(BaseGraphStorage):
         Insert or Update node.
         Kuzu supports MERGE clause (similar to Neo4j) to handle upserts.
         """
-        json_data = json.dumps(node_data, ensure_ascii=False)
+        try:
+            json_data = json.dumps(node_data, ensure_ascii=False)
+        except (TypeError, ValueError) as e:
+            print(f"Error serializing JSON for node {node_id}: {e}")
+            return
         query = """
             MERGE (a:Entity {id: $id})
             ON MATCH SET a.data = $data
@@ -261,7 +261,13 @@ class KuzuStorage(BaseGraphStorage):
         if not self.has_node(target_node_id):
             self.upsert_node(target_node_id, {})
 
-        json_data = json.dumps(edge_data, ensure_ascii=False)
+        try:
+            json_data = json.dumps(edge_data, ensure_ascii=False)
+        except (TypeError, ValueError) as e:
+            print(
+                f"Error serializing JSON for edge {source_node_id}->{target_node_id}: {e}"
+            )
+            return
         query = """
             MATCH (a:Entity {id: $src}), (b:Entity {id: $dst})
             MERGE (a)-[e:Relation]->(b)
@@ -285,21 +291,3 @@ class KuzuStorage(BaseGraphStorage):
 
     def reload(self):
         """For databases that need reloading, KuzuDB auto-manages this."""
-
-    def drop(self):
-        if not self.db_path:
-            return
-        self._conn = None
-        self._db = None
-
-        if os.path.isdir(self.db_path):
-            shutil.rmtree(self.db_path)
-            print(f"Dropped KuzuDB directory at {self.db_path}")
-        elif os.path.isfile(self.db_path):
-            os.remove(self.db_path)
-            print(f"Dropped KuzuDB file at {self.db_path}")
-        elif os.path.exists(self.db_path):
-            os.unlink(self.db_path)
-            print(f"Dropped KuzuDB path at {self.db_path}")
-        else:
-            print(f"Database path {self.db_path} does not exist")
