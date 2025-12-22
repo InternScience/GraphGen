@@ -47,7 +47,7 @@ class KVStorageActor:
 
     def reload(self):
         return self.kv.reload()
-    
+
     def ready(self) -> bool:
         return True
 
@@ -116,7 +116,7 @@ class GraphStorageActor:
 
     def reload(self):
         return self.graph.reload()
-    
+
     def ready(self) -> bool:
         return True
 
