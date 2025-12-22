@@ -1,8 +1,10 @@
+import os
 import inspect
 import logging
 from collections import defaultdict, deque
 from functools import wraps
 from typing import Any, Callable, Dict, List, Set
+from dotenv import load_dotenv
 
 import ray
 import ray.data
@@ -12,6 +14,7 @@ from graphgen.bases import Config, Node
 from graphgen.utils import logger
 from graphgen.common import init_llm
 
+load_dotenv()
 
 class Engine:
     def __init__(
@@ -30,6 +33,16 @@ class Engine:
         # (e.g., gene_synonyms, gene_names which are lists/arrays)
         ctx.enable_tensor_extension_casting = False
         ctx._metrics_export_port = 0  # Disable metrics exporter to avoid RpcError
+
+        all_env_vars = os.environ.copy()
+        if "runtime_env" not in ray_init_kwargs:
+            ray_init_kwargs["runtime_env"] = {}
+
+        existing_env_vars = ray_init_kwargs["runtime_env"].get("env_vars", {})
+        ray_init_kwargs["runtime_env"]["env_vars"] = {
+            **all_env_vars,
+            **existing_env_vars
+        }
 
         if not ray.is_initialized():
             context = ray.init(
