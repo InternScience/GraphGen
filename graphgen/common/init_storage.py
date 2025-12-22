@@ -48,6 +48,9 @@ class KVStorageActor:
     def reload(self):
         return self.kv.reload()
 
+    def ready(self) -> bool:
+        return True
+
 
 class GraphStorageActor:
     def __init__(self, backend: str, working_dir: str, namespace: str):
@@ -114,22 +117,14 @@ class GraphStorageActor:
     def reload(self):
         return self.graph.reload()
 
-
-def get_actor_handle(name: str):
-    try:
-        return ray.get_actor(name)
-    except ValueError as exc:
-        raise RuntimeError(
-            f"Actor {name} not found. Make sure it is created before accessing."
-        ) from exc
+    def ready(self) -> bool:
+        return True
 
 
 class RemoteKVStorageProxy(BaseKVStorage):
-    def __init__(self, namespace: str):
+    def __init__(self, actor_handle: ray.actor.ActorHandle):
         super().__init__()
-        self.namespace = namespace
-        self.actor_name = f"Actor_KV_{namespace}"
-        self.actor = get_actor_handle(self.actor_name)
+        self.actor = actor_handle
 
     def data(self) -> Dict[str, Any]:
         return ray.get(self.actor.data.remote())
@@ -163,11 +158,9 @@ class RemoteKVStorageProxy(BaseKVStorage):
 
 
 class RemoteGraphStorageProxy(BaseGraphStorage):
-    def __init__(self, namespace: str):
+    def __init__(self, actor_handle: ray.actor.ActorHandle):
         super().__init__()
-        self.namespace = namespace
-        self.actor_name = f"Actor_Graph_{namespace}"
-        self.actor = get_actor_handle(self.actor_name)
+        self.actor = actor_handle
 
     def index_done_callback(self):
         return ray.get(self.actor.index_done_callback.remote())
@@ -235,27 +228,23 @@ class StorageFactory:
     def create_storage(backend: str, working_dir: str, namespace: str):
         if backend in ["json_kv", "rocksdb"]:
             actor_name = f"Actor_KV_{namespace}"
-            try:
-                ray.get_actor(actor_name)
-            except ValueError:
-                ray.remote(KVStorageActor).options(
-                    name=actor_name,
-                    lifetime="detached",
-                    get_if_exists=True,
-                ).remote(backend, working_dir, namespace)
-            return RemoteKVStorageProxy(namespace)
-        if backend in ["networkx", "kuzu"]:
+            actor_class = KVStorageActor
+            proxy_class = RemoteKVStorageProxy
+        elif backend in ["networkx", "kuzu"]:
             actor_name = f"Actor_Graph_{namespace}"
-            try:
-                ray.get_actor(actor_name)
-            except ValueError:
-                ray.remote(GraphStorageActor).options(
-                    name=actor_name,
-                    lifetime="detached",
-                    get_if_exists=True,
-                ).remote(backend, working_dir, namespace)
-            return RemoteGraphStorageProxy(namespace)
-        raise ValueError(f"Unknown storage backend: {backend}")
+            actor_class = GraphStorageActor
+            proxy_class = RemoteGraphStorageProxy
+        else:
+            raise ValueError(f"Unknown storage backend: {backend}")
+        try:
+            actor_handle = ray.get_actor(actor_name)
+        except ValueError:
+            actor_handle = ray.remote(actor_class).options(
+                name=actor_name,
+                get_if_exists=True,
+            ).remote(backend, working_dir, namespace)
+            ray.get(actor_handle.ready.remote())
+        return proxy_class(actor_handle)
 
 
 def init_storage(backend: str, working_dir: str, namespace: str):
