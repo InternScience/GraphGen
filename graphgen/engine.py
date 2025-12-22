@@ -10,6 +10,7 @@ from ray.data import DataContext
 
 from graphgen.bases import Config, Node
 from graphgen.utils import logger
+from graphgen.common import init_llm
 
 
 class Engine:
@@ -20,6 +21,7 @@ class Engine:
         self.global_params = self.config.global_params
         self.functions = functions
         self.datasets: Dict[str, ray.data.Dataset] = {}
+        self.llm_actors = {}
 
         ctx = DataContext.get_current()
         ctx.enable_rich_progress_bars = False
@@ -37,6 +39,13 @@ class Engine:
                 **ray_init_kwargs,
             )
             logger.info("Ray Dashboard URL: %s", context.dashboard_url)
+        
+        self._init_llms()
+    
+    def _init_llms(self):
+        self.llm_actors["synthesizer"] = init_llm("synthesizer")
+        self.llm_actors["trainee"] = init_llm("trainee")
+
 
     @staticmethod
     def _topo_sort(nodes: List[Node]) -> List[Node]:
