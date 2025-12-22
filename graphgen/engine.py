@@ -52,9 +52,9 @@ class Engine:
                 **ray_init_kwargs,
             )
             logger.info("Ray Dashboard URL: %s", context.dashboard_url)
-        
+
         self._init_llms()
-    
+
     def _init_llms(self):
         self.llm_actors["synthesizer"] = init_llm("synthesizer")
         self.llm_actors["trainee"] = init_llm("trainee")
