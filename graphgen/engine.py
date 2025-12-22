@@ -69,7 +69,7 @@ class Engine:
             proxy = init_storage(self.global_params["kv_backend"], working_dir, node_id)
             self.storage_actors[f"kv_{node_id}"] = proxy
             logger.info("Create KV Storage Actor: namespace=%s", node_id)
-    
+
         for ns in graph_namespaces:
             proxy = init_storage(self.global_params["graph_backend"], working_dir, ns)
             self.storage_actors[f"graph_{ns}"] = proxy
@@ -87,11 +87,11 @@ class Engine:
             if self._function_needs_param(op_name, "graph_backend"):
                 graph_namespaces.add("graph")
         return kv_namespaces, graph_namespaces
-    
+
     def _function_needs_param(self, op_name: str, param_name: str) -> bool:
         if op_name not in self.functions:
             return False
-        
+
         func = self.functions[op_name]
 
         if inspect.isclass(func):
