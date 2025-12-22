@@ -12,12 +12,16 @@ from .build_text_kg import build_text_kg
 
 
 class BuildKGService(BaseOperator):
-    def __init__(self, working_dir: str = "cache", graph_backend: str = "kuzu"):
+    def __init__(
+        self, working_dir: str = "cache", graph_backend: str = "kuzu", **build_kwargs
+    ):
         super().__init__(working_dir=working_dir, op_name="build_kg_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
             backend=graph_backend, working_dir=working_dir, namespace="graph"
         )
+        self.build_kwargs = build_kwargs
+        self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
 
     def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         docs = batch.to_dict(orient="records")
@@ -46,6 +50,7 @@ class BuildKGService(BaseOperator):
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,
                 chunks=text_chunks,
+                max_loop=self.max_loop,
             )
         if len(mm_chunks) == 0:
             logger.info("All multi-modal chunks are already in the storage")
