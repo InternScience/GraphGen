@@ -8,7 +8,7 @@ from typing import List
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import OpenAIClient
+from graphgen.models import OpenAIClient, Tokenizer
 from graphgen.utils import compute_content_hash, create_event_loop
 
 INSTRUCTION_GENERATION_PROMPT = """The background knowledge is:
@@ -71,6 +71,8 @@ class SelfQA:
             async with semaphore:
                 prompt = INSTRUCTION_GENERATION_PROMPT.format(doc=content)
                 response = await self.llm_client.generate_answer(prompt)
+                if response is None:
+                    return []
                 try:
                     instruction_questions = _post_process_instructions(response)
 
@@ -90,7 +92,10 @@ class SelfQA:
                         desc="Generating QAs",
                     ):
                         try:
-                            question, answer = _post_process_answers(await qa)
+                            qa_response = await qa
+                            if qa_response is None:
+                                continue
+                            question, answer = _post_process_answers(qa_response)
                             if question and answer:
                                 qas.append(
                                     {
@@ -110,8 +115,11 @@ class SelfQA:
 
         tasks = []
         for doc in docs:
-            for chunk in doc:
-                tasks.append(process_chunk(chunk["content"]))
+            if isinstance(doc, list):
+                for chunk in doc:
+                    tasks.append(process_chunk(chunk["content"]))
+            elif isinstance(doc, dict):
+                tasks.append(process_chunk(doc["content"]))
 
         for result in tqdm_async(
             asyncio.as_completed(tasks),
@@ -120,8 +128,9 @@ class SelfQA:
         ):
             try:
                 qas = await result
-                for qa in qas:
-                    final_results.update(qa)
+                if qas:
+                    for qa in qas:
+                        final_results.update(qa)
             except Exception as e:  # pylint: disable=broad-except
                 print(f"Error: {e}")
         return final_results
@@ -133,13 +142,6 @@ if __name__ == "__main__":
         "--input_file",
         help="Raw context jsonl path.",
         default="resources/input_examples/json_demo.json",
-        type=str,
-    )
-    parser.add_argument(
-        "--data_type",
-        help="Data type of input file. (Raw context or chunked context)",
-        choices=["raw", "chunked"],
-        default="raw",
         type=str,
     )
     parser.add_argument(
@@ -157,20 +159,20 @@ if __name__ == "__main__":
         model=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
         base_url=os.getenv("SYNTHESIZER_BASE_URL"),
+        tokenizer=Tokenizer(model_name=os.getenv("TOKENIZER_MODEL")),
     )
 
     self_qa = SelfQA(llm_client=llm_client)
 
-    if args.data_type == "raw":
-        with open(args.input_file, "r", encoding="utf-8") as f:
-            data = [json.loads(line) for line in f]
-            data = [[chunk] for chunk in data]
-    elif args.data_type == "chunked":
-        with open(args.input_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    with open(args.input_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
     results = self_qa.generate(data)
 
     # Save results
+    output_dir = os.path.dirname(args.output_file)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     with open(args.output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)

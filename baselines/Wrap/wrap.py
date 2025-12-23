@@ -8,7 +8,7 @@ from typing import List
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import OpenAIClient
+from graphgen.models import OpenAIClient, Tokenizer
 from graphgen.utils import compute_content_hash, create_event_loop
 
 PROMPT_TEMPLATE = """A chat between a curious user and an artificial intelligence assistant.
@@ -36,7 +36,7 @@ def _post_process(content: str) -> list:
                 question = item.split("Question:")[1].split("Answer:")[0].strip()
                 answer = item.split("Answer:")[1].strip()
                 qas.append((question, answer))
-        except Exception as e:  # pylint: disable=broad-except
+        except Exception as e:
             print(f"Error: {e}")
             continue
     return qas
@@ -62,8 +62,11 @@ class Wrap:
 
         tasks = []
         for doc in docs:
-            for chunk in doc:
-                tasks.append(process_chunk(chunk["content"]))
+            if isinstance(doc, list):
+                for chunk in doc:
+                    tasks.append(process_chunk(chunk["content"]))
+            elif isinstance(doc, dict):
+                tasks.append(process_chunk(doc["content"]))
 
         for result in tqdm_async(
             asyncio.as_completed(tasks), total=len(tasks), desc="Generating using Wrap"
@@ -75,7 +78,7 @@ class Wrap:
                         "question": qa[0],
                         "answer": qa[1],
                     }
-            except Exception as e:  # pylint: disable=broad-except
+            except Exception as e:
                 print(f"Error: {e}")
         return final_results
 
@@ -86,13 +89,6 @@ if __name__ == "__main__":
         "--input_file",
         help="Raw context jsonl path.",
         default="resources/input_examples/json_demo.json",
-        type=str,
-    )
-    parser.add_argument(
-        "--data_type",
-        help="Data type of input file. (Raw context or chunked context)",
-        choices=["raw", "chunked"],
-        default="raw",
         type=str,
     )
     parser.add_argument(
@@ -110,17 +106,13 @@ if __name__ == "__main__":
         model=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
         base_url=os.getenv("SYNTHESIZER_BASE_URL"),
+        tokenizer=Tokenizer(model_name=os.getenv("TOKENIZER_MODEL")),
     )
 
     wrap = Wrap(llm_client=llm_client)
 
-    if args.data_type == "raw":
-        with open(args.input_file, "r", encoding="utf-8") as f:
-            data = [json.loads(line) for line in f]
-            data = [[chunk] for chunk in data]
-    elif args.data_type == "chunked":
-        with open(args.input_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    with open(args.input_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
     results = wrap.generate(data)
 

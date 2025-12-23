@@ -3,225 +3,291 @@ import asyncio
 import json
 import os
 import random
-from hashlib import md5
+from dataclasses import dataclass
+from typing import List, Dict
 
+from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from baselines.EntiGraph.inference.devapi import gptqa
-from baselines.EntiGraph.tasks.baseline_task import BaselineTask
+from graphgen.models import OpenAIClient, Tokenizer
+from graphgen.utils import compute_content_hash, create_event_loop
+
+# Prompts from entigraph_utils/prompt_utils.py
+OPENAI_API_SYSTEM_QUALITY_GENERATE_ENTITIES = """
+As a knowledge analyzer, your task is to dissect and understand an article provided by the user. You are required to perform the following steps:
+1. Summarize the Article: Provide a concise summary of the entire article, capturing the main points and themes.
+2. Extract Entities: Identify and list all significant "nouns" or entities mentioned within the article. These entities should include but not limited to:
+    * People: Any individuals mentioned in the article, using the names or references provided.
+    * Places: Both specific locations and abstract spaces relevant to the content.
+    * Object: Any concrete object that is referenced by the provided content.
+    * Concepts: Any significant abstract ideas or themes that are central to the article's discussion.
+
+Try to exhaust as many entities as possible. Your response should be structured in a JSON format to organize the information effectively. Ensure that the summary is brief yet comprehensive, and the list of entities is detailed and accurate.
+
+Here is the format you should use for your response:
+
+{
+  "summary":  "<A concise summary of the article>",
+  "entities": ["entity1", "entity2", ...]
+}
+"""
+
+OPENAI_API_SYSTEM_QUALITY_GENERATE_TWO_ENTITY_RELATIONS = """
+You will act as a knowledge analyzer tasked with dissecting an article provided by the user. Your role involves two main objectives:
+1. Rephrasing Content: The user will identify two specific entities mentioned in the article. You are required to rephrase the content of the article twice:
+    * Once, emphasizing the first entity.
+    * Again, emphasizing the second entity.
+2. Analyzing Interactions: Discuss how the two specified entities interact within the context of the article.
+
+Your responses should provide clear segregation between the rephrased content and the interaction analysis. Ensure each section of the output include sufficient context, ideally referencing the article's title to maintain clarity about the discussion's focus.
+Here is the format you should follow for your response:
+
+### Discussion of <title> in relation to <entity1>
+<Rephrased content focusing on the first entity>
+
+### Discussion of <title> in relation to <entity2>
+<Rephrased content focusing on the second entity>
+
+### Discussion of Interaction between <entity1> and <entity2> in context of <title>
+<Discussion on how the two entities interact within the article>
+"""
+
+OPENAI_API_SYSTEM_QUALITY_QA_SFT = """You are an assistant to help read a article and then rephrase it in a question answering format. The user will provide you with an article with its content. You need to generate a paraphrase of the same article in question and answer format with multiple tags of "Question: ..." followed by "Answer: ...". Remember to keep the meaning and every content of the article intact.
+
+Here is the format you should follow for your response:
+Question: <Question>
+Answer: <Answer>
+
+Here is the article you need to rephrase:
+{doc}
+"""
 
 
-def compute_content_hash(content, prefix: str = ""):
-    return prefix + md5(content.encode()).hexdigest()
+@dataclass
+class EntiGraph:
+    model_name: str
+    api_key: str
+    base_url: str
+    max_concurrent: int = 1000
 
+    def __post_init__(self):
+        self.tokenizer = Tokenizer()
 
-async def generate_entities(
-    document_content: str, system_message: str, openai_model: str
-):
-    prompt = f"""
-    ### Document Content:
-    {document_content}
-    """
-    can_read_entities = None
+        # Initialize specialized clients for different tasks to handle different system prompts and modes
+        self.client_entities = OpenAIClient(
+            model=self.model_name,
+            api_key=self.api_key,
+            base_url=self.base_url,
+            tokenizer=self.tokenizer,
+            system_prompt=OPENAI_API_SYSTEM_QUALITY_GENERATE_ENTITIES,
+            json_mode=True
+        )
 
-    max_tries = 5
-    while not can_read_entities and max_tries > 0:
-        try:
-            completion = await gptqa(
-                prompt, openai_model, system_message, json_format=False
-            )
-            completion = completion[completion.find("{") : completion.rfind("}") + 1]
-            response = json.loads(completion)
-            can_read_entities = response["entities"]
-            return response
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"Failed to generate entities: {str(e)}")
+        self.client_relations = OpenAIClient(
+            model=self.model_name,
+            api_key=self.api_key,
+            base_url=self.base_url,
+            tokenizer=self.tokenizer,
+            system_prompt=OPENAI_API_SYSTEM_QUALITY_GENERATE_TWO_ENTITY_RELATIONS
+        )
+
+        self.client_qa = OpenAIClient(
+            model=self.model_name,
+            api_key=self.api_key,
+            base_url=self.base_url,
+            tokenizer=self.tokenizer,
+            system_prompt="You are an assistant to help read a article \
+                and then rephrase it in a question answering format."
+        )
+
+    async def generate_entities(self, content: str) -> Dict:
+        prompt = f"""
+        ### Document Content:
+        {content}
+        """
+        max_tries = 5
+        while max_tries > 0:
+            try:
+                response_str = await self.client_entities.generate_answer(prompt)
+                if not response_str:
+                    return None
+                # Clean up json string if needed (sometimes markdown code blocks)
+                if "```json" in response_str:
+                    response_str = response_str.split("```json")[1].split("```")[0].strip()
+                elif "```" in response_str:
+                    response_str = response_str.split("```")[1].split("```")[0].strip()
+                
+                # Find start and end of json
+                start = response_str.find("{")
+                end = response_str.rfind("}")
+                if start != -1 and end != -1:
+                    response_str = response_str[start : end + 1]
+                
+                response = json.loads(response_str)
+                if "entities" in response and "summary" in response:
+                    return response
+            except Exception as e:
+                print(f"Failed to generate entities: {e}")
             max_tries -= 1
+        return None
+
+    async def generate_two_entity_relations(self, document: str, entity1: str, entity2: str) -> str:
+        prompt = f"""
+        ### Document Content:
+        {document}
+        ### Entities:
+        - {entity1}
+        - {entity2}
+        """
+        return await self.client_relations.generate_answer(prompt)
+
+    async def generate_qa_sft(self, content: str) -> str:
+        # We format the prompt using the template logic
+        prompt = OPENAI_API_SYSTEM_QUALITY_QA_SFT.format(doc=content)
+        return await self.client_qa.generate_answer(prompt)
+
+    def generate(self, docs: List[str]) -> List[dict]:
+        loop = create_event_loop()
+        return loop.run_until_complete(self.async_generate(docs))
+
+    async def async_generate(self, docs: List[str]) -> dict:
+        semaphore = asyncio.Semaphore(self.max_concurrent)
+
+        # 1. Generate Entities
+        async def process_entities(doc_text):
+            async with semaphore:
+                res = await self.generate_entities(doc_text)
+                if res:
+                    return {
+                        "document": doc_text,
+                        "entities": res["entities"],
+                        "summary": res["summary"]
+                    }
+                return None
+
+        entities_results = []
+        for result in tqdm_async(
+            asyncio.as_completed([process_entities(doc) for doc in docs]),
+            total=len(docs),
+            desc="Generating entities"
+        ):
+            res = await result
+            if res:
+                entities_results.append(res)
+
+        # 2. Generate Relations (Pairs)
+        pair_list = []
+        random.seed(42)
+        for item in entities_results:
+            entities = item["entities"]
+            doc_text = item["document"]
+            temp_pairs = []
+            for i, entity_i in enumerate(entities):
+                for j in range(i + 1, len(entities)):
+                    temp_pairs.append((doc_text, entity_i, entities[j]))
+
+            # Sample max 10 pairs per document
+            pair_list.extend(random.sample(temp_pairs, min(len(temp_pairs), 10)))
+
+        async def process_relation(pair):
+            async with semaphore:
+                doc_text, e1, e2 = pair
+                try:
+                    return await self.generate_two_entity_relations(doc_text, e1, e2)
+                except Exception as e:
+                    print(f"Error generating relations: {e}")
+                    return None
+
+        corpus = []
+        for result in tqdm_async(
+            asyncio.as_completed([process_relation(pair) for pair in pair_list]),
+            total=len(pair_list),
+            desc="Generating relations"
+        ):
+            res = await result
+            if res:
+                corpus.append(res)
+
+        # Combine summaries and relation discussions into the corpus for QA generation
+        full_corpus = [item["summary"] for item in entities_results] + corpus
+
+        # 3. Generate QA SFT
+        final_results = {}
+        
+        async def process_qa(text):
+            async with semaphore:
+                try:
+                    qa_text = await self.generate_qa_sft(text)
+                    if qa_text:
+                        return _post_process_synthetic_data(qa_text)
+                except Exception as e:
+                    print(f"Error generating QA: {e}")
+                return {}
+
+        for result in tqdm_async(
+            asyncio.as_completed([process_qa(text) for text in full_corpus]),
+            total=len(full_corpus),
+            desc="Generating QA SFT"
+        ):
+            qas = await result
+            if qas:
+                final_results.update(qas)
+
+        return final_results
 
 
-async def generate_two_entity_relations(
-    document_content: str,
-    entity1: str,
-    entity2: str,
-    system_message: str,
-    openai_model: str,
-):
-    prompt = f"""
-    ### Document Content:
-    {document_content}
-    ### Entities:
-    - {entity1}
-    - {entity2}
-    """
-    completion = await gptqa(prompt, openai_model, system_message)
-    return completion
-
-
-async def generate_three_entity_relations(
-    document_content: str,
-    entity1: str,
-    entity2: str,
-    entity3: str,
-    system_message: str,
-    openai_model: str,
-):
-    prompt = f"""
-    ### Document Content:
-    {document_content}
-    ### Entities:
-    - {entity1}
-    - {entity2}
-    - {entity3}
-    """
-    completion = await gptqa(prompt, openai_model, system_message)
-    return completion
-
-
-def _post_process_synthetic_data(data):
+def _post_process_synthetic_data(data: str) -> dict:
+    # Logic from original code
     block = data.split("\n\n")
     qas = {}
     for line in block:
         if "Question: " in line and "Answer: " in line:
-            question = line.split("Question: ")[1].split("Answer: ")[0]
-            answer = line.split("Answer: ")[1]
-            qas[compute_content_hash(question)] = {
-                "question": question,
-                "answer": answer,
-            }
-        break
+            try:
+                question = line.split("Question: ")[1].split("Answer: ")[0].strip()
+                answer = line.split("Answer: ")[1].strip()
+                if question and answer:
+                    qas[compute_content_hash(question)] = {
+                        "question": question,
+                        "answer": answer,
+                    }
+            except IndexError:
+                continue
     return qas
 
 
-async def generate_synthetic_data_for_document(input_file, data_type):
-    random.seed(42)
-    model_name = os.getenv("SYNTHESIZER_MODEL")
-    task = BaselineTask(input_file, data_type)
-
-    max_concurrent = 1000
-    semaphore = asyncio.Semaphore(max_concurrent)
-
-    async def generate_document_entities(doc):
-        async with semaphore:
-            try:
-                entities = await generate_entities(
-                    doc.text, task.openai_system_generate_entities, model_name
-                )
-                if not entities:
-                    return None
-                return {
-                    "document": doc.text,
-                    "entities": entities["entities"],
-                    "summary": entities["summary"],
-                }
-            except Exception as e:  # pylint: disable=broad-except
-                print(f"Error: {e}")
-                return None
-
-    entities_list = []
-    for result in tqdm_async(
-        asyncio.as_completed(
-            [generate_document_entities(doc) for doc in task.documents]
-        ),
-        total=len(task.documents),
-        desc="Generating entities",
-    ):
-        result = await result
-        if result:
-            entities_list.append(result)
-
-    # iterate over triples of entities and generate relations
-    pair_list = []
-    for doc in entities_list:
-        entities = doc["entities"]
-        temp = []
-        for i, entity_i in enumerate(entities):
-            if i == len(entities) - 1:
-                break
-            for j in range(i + 1, len(entities)):
-                entity_j = entities[j]
-                pair = (doc["document"], entity_i, entity_j)
-                temp.append(pair)
-
-        # Compute all possible combinations of entities is impractical, so we randomly sample 10 pairs
-        pair_list.extend(random.sample(temp, min(len(temp), 10)))
-
-    async def process_two_entity_relations(pair):
-        async with semaphore:
-            try:
-                document, entity1, entity2 = pair
-                response = await generate_two_entity_relations(
-                    document,
-                    entity1,
-                    entity2,
-                    task.openai_system_generate_two_entity_relations,
-                    model_name,
-                )
-                return response
-            except Exception as e:  # pylint: disable=broad-except
-                print(f"Error: {e}")
-                return None
-
-    corpus = []
-    for result in tqdm_async(
-        asyncio.as_completed(
-            [process_two_entity_relations(pair) for pair in pair_list]
-        ),
-        total=len(pair_list),
-        desc="Generating two entity relations",
-    ):
-        result = await result
-        if result:
-            corpus.append(result)
-
-    # triple_list = []
-    # for doc in entities_list:
-    #     entities = doc['entities']
-    #     for i in range(len(entities)):
-    #         for j in range(i + 1, len(entities)):
-    #             for k in range(j + 1, len(entities)):
-    #                 triple = (doc['document'], entities[i], entities[j], entities[k])
-    #                 triple_list.append(triple)
-    #
-    # async def process_three_entity_relations(triple):
-    #     async with semaphore:
-    #         document, entity1, entity2, entity3 = triple
-    #         response = await generate_three_entity_relations(
-    #             document, entity1, entity2, entity3,
-    #             task.openai_system_generate_three_entity_relations,
-    #             model_name)
-    #         return response
-    #
-    # for result in tqdm_async(
-    #         asyncio.as_completed([process_three_entity_relations(triple) for triple in triple_list]),
-    #         total=len(triple_list),
-    #         desc="Generating three entity relations"
-    # ):
-    #     corpus.append(await result)
-
-    corpus = [doc["summary"] for doc in entities_list] + corpus
-
-    qa_sft_results = {}
-
-    async def generate_qa_sft(content):
-        async with semaphore:
-            completion = await gptqa(
-                content, model_name, task.openai_system_quality_qa_sft
-            )
-            return completion
-
-    for result in tqdm_async(
-        asyncio.as_completed([generate_qa_sft(content) for content in corpus]),
-        total=len(corpus),
-        desc="Generating QA SFT",
-    ):
+def load_and_dedup_data(input_file: str) -> List[str]:
+    documents = []
+    with open(input_file, "r", encoding="utf-8") as f:
         try:
-            result = await result
-            if result:
-                qa_sft_results.update(_post_process_synthetic_data(result))
-        except Exception as e:  # pylint: disable=broad-except
-            print(f"Error: {e}")
+            data = json.load(f)
+            if isinstance(data, list):
+                for item in data:
+                    if isinstance(item, list):
+                        for chunk in item:
+                            if isinstance(chunk, dict) and "content" in chunk:
+                                documents.append(chunk["content"])
+                    elif isinstance(item, dict) and "content" in item:
+                        documents.append(item["content"])
+        except json.JSONDecodeError:
+            # Try JSONL
+            f.seek(0)
+            for line in f:
+                if not line.strip():
+                    continue
+                try:
+                    item = json.loads(line)
+                    if isinstance(item, dict) and "content" in item:
+                        documents.append(item["content"])
+                except json.JSONDecodeError:
+                    continue
 
-    return qa_sft_results
+    # Dedup
+    deduped = {}
+    for text in documents:
+        h = compute_content_hash(text)
+        if h not in deduped:
+            deduped[h] = text
+    return list(deduped.values())
 
 
 if __name__ == "__main__":
@@ -233,13 +299,6 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
-        "--data_type",
-        help="Data type of input file. (Raw context or chunked context)",
-        choices=["raw", "chunked"],
-        default="raw",
-        type=str,
-    )
-    parser.add_argument(
         "--output_file",
         help="Output file path.",
         default="cache/data/entigraph.json",
@@ -248,10 +307,23 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
-    results = asyncio.run(
-        generate_synthetic_data_for_document(args.input_file, args.data_type)
+    load_dotenv()
+
+    # Load data
+    docs = load_and_dedup_data(args.input_file)
+
+    entigraph = EntiGraph(
+        model_name=os.getenv("SYNTHESIZER_MODEL"),
+        api_key=os.getenv("SYNTHESIZER_API_KEY"),
+        base_url=os.getenv("SYNTHESIZER_BASE_URL"),
     )
 
+    results = entigraph.generate(docs)
+
     # Save results
+    output_dir = os.path.dirname(args.output_file)
+    if output_dir and not os.path.exists(output_dir):
+        os.makedirs(output_dir)
+
     with open(args.output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)
