@@ -16,7 +16,7 @@ class VLLMWrapper(BaseLLMWrapper):
         model: str,
         tensor_parallel_size: int = 1,
         gpu_memory_utilization: float = 0.9,
-        temperature: float = 0.0,
+        temperature: float = 0.6,
         top_p: float = 1.0,
         topk: int = 5,
         **kwargs: Any,
@@ -66,7 +66,7 @@ class VLLMWrapper(BaseLLMWrapper):
         sp = self.SamplingParams(
             temperature=self.temperature if self.temperature > 0 else 1.0,
             top_p=self.top_p if self.temperature > 0 else 1.0,
-            max_tokens=extra.get("max_new_tokens", 512),
+            max_tokens=extra.get("max_new_tokens", 2048),
         )
 
         result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
@@ -82,7 +82,7 @@ class VLLMWrapper(BaseLLMWrapper):
 
     async def generate_topk_per_token(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
-        ) -> List[Token]:
+    ) -> List[Token]:
         full_prompt = self._build_inputs(text, history)
         request_id = f"graphgen_topk_{uuid.uuid4()}"
 
@@ -110,7 +110,9 @@ class VLLMWrapper(BaseLLMWrapper):
 
         candidate_tokens = []
         for _, logprob_obj in top_logprobs.items():
-            tok_str = logprob_obj.decoded_token.strip() if logprob_obj.decoded_token else ""
+            tok_str = (
+                logprob_obj.decoded_token.strip() if logprob_obj.decoded_token else ""
+            )
             prob = float(math.exp(logprob_obj.logprob))
             candidate_tokens.append(Token(tok_str, prob))
 
@@ -120,7 +122,7 @@ class VLLMWrapper(BaseLLMWrapper):
             main_token = Token(
                 text=candidate_tokens[0].text,
                 prob=candidate_tokens[0].prob,
-                top_candidates=candidate_tokens
+                top_candidates=candidate_tokens,
             )
             return [main_token]
         return []
