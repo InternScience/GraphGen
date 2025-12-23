@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
@@ -67,22 +68,26 @@ class CoTGenerator(BaseGenerator):
 
     @staticmethod
     def parse_response(response: str) -> dict:
-        if "Question:" in response and "Reasoning-Path Design:" in response:
-            question = (
-                response.split("Question:")[1]
-                .split("Reasoning-Path Design:")[0]
-                .strip()
-            )
-            reasoning_path = response.split("Reasoning-Path Design:")[1].strip()
-        elif "问题：" in response and "推理路径设计：" in response:
-            question = response.split("问题：")[1].split("推理路径设计：")[0].strip()
-            reasoning_path = response.split("推理路径设计：")[1].strip()
+        """
+        Parse CoT template from response.
+        :param response:
+        :return: dict with question and reasoning_path
+        """
+        question_match = re.search(r"<question>(.*?)</question>", response, re.DOTALL)
+        reasoning_path_match = re.search(
+            r"<reasoning_path>(.*?)</reasoning_path>", response, re.DOTALL
+        )
+
+        if question_match and reasoning_path_match:
+            question = question_match.group(1).strip()
+            reasoning_path = reasoning_path_match.group(1).strip()
         else:
-            logger.warning("Failed to parse CoT template: %s", response)
+            logger.warning("Failed to parse response: %s", response)
             return {}
 
-        question = question.strip('"')
-        reasoning_path = reasoning_path.strip('"')
+        question = question.strip('"').strip("'")
+        reasoning_path = reasoning_path.strip('"').strip("'")
+
         logger.debug("CoT Question: %s", question)
         logger.debug("CoT Reasoning Path: %s", reasoning_path)
         return {
@@ -105,6 +110,8 @@ class CoTGenerator(BaseGenerator):
         prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(prompt)
         response = self.parse_response(response)
+        if not response:
+            return result
         question, reasoning_path = response["question"], response["reasoning_path"]
         prompt = self.build_prompt_for_cot_generation(batch, question, reasoning_path)
         cot_answer = await self.llm_client.generate_answer(prompt)

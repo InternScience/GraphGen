@@ -132,6 +132,8 @@ To generate a version of the text that is rephrased and conveys the same meaning
    - Logical consistency throughout
    - Clear cause-and-effect relationships
 
+**Attention: Please directly provide the rephrased text without any additional content or analysis.**
+
 ################
 -ENTITIES-
 ################
@@ -175,6 +177,8 @@ ANSWER_REPHRASING_ZH: str = """---角色---
     - 整体逻辑一致性
     - 清晰的因果关系
 
+**注意： 请你直接给出重述文本，不要输出任何额外的内容，也不要进行任何分析。**
+
 ################
 -实体-
 ################
@@ -191,6 +195,9 @@ REQUIREMENT_ZH = """
 ################
 请在下方直接输出连贯的重述文本，不要输出任何额外的内容。
 
+输出格式：
+<rephrased_text>rephrased_text_here</rephrased_text>
+
 重述文本:
 """
 
@@ -198,25 +205,42 @@ REQUIREMENT_EN = """
 ################
 Please directly output the coherent rephrased text below, without any additional content.
 
+Output format:
+<rephrased_text>rephrased_text_here</rephrased_text>
+
 Rephrased Text:
 """
 
 QUESTION_GENERATION_EN: str = """The answer to a question is provided. Please generate a question that corresponds to the answer.
 
-################
-Answer:
-{answer}
-################
+The answer for which a question needs to be generated is as follows:
+<answer>{answer}</answer>
+
+Please note the following requirements:
+1. Only output one question text without any additional explanations or analysis.
+2. Do not repeat the content of the answer or any fragments of it.
+3. The question must be independently understandable and fully match the answer.
+
+Output format:
+<question>question_text</question>
+
 Question:
 """
 
 QUESTION_GENERATION_ZH: str = """下面提供了一个问题的答案，请生成一个与答案对应的问题。
 
-################
-答案：
-{answer}
-################
-问题：
+需要生成问题的答案如下：
+<answer>{answer}</answer>
+
+请注意下列要求：
+1. 仅输出一个问题文本，不得包含任何额外说明或分析
+2. 不得重复答案内容或其中任何片段
+3. 问题必须可独立理解且与答案完全匹配
+
+输出格式：
+<question>question_text</question>
+
+问题:
 """
 
 AGGREGATED_GENERATION_PROMPT = {
