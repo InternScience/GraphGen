@@ -1,4 +1,10 @@
-from .evaluator import LengthEvaluator, MTLDEvaluator, RewardEvaluator, UniEvaluator
+from .evaluator import (
+    KGQualityEvaluator,
+    LengthEvaluator,
+    MTLDEvaluator,
+    RewardEvaluator,
+    UniEvaluator,
+)
 from .generator import (
     AggregatedGenerator,
     AtomicGenerator,

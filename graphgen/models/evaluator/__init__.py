@@ -1,3 +1,4 @@
+from .kg_quality_evaluator import KGQualityEvaluator
 from .length_evaluator import LengthEvaluator
 from .mtld_evaluator import MTLDEvaluator
 from .reward_evaluator import RewardEvaluator

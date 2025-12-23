@@ -1,0 +1,141 @@
+from typing import Any, Dict, Optional
+
+try:
+    import networkx as nx
+except ImportError:
+    nx = None
+
+try:
+    from scipy import stats
+except ImportError:
+    stats = None
+
+import numpy as np
+
+from graphgen.bases import BaseGraphStorage
+from graphgen.models.evaluator.kg.utils import convert_to_networkx
+from graphgen.utils import logger
+
+
+class StructureEvaluator:
+    """Evaluates structural robustness of the graph."""
+
+    def __init__(self, graph_storage: BaseGraphStorage):
+        self.graph_storage = graph_storage
+
+    def evaluate(self) -> Dict[str, Any]:
+        if nx is None:
+            return {"error": "NetworkX not installed"}
+
+        # Convert graph to NetworkX
+        G = convert_to_networkx(self.graph_storage)
+
+        if G.number_of_nodes() == 0:
+            return {"error": "Empty graph"}
+
+        # Calculate metrics
+        total_nodes = G.number_of_nodes()
+        total_edges = G.number_of_edges()
+
+        # Noise ratio: isolated nodes / total nodes
+        isolated_nodes = [n for n in G.nodes() if G.degree(n) == 0]
+        noise_ratio = len(isolated_nodes) / total_nodes if total_nodes > 0 else 0
+
+        # Largest connected component
+        if G.is_directed():
+            G_undirected = G.to_undirected()
+        else:
+            G_undirected = G
+
+        connected_components = list(nx.connected_components(G_undirected))
+        if connected_components:
+            largest_cc = max(connected_components, key=len)
+            largest_cc_ratio = (
+                len(largest_cc) / total_nodes if total_nodes > 0 else 0
+            )
+        else:
+            largest_cc_ratio = 0
+
+        # Average node degree
+        if total_nodes > 0:
+            total_degree = sum(G.degree(n) for n in G.nodes())
+            avg_degree = total_degree / total_nodes
+        else:
+            avg_degree = 0
+
+        # Power law distribution R²
+        powerlaw_r2 = self._calculate_powerlaw_r2(G)
+
+        # Check thresholds
+        thresholds = {
+            "noise_ratio": {
+                "value": noise_ratio,
+                "threshold": 0.15,
+                "pass": noise_ratio < 0.15,
+            },
+            "largest_cc_ratio": {
+                "value": largest_cc_ratio,
+                "threshold": 0.90,
+                "pass": largest_cc_ratio > 0.90,
+            },
+            "avg_degree": {
+                "value": avg_degree,
+                "threshold": (2, 5),
+                "pass": 2 <= avg_degree <= 5,
+            },
+            "powerlaw_r2": {
+                "value": powerlaw_r2,
+                "threshold": 0.75,
+                "pass": powerlaw_r2 > 0.75 if powerlaw_r2 is not None else False,
+            },
+        }
+
+        return {
+            "total_nodes": total_nodes,
+            "total_edges": total_edges,
+            "isolated_nodes_count": len(isolated_nodes),
+            "noise_ratio": noise_ratio,
+            "largest_cc_ratio": largest_cc_ratio,
+            "avg_degree": avg_degree,
+            "powerlaw_r2": powerlaw_r2,
+            "thresholds": thresholds,
+        }
+
+    def _calculate_powerlaw_r2(self, G: "nx.Graph") -> Optional[float]:
+        """
+        Calculate R² for power law distribution of node degrees.
+
+        Returns:
+            R² value if calculation successful, None otherwise
+        """
+        if stats is None:
+            logger.warning("scipy not available, skipping power law R² calculation")
+            return None
+
+        degrees = [G.degree(n) for n in G.nodes()]
+        if len(degrees) < 10:  # Need sufficient data points
+            logger.warning("Insufficient nodes for power law fitting")
+            return None
+
+        # Filter out zero degrees for log fitting
+        non_zero_degrees = [d for d in degrees if d > 0]
+        if len(non_zero_degrees) < 5:
+            return None
+
+        try:
+            # Fit power law: log(y) = a * log(x) + b
+            log_degrees = np.log(non_zero_degrees)
+            sorted_log_degrees = np.sort(log_degrees)
+            x = np.arange(1, len(sorted_log_degrees) + 1)
+            log_x = np.log(x)
+
+            # Linear regression on log-log scale
+            slope, intercept, r_value, p_value, std_err = stats.linregress(
+                log_x, sorted_log_degrees
+            )
+            r2 = r_value ** 2
+
+            return float(r2)
+        except Exception as e:
+            logger.error(f"Power law R² calculation failed: {e}")
+            return None
