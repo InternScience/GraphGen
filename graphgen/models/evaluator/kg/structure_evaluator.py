@@ -20,6 +20,13 @@ from graphgen.utils import logger
 class StructureEvaluator:
     """Evaluates structural robustness of the graph."""
 
+    # Thresholds for structural metrics
+    NOISE_RATIO_THRESHOLD = 0.15
+    LARGEST_CC_RATIO_THRESHOLD = 0.90
+    AVG_DEGREE_MIN = 2
+    AVG_DEGREE_MAX = 5
+    POWERLAW_R2_THRESHOLD = 0.75
+
     def __init__(self, graph_storage: BaseGraphStorage):
         self.graph_storage = graph_storage
 
@@ -70,23 +77,23 @@ class StructureEvaluator:
         thresholds = {
             "noise_ratio": {
                 "value": noise_ratio,
-                "threshold": 0.15,
-                "pass": noise_ratio < 0.15,
+                "threshold": self.NOISE_RATIO_THRESHOLD,
+                "pass": noise_ratio < self.NOISE_RATIO_THRESHOLD,
             },
             "largest_cc_ratio": {
                 "value": largest_cc_ratio,
-                "threshold": 0.90,
-                "pass": largest_cc_ratio > 0.90,
+                "threshold": self.LARGEST_CC_RATIO_THRESHOLD,
+                "pass": largest_cc_ratio > self.LARGEST_CC_RATIO_THRESHOLD,
             },
             "avg_degree": {
                 "value": avg_degree,
-                "threshold": (2, 5),
-                "pass": 2 <= avg_degree <= 5,
+                "threshold": (self.AVG_DEGREE_MIN, self.AVG_DEGREE_MAX),
+                "pass": self.AVG_DEGREE_MIN <= avg_degree <= self.AVG_DEGREE_MAX,
             },
             "powerlaw_r2": {
                 "value": powerlaw_r2,
-                "threshold": 0.75,
-                "pass": powerlaw_r2 > 0.75 if powerlaw_r2 is not None else False,
+                "threshold": self.POWERLAW_R2_THRESHOLD,
+                "pass": powerlaw_r2 > self.POWERLAW_R2_THRESHOLD if powerlaw_r2 is not None else False,
             },
         }
 
@@ -130,9 +137,7 @@ class StructureEvaluator:
             log_x = np.log(x)
 
             # Linear regression on log-log scale
-            slope, intercept, r_value, p_value, std_err = stats.linregress(
-                log_x, sorted_log_degrees
-            )
+            r_value, *_ = stats.linregress(log_x, sorted_log_degrees)
             r2 = r_value ** 2
 
             return float(r2)

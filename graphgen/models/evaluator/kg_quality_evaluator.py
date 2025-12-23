@@ -7,7 +7,6 @@ This module provides comprehensive quality evaluation for knowledge graphs,
 3. robustness assessment (noise ratio, connectivity, degree distribution).
 """
 
-import os
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
@@ -17,7 +16,7 @@ from graphgen.models.evaluator.kg import (
     ConsistencyEvaluator,
     StructureEvaluator,
 )
-from graphgen.utils import CURRENT_LOGGER_VAR, logger, set_logger
+from graphgen.utils import CURRENT_LOGGER_VAR, logger
 
 
 @dataclass

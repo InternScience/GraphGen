@@ -1,6 +1,5 @@
 import argparse
 import json
-import os
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -10,6 +9,110 @@ from graphgen.utils import CURRENT_LOGGER_VAR, logger, set_logger
 
 # Load environment variables
 load_dotenv()
+
+
+def _run_evaluation(evaluator, args):
+    """Run the evaluation based on arguments."""
+    if args.accuracy_only:
+        logger.info("Running accuracy evaluation only...")
+        return {"accuracy": evaluator.evaluate_accuracy()}
+    if args.consistency_only:
+        logger.info("Running consistency evaluation only...")
+        return {"consistency": evaluator.evaluate_consistency()}
+    if args.structure_only:
+        logger.info("Running structural robustness evaluation only...")
+        return {"structure": evaluator.evaluate_structure()}
+    logger.info("Running all evaluations...")
+    return evaluator.evaluate_all()
+
+
+def _print_accuracy_summary(acc):
+    """Print accuracy evaluation summary."""
+    if "error" not in acc:
+        print("\n[Accuracy]")
+        if "entity_accuracy" in acc:
+            e = acc["entity_accuracy"]
+            print(f"  Entity - Precision: {e.get('precision', 0):.3f}, "
+                  f"Recall: {e.get('recall', 0):.3f}, F1: {e.get('f1', 0):.3f}")
+        if "triple_accuracy" in acc:
+            t = acc["triple_accuracy"]
+            print(f"  Triple (RLC) - Precision: {t.get('precision', 0):.3f}, "
+                  f"Recall: {t.get('recall', 0):.3f}, F1: {t.get('f1', 0):.3f}")
+    else:
+        print(f"\n[Accuracy] Error: {acc['error']}")
+
+
+def _print_consistency_summary(cons):
+    """Print consistency evaluation summary."""
+    if "error" not in cons:
+        print("\n[Consistency]")
+        print(f"  Conflict Rate: {cons.get('conflict_rate', 0):.3f}")
+        print(f"  Conflict Entities: {cons.get('conflict_entities_count', 0)} / "
+              f"{cons.get('total_entities', 0)}")
+    else:
+        print(f"\n[Consistency] Error: {cons['error']}")
+
+
+def _print_structure_summary(struct):
+    """Print structural robustness evaluation summary."""
+    if "error" not in struct:
+        print("\n[Structural Robustness]")
+        print(f"  Total Nodes: {struct.get('total_nodes', 0)}")
+        print(f"  Total Edges: {struct.get('total_edges', 0)}")
+        
+        thresholds = struct.get("thresholds", {})
+        
+        # Noise Ratio
+        noise_check = thresholds.get("noise_ratio", {})
+        noise_threshold = noise_check.get("threshold", "N/A")
+        noise_pass = noise_check.get("pass", False)
+        print(f"  Noise Ratio: {struct.get('noise_ratio', 0):.3f} "
+              f"({'✓' if noise_pass else '✗'} < {noise_threshold})")
+        
+        # Largest CC Ratio
+        lcc_check = thresholds.get("largest_cc_ratio", {})
+        lcc_threshold = lcc_check.get("threshold", "N/A")
+        lcc_pass = lcc_check.get("pass", False)
+        print(f"  Largest CC Ratio: {struct.get('largest_cc_ratio', 0):.3f} "
+              f"({'✓' if lcc_pass else '✗'} > {lcc_threshold})")
+        
+        # Avg Degree
+        avg_degree_check = thresholds.get("avg_degree", {})
+        avg_degree_threshold = avg_degree_check.get("threshold", "N/A")
+        avg_degree_pass = avg_degree_check.get("pass", False)
+        # Format threshold for display (handle tuple case)
+        if isinstance(avg_degree_threshold, tuple):
+            threshold_str = f"{avg_degree_threshold[0]}-{avg_degree_threshold[1]}"
+        else:
+            threshold_str = str(avg_degree_threshold)
+        print(f"  Avg Degree: {struct.get('avg_degree', 0):.2f} "
+              f"({'✓' if avg_degree_pass else '✗'} {threshold_str})")
+        
+        # Power Law R²
+        if struct.get('powerlaw_r2') is not None:
+            powerlaw_check = thresholds.get("powerlaw_r2", {})
+            powerlaw_threshold = powerlaw_check.get("threshold", "N/A")
+            powerlaw_pass = powerlaw_check.get("pass", False)
+            print(f"  Power Law R²: {struct.get('powerlaw_r2', 0):.3f} "
+                  f"({'✓' if powerlaw_pass else '✗'} > {powerlaw_threshold})")
+    else:
+        print(f"\n[Structural Robustness] Error: {struct['error']}")
+
+
+def _print_summary(results):
+    """Print evaluation summary."""
+    print("\n" + "=" * 60)
+    print("KG Quality Evaluation Summary")
+    print("=" * 60)
+
+    if "accuracy" in results:
+        _print_accuracy_summary(results["accuracy"])
+    if "consistency" in results:
+        _print_consistency_summary(results["consistency"])
+    if "structure" in results:
+        _print_structure_summary(results["structure"])
+
+    print("\n" + "=" * 60)
 
 
 def main():
@@ -125,18 +228,7 @@ Examples:
 
     # Run evaluation
     try:
-        if args.accuracy_only:
-            logger.info("Running accuracy evaluation only...")
-            results = {"accuracy": evaluator.evaluate_accuracy()}
-        elif args.consistency_only:
-            logger.info("Running consistency evaluation only...")
-            results = {"consistency": evaluator.evaluate_consistency()}
-        elif args.structure_only:
-            logger.info("Running structural robustness evaluation only...")
-            results = {"structure": evaluator.evaluate_structure()}
-        else:
-            logger.info("Running all evaluations...")
-            results = evaluator.evaluate_all()
+        results = _run_evaluation(evaluator, args)
 
         # Save results
         output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -146,58 +238,7 @@ Examples:
         logger.info(f"Evaluation completed. Results saved to: {output_path}")
 
         # Print summary
-        print("\n" + "=" * 60)
-        print("KG Quality Evaluation Summary")
-        print("=" * 60)
-
-        if "accuracy" in results:
-            acc = results["accuracy"]
-            if "error" not in acc:
-                print("\n[Accuracy]")
-                if "entity_accuracy" in acc:
-                    e = acc["entity_accuracy"]
-                    print(f"  Entity - Precision: {e.get('precision', 0):.3f}, "
-                          f"Recall: {e.get('recall', 0):.3f}, F1: {e.get('f1', 0):.3f}")
-                if "relation_accuracy" in acc:
-                    r = acc["relation_accuracy"]
-                    print(f"  Relation - Precision: {r.get('precision', 0):.3f}, "
-                          f"Recall: {r.get('recall', 0):.3f}, F1: {r.get('f1', 0):.3f}")
-                if "triple_accuracy" in acc:
-                    t = acc["triple_accuracy"]
-                    print(f"  Triple (RLC) - Precision: {t.get('precision', 0):.3f}, "
-                          f"Recall: {t.get('recall', 0):.3f}, F1: {t.get('f1', 0):.3f}")
-            else:
-                print(f"\n[Accuracy] Error: {acc['error']}")
-
-        if "consistency" in results:
-            cons = results["consistency"]
-            if "error" not in cons:
-                print("\n[Consistency]")
-                print(f"  Conflict Rate: {cons.get('conflict_rate', 0):.3f}")
-                print(f"  Conflict Entities: {cons.get('conflict_entities_count', 0)} / "
-                      f"{cons.get('total_entities', 0)}")
-            else:
-                print(f"\n[Consistency] Error: {cons['error']}")
-
-        if "structure" in results:
-            struct = results["structure"]
-            if "error" not in struct:
-                print("\n[Structural Robustness]")
-                print(f"  Total Nodes: {struct.get('total_nodes', 0)}")
-                print(f"  Total Edges: {struct.get('total_edges', 0)}")
-                print(f"  Noise Ratio: {struct.get('noise_ratio', 0):.3f} "
-                      f"({'✓' if struct.get('noise_ratio', 1) < 0.15 else '✗'} < 15%)")
-                print(f"  Largest CC Ratio: {struct.get('largest_cc_ratio', 0):.3f} "
-                      f"({'✓' if struct.get('largest_cc_ratio', 0) > 0.90 else '✗'} > 90%)")
-                print(f"  Avg Degree: {struct.get('avg_degree', 0):.2f} "
-                      f"({'✓' if 2 <= struct.get('avg_degree', 0) <= 5 else '✗'} 2-5)")
-                if struct.get('powerlaw_r2') is not None:
-                    print(f"  Power Law R²: {struct.get('powerlaw_r2', 0):.3f} "
-                          f"({'✓' if struct.get('powerlaw_r2', 0) > 0.75 else '✗'} > 0.75)")
-            else:
-                print(f"\n[Structural Robustness] Error: {struct['error']}")
-
-        print("\n" + "=" * 60)
+        _print_summary(results)
 
     except Exception as e:
         logger.error(f"Evaluation failed: {e}", exc_info=True)

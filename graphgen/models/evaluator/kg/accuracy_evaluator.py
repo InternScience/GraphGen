@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 from tqdm.asyncio import tqdm as tqdm_async
 
@@ -9,7 +9,12 @@ from graphgen.utils import create_event_loop, logger
 
 
 class AccuracyEvaluator:
-    """Evaluates accuracy of entity recognition, relation extraction, and triple validation."""
+    """Evaluates accuracy of entity recognition, relation extraction, and triple validation.
+    
+    Note: Recall is approximated as equal to precision since we cannot calculate true recall
+    (TP / (TP + FN)) without complete ground truth. The F1 score is therefore equal to precision.
+    Only precision should be considered as the primary metric.
+    """
 
     def __init__(
         self,
@@ -33,22 +38,17 @@ class AccuracyEvaluator:
         if not all_nodes and not all_edges:
             return {"error": "Empty graph"}
 
-        # Sample entities, relations, and triples
+        # Sample entities and triples (edges)
         entity_samples = sample_items(all_nodes, self.sample_size)
-        relation_samples = sample_items(all_edges, self.sample_size)
         triple_samples = sample_items(all_edges, self.sample_size)
 
         # Evaluate each type (async)
         loop = create_event_loop()
         entity_results = loop.run_until_complete(self._evaluate_entities(entity_samples))
-        relation_results = loop.run_until_complete(
-            self._evaluate_relations(relation_samples)
-        )
         triple_results = loop.run_until_complete(self._evaluate_triples(triple_samples))
 
         return {
             "entity_accuracy": entity_results,
-            "relation_accuracy": relation_results,
             "triple_accuracy": triple_results,
         }
 
@@ -75,67 +75,7 @@ class AccuracyEvaluator:
             result = await coro
             results.append(result)
 
-        # Calculate metrics
-        tp = sum(results)
-        fp = len(results) - tp
-        precision = tp / len(results) if results else 0.0
-        recall = precision  # Approximation: assume all sampled are relevant
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
-
-        return {
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "true_positives": tp,
-            "false_positives": fp,
-            "sample_size": len(results),
-        }
-
-    async def _evaluate_relations(
-        self, relation_samples: List[Tuple[str, str, Dict]]
-    ) -> Dict[str, float]:
-        """Evaluate relation extraction accuracy."""
-        source_text = get_relevant_text(self.chunk_storage)
-
-        semaphore = asyncio.Semaphore(self.max_concurrent)
-
-        async def verify_with_semaphore(relation_sample):
-            async with semaphore:
-                src_id, dst_id, edge_data = relation_sample
-                return await self._verify_relation_with_llm(
-                    src_id, dst_id, edge_data, source_text
-                )
-
-        results = []
-        tasks = [verify_with_semaphore(sample) for sample in relation_samples]
-        for coro in tqdm_async(
-            asyncio.as_completed(tasks), total=len(tasks), desc="Verifying relations"
-        ):
-            result = await coro
-            results.append(result)
-
-        tp = sum(results)
-        fp = len(results) - tp
-        precision = tp / len(results) if results else 0.0
-        recall = precision
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
-
-        return {
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "true_positives": tp,
-            "false_positives": fp,
-            "sample_size": len(results),
-        }
+        return self._calculate_metrics(results)
 
     async def _evaluate_triples(
         self, triple_samples: List[Tuple[str, str, Dict]]
@@ -160,24 +100,7 @@ class AccuracyEvaluator:
             result = await coro
             results.append(result)
 
-        tp = sum(results)
-        fp = len(results) - tp
-        precision = tp / len(results) if results else 0.0
-        recall = precision
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if (precision + recall) > 0
-            else 0.0
-        )
-
-        return {
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-            "true_positives": tp,
-            "false_positives": fp,
-            "sample_size": len(results),
-        }
+        return self._calculate_metrics(results)
 
     async def _verify_entity_with_llm(
         self, entity_id: str, entity_data: Dict, source_text: str
@@ -216,48 +139,41 @@ class AccuracyEvaluator:
             logger.error(f"LLM verification failed for entity {entity_id}: {e}")
             return False
 
-    async def _verify_relation_with_llm(
-        self, src_id: str, dst_id: str, edge_data: Dict, source_text: str
-    ) -> bool:
-        """Verify relation correctness using LLM."""
-        src_node = self.graph_storage.get_node(src_id) or {}
-        dst_node = self.graph_storage.get_node(dst_id) or {}
-        source_entity = src_node.get("entity_name", src_id)
-        target_entity = dst_node.get("entity_name", dst_id)
-        relationship_summary = edge_data.get(
-            "relationship_summary", edge_data.get("description", "")
+    def _calculate_metrics(self, results: List[bool]) -> Dict[str, float]:
+        """
+        Calculate precision, recall, and F1 score from boolean verification results.
+        
+        Note: Recall is approximated as equal to precision since we cannot calculate
+        true recall (TP / (TP + FN)) without complete ground truth. The F1 score
+        is therefore equal to precision. Only precision should be considered as the
+        primary metric.
+        
+        Args:
+            results: List of boolean values indicating verification results (True = correct)
+            
+        Returns:
+            Dictionary containing precision, recall, f1, true_positives, false_positives,
+            and sample_size
+        """
+        tp = sum(results)
+        fp = len(results) - tp
+        precision = tp / len(results) if results else 0.0
+        # Approximation: assume all sampled are relevant (cannot calculate true recall)
+        recall = precision
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if (precision + recall) > 0
+            else 0.0
         )
 
-        # Try to get relevant text from source_id
-        source_id = edge_data.get("source_id")
-        if source_id:
-            relevant_text = get_relevant_text(self.chunk_storage, source_id)
-            if relevant_text:
-                source_text = relevant_text
-
-        prompt = f"""给定以下文本和关系信息，请判断该关系是否在文本中正确抽取。
-
-文本：{source_text[:2000]}
-
-源实体：{source_entity}
-目标实体：{target_entity}
-关系描述：{relationship_summary}
-
-请回答：该关系是否在文本中正确抽取？回答"是"或"否"，并简要说明理由。"""
-
-        try:
-            response = await self.llm_client.generate_answer(prompt)
-            response_lower = response.lower()
-            return (
-                "是" in response_lower
-                or "yes" in response_lower
-                or "正确" in response_lower
-            )
-        except Exception as e:
-            logger.error(
-                f"LLM verification failed for relation {src_id}->{dst_id}: {e}"
-            )
-            return False
+        return {
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+            "true_positives": tp,
+            "false_positives": fp,
+            "sample_size": len(results),
+        }
 
     async def _verify_triple_with_llm(
         self, src_id: str, dst_id: str, edge_data: Dict, source_text: str
