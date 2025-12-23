@@ -52,8 +52,11 @@ Here is the format you should follow for your response:
 <Discussion on how the two entities interact within the article>
 """
 
-OPENAI_API_SYSTEM_QUALITY_QA_SFT = """You are an assistant to help read a article and then rephrase it in a question answering format.
-The user will provide you with an article with its content. You need to generate a paraphrase of the same article in question and answer format with multiple tags of "Question: ..." followed by "Answer: ...".
+OPENAI_API_SYSTEM_QUALITY_QA_SFT = """You are an assistant to help read \
+a article and then rephrase it in a question answering format. \
+The user will provide you with an article with its content. \
+You need to generate a paraphrase of the same article in question and answer format with \
+multiple tags of "Question: ..." followed by "Answer: ...".
 Remember to keep the meaning and every content of the article intact.
 
 Here is the format you should follow for your response:
