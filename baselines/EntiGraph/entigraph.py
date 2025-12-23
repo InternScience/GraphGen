@@ -52,7 +52,9 @@ Here is the format you should follow for your response:
 <Discussion on how the two entities interact within the article>
 """
 
-OPENAI_API_SYSTEM_QUALITY_QA_SFT = """You are an assistant to help read a article and then rephrase it in a question answering format. The user will provide you with an article with its content. You need to generate a paraphrase of the same article in question and answer format with multiple tags of "Question: ..." followed by "Answer: ...". Remember to keep the meaning and every content of the article intact.
+OPENAI_API_SYSTEM_QUALITY_QA_SFT = """You are an assistant to help read a article and then rephrase it in a question answering format.
+The user will provide you with an article with its content. You need to generate a paraphrase of the same article in question and answer format with multiple tags of "Question: ..." followed by "Answer: ...".
+Remember to keep the meaning and every content of the article intact.
 
 Here is the format you should follow for your response:
 Question: <Question>
@@ -116,13 +118,13 @@ class EntiGraph:
                     response_str = response_str.split("```json")[1].split("```")[0].strip()
                 elif "```" in response_str:
                     response_str = response_str.split("```")[1].split("```")[0].strip()
-                
+
                 # Find start and end of json
                 start = response_str.find("{")
                 end = response_str.rfind("}")
                 if start != -1 and end != -1:
                     response_str = response_str[start : end + 1]
-                
+
                 response = json.loads(response_str)
                 if "entities" in response and "summary" in response:
                     return response
@@ -146,11 +148,11 @@ class EntiGraph:
         prompt = OPENAI_API_SYSTEM_QUALITY_QA_SFT.format(doc=content)
         return await self.client_qa.generate_answer(prompt)
 
-    def generate(self, docs: List[str]) -> List[dict]:
+    def generate(self, input_docs: List[str]) -> List[dict]:
         loop = create_event_loop()
-        return loop.run_until_complete(self.async_generate(docs))
+        return loop.run_until_complete(self.async_generate(input_docs))
 
-    async def async_generate(self, docs: List[str]) -> dict:
+    async def async_generate(self, input_docs: List[str]) -> dict:
         semaphore = asyncio.Semaphore(self.max_concurrent)
 
         # 1. Generate Entities
@@ -167,8 +169,8 @@ class EntiGraph:
 
         entities_results = []
         for result in tqdm_async(
-            asyncio.as_completed([process_entities(doc) for doc in docs]),
-            total=len(docs),
+            asyncio.as_completed([process_entities(doc) for doc in input_docs]),
+            total=len(input_docs),
             desc="Generating entities"
         ):
             res = await result
@@ -213,7 +215,7 @@ class EntiGraph:
 
         # 3. Generate QA SFT
         final_results = {}
-        
+
         async def process_qa(text):
             async with semaphore:
                 try:
@@ -255,31 +257,45 @@ def _post_process_synthetic_data(data: str) -> dict:
     return qas
 
 
+def load_from_json(file_obj) -> List[str]:
+    """Helper to load docs from a standard JSON list."""
+    documents = []
+    data = json.load(file_obj)
+    if isinstance(data, list):
+        for item in data:
+            if isinstance(item, list):
+                for chunk in item:
+                    if isinstance(chunk, dict) and "content" in chunk:
+                        documents.append(chunk["content"])
+            elif isinstance(item, dict) and "content" in item:
+                documents.append(item["content"])
+    return documents
+
+
+def load_from_jsonl(file_obj) -> List[str]:
+    """Helper to load docs from a JSONL file."""
+    documents = []
+    file_obj.seek(0)
+    for line in file_obj:
+        if not line.strip():
+            continue
+        try:
+            item = json.loads(line)
+            if isinstance(item, dict) and "content" in item:
+                documents.append(item["content"])
+        except json.JSONDecodeError:
+            continue
+    return documents
+
+
 def load_and_dedup_data(input_file: str) -> List[str]:
     documents = []
-    with open(input_file, "r", encoding="utf-8") as f:
+    with open(input_file, "r", encoding="utf-8") as file_obj:
         try:
-            data = json.load(f)
-            if isinstance(data, list):
-                for item in data:
-                    if isinstance(item, list):
-                        for chunk in item:
-                            if isinstance(chunk, dict) and "content" in chunk:
-                                documents.append(chunk["content"])
-                    elif isinstance(item, dict) and "content" in item:
-                        documents.append(item["content"])
+            documents = load_from_json(file_obj)
         except json.JSONDecodeError:
             # Try JSONL
-            f.seek(0)
-            for line in f:
-                if not line.strip():
-                    continue
-                try:
-                    item = json.loads(line)
-                    if isinstance(item, dict) and "content" in item:
-                        documents.append(item["content"])
-                except json.JSONDecodeError:
-                    continue
+            documents = load_from_jsonl(file_obj)
 
     # Dedup
     deduped = {}
