@@ -20,15 +20,21 @@ from graphgen.utils import logger
 class StructureEvaluator:
     """Evaluates structural robustness of the graph."""
 
-    # Thresholds for structural metrics
-    NOISE_RATIO_THRESHOLD = 0.15
-    LARGEST_CC_RATIO_THRESHOLD = 0.90
-    AVG_DEGREE_MIN = 2
-    AVG_DEGREE_MAX = 5
-    POWERLAW_R2_THRESHOLD = 0.75
-
-    def __init__(self, graph_storage: BaseGraphStorage):
+    def __init__(
+        self,
+        graph_storage: BaseGraphStorage,
+        noise_ratio_threshold: float = 0.15,
+        largest_cc_ratio_threshold: float = 0.90,
+        avg_degree_min: float = 2.0,
+        avg_degree_max: float = 5.0,
+        powerlaw_r2_threshold: float = 0.75,
+    ):
         self.graph_storage = graph_storage
+        self.noise_ratio_threshold = noise_ratio_threshold
+        self.largest_cc_ratio_threshold = largest_cc_ratio_threshold
+        self.avg_degree_min = avg_degree_min
+        self.avg_degree_max = avg_degree_max
+        self.powerlaw_r2_threshold = powerlaw_r2_threshold
 
     def evaluate(self) -> Dict[str, Any]:
         if nx is None:
@@ -73,27 +79,26 @@ class StructureEvaluator:
         # Power law distribution R²
         powerlaw_r2 = self._calculate_powerlaw_r2(G)
 
-        # Check thresholds
         thresholds = {
             "noise_ratio": {
                 "value": noise_ratio,
-                "threshold": self.NOISE_RATIO_THRESHOLD,
-                "pass": noise_ratio < self.NOISE_RATIO_THRESHOLD,
+                "threshold": self.noise_ratio_threshold,
+                "pass": noise_ratio < self.noise_ratio_threshold,
             },
             "largest_cc_ratio": {
                 "value": largest_cc_ratio,
-                "threshold": self.LARGEST_CC_RATIO_THRESHOLD,
-                "pass": largest_cc_ratio > self.LARGEST_CC_RATIO_THRESHOLD,
+                "threshold": self.largest_cc_ratio_threshold,
+                "pass": largest_cc_ratio > self.largest_cc_ratio_threshold,
             },
             "avg_degree": {
                 "value": avg_degree,
-                "threshold": (self.AVG_DEGREE_MIN, self.AVG_DEGREE_MAX),
-                "pass": self.AVG_DEGREE_MIN <= avg_degree <= self.AVG_DEGREE_MAX,
+                "threshold": (self.avg_degree_min, self.avg_degree_max),
+                "pass": self.avg_degree_min <= avg_degree <= self.avg_degree_max,
             },
             "powerlaw_r2": {
                 "value": powerlaw_r2,
-                "threshold": self.POWERLAW_R2_THRESHOLD,
-                "pass": powerlaw_r2 > self.POWERLAW_R2_THRESHOLD if powerlaw_r2 is not None else False,
+                "threshold": self.powerlaw_r2_threshold,
+                "pass": powerlaw_r2 > self.powerlaw_r2_threshold if powerlaw_r2 is not None else False,
             },
         }
 

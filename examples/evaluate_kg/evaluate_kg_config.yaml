@@ -1,0 +1,12 @@
+source_text_paths:
+  - data/protein_source.txt
+  - data/dna_source.txt
+  - data/rna_source.txt
+
+structure_thresholds:
+  noise_ratio: 0.15
+  largest_cc_ratio: 0.90
+  avg_degree_min: 2.0
+  avg_degree_max: 5.0
+  powerlaw_r2: 0.75
+
