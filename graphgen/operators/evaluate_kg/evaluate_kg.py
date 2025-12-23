@@ -35,8 +35,8 @@ def _print_accuracy_summary(acc):
             accuracy = e.get("accuracy", {})
             completeness = e.get("completeness", {})
             precision = e.get("precision", {})
-            
-            print(f"  Entity Extraction Quality:")
+
+            print("  Entity Extraction Quality:")
             print(f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
                   f"{overall.get('median', 0):.3f} (median)")
             print(f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
@@ -46,15 +46,15 @@ def _print_accuracy_summary(acc):
             print(f"    Precision: {precision.get('mean', 0):.3f} (mean), "
                   f"{precision.get('median', 0):.3f} (median)")
             print(f"    Total Chunks Evaluated: {e.get('total_chunks', 0)}")
-            
+
         if "relation_accuracy" in acc:
             r = acc["relation_accuracy"]
             overall = r.get("overall_score", {})
             accuracy = r.get("accuracy", {})
             completeness = r.get("completeness", {})
             precision = r.get("precision", {})
-            
-            print(f"  Relation Extraction Quality:")
+
+            print("  Relation Extraction Quality:")
             print(f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
                   f"{overall.get('median', 0):.3f} (median)")
             print(f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
@@ -96,23 +96,23 @@ def _print_structure_summary(struct):
         print("\n[Structural Robustness]")
         print(f"  Total Nodes: {struct.get('total_nodes', 0)}")
         print(f"  Total Edges: {struct.get('total_edges', 0)}")
-        
+
         thresholds = struct.get("thresholds", {})
-        
+
         # Noise Ratio
         noise_check = thresholds.get("noise_ratio", {})
         noise_threshold = noise_check.get("threshold", "N/A")
         noise_pass = noise_check.get("pass", False)
         print(f"  Noise Ratio: {struct.get('noise_ratio', 0):.3f} "
               f"({'✓' if noise_pass else '✗'} < {noise_threshold})")
-        
+
         # Largest CC Ratio
         lcc_check = thresholds.get("largest_cc_ratio", {})
         lcc_threshold = lcc_check.get("threshold", "N/A")
         lcc_pass = lcc_check.get("pass", False)
         print(f"  Largest CC Ratio: {struct.get('largest_cc_ratio', 0):.3f} "
               f"({'✓' if lcc_pass else '✗'} > {lcc_threshold})")
-        
+
         # Avg Degree
         avg_degree_check = thresholds.get("avg_degree", {})
         avg_degree_threshold = avg_degree_check.get("threshold", "N/A")
@@ -124,7 +124,7 @@ def _print_structure_summary(struct):
             threshold_str = str(avg_degree_threshold)
         print(f"  Avg Degree: {struct.get('avg_degree', 0):.2f} "
               f"({'✓' if avg_degree_pass else '✗'} {threshold_str})")
-        
+
         # Power Law R²
         if struct.get('powerlaw_r2') is not None:
             powerlaw_check = thresholds.get("powerlaw_r2", {})

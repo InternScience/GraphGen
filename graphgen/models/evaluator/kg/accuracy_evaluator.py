@@ -84,12 +84,12 @@ RELATION_EVALUATION_PROMPT = """你是一个知识图谱质量评估专家。你
 
 class AccuracyEvaluator:
     """Evaluates accuracy of entity recognition and relation extraction using LLM-as-a-Judge.
-    
+
     For each chunk, uses LLM to evaluate the quality of extracted entities and relations
     by comparing them with the original chunk content. Provides multi-dimensional quality
     scores (accuracy, completeness, precision).
     """
-    
+
     def __init__(
         self,
         graph_storage: BaseGraphStorage,
@@ -104,25 +104,25 @@ class AccuracyEvaluator:
 
     def evaluate(self) -> Dict[str, Any]:
         """Evaluate entity and relation extraction quality using LLM-as-a-Judge.
-        
+
         Returns:
             Dictionary containing entity_accuracy and relation_accuracy metrics.
         """
         # 1. Load all chunks from storage
         chunks = self._load_chunks_from_storage()
-        
+
         if not chunks:
             logger.warning("No chunks found in storage")
             return {"error": "No chunks found in storage"}
-        
+
         logger.info(f"Found {len(chunks)} chunks to evaluate")
-        
+
         # 2. Evaluate each chunk
         loop = create_event_loop()
         entity_evaluations, relation_evaluations = loop.run_until_complete(
             self._evaluate_all_chunks(chunks)
         )
-        
+
         # 3. Aggregate results
         return self._aggregate_evaluation_results(entity_evaluations, relation_evaluations)
 
@@ -130,7 +130,7 @@ class AccuracyEvaluator:
         """Load all chunks from chunk storage."""
         chunks = []
         all_chunk_data = self.chunk_storage.get_all()
-        
+
         for chunk_id, chunk_data in all_chunk_data.items():
             try:
                 chunk = Chunk.from_dict(chunk_id, chunk_data)
@@ -138,14 +138,14 @@ class AccuracyEvaluator:
             except Exception as e:
                 logger.warning(f"Failed to load chunk {chunk_id}: {e}")
                 continue
-        
+
         return chunks
 
     def _get_extracted_entities_for_chunk(self, chunk_id: str) -> List[Dict]:
         """Get all entities extracted from the specified chunk."""
         entities = []
         all_nodes = self.graph_storage.get_all_nodes() or []
-        
+
         for node_id, node_data in all_nodes:
             if not isinstance(node_data, dict):
                 continue
@@ -157,14 +157,14 @@ class AccuracyEvaluator:
                     "entity_type": node_data.get("entity_type", ""),
                     "description": node_data.get("description", "")
                 })
-        
+
         return entities
 
     def _get_extracted_relations_for_chunk(self, chunk_id: str) -> List[Dict]:
         """Get all relations extracted from the specified chunk."""
         relations = []
         all_edges = self.graph_storage.get_all_edges() or []
-        
+
         for src_id, dst_id, edge_data in all_edges:
             if not isinstance(edge_data, dict):
                 continue
@@ -178,7 +178,7 @@ class AccuracyEvaluator:
                     "target_entity": dst_node.get("entity_name", dst_id),
                     "relationship_summary": edge_data.get("description", "")
                 })
-        
+
         return relations
 
     async def _evaluate_all_chunks(
@@ -186,31 +186,32 @@ class AccuracyEvaluator:
     ) -> tuple[List[Dict], List[Dict]]:
         """Evaluate all chunks concurrently."""
         semaphore = asyncio.Semaphore(self.max_concurrent)
-        
+
         async def evaluate_chunk(chunk: Chunk):
             async with semaphore:
                 entities = self._get_extracted_entities_for_chunk(chunk.id)
                 relations = self._get_extracted_relations_for_chunk(chunk.id)
-                
+
                 entity_eval = await self._evaluate_entity_extraction(chunk, entities)
                 relation_eval = await self._evaluate_relation_extraction(chunk, relations)
-                
+
                 return entity_eval, relation_eval
-        
+
         tasks = [evaluate_chunk(chunk) for chunk in chunks]
         results = await asyncio.gather(*tasks, return_exceptions=True)
-        
+
         entity_evaluations = []
         relation_evaluations = []
-        
+
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 logger.error(f"Failed to evaluate chunk {chunks[i].id}: {result}")
                 continue
+
             entity_eval, relation_eval = result
             entity_evaluations.append(entity_eval)
             relation_evaluations.append(relation_eval)
-        
+
         return entity_evaluations, relation_evaluations
 
     async def _evaluate_entity_extraction(
@@ -222,9 +223,9 @@ class AccuracyEvaluator:
                 chunk_content=chunk.content,
                 extracted_entities=json.dumps(extracted_entities, ensure_ascii=False, indent=2)
             )
-            
+
             response = await self.llm_client.generate_answer(prompt)
-            
+
             # Try to parse JSON response
             try:
                 evaluation_result = json.loads(response)
@@ -246,14 +247,14 @@ class AccuracyEvaluator:
                         "precision_reasoning": "",
                         "issues": ["LLM response parsing failed"]
                     }
-            
+
             # Validate and calculate overall_score if not provided
             if "overall_score" not in evaluation_result:
                 accuracy = float(evaluation_result.get("accuracy", 0.0))
                 completeness = float(evaluation_result.get("completeness", 0.0))
                 precision = float(evaluation_result.get("precision", 0.0))
                 evaluation_result["overall_score"] = 0.4 * accuracy + 0.4 * completeness + 0.2 * precision
-            
+
             return {
                 "chunk_id": chunk.id,
                 "chunk_content": chunk.content[:200] if chunk.content else "",  # First 200 chars for debugging
@@ -285,9 +286,9 @@ class AccuracyEvaluator:
                 chunk_content=chunk.content,
                 extracted_relations=json.dumps(extracted_relations, ensure_ascii=False, indent=2)
             )
-            
+
             response = await self.llm_client.generate_answer(prompt)
-            
+
             # Try to parse JSON response
             try:
                 evaluation_result = json.loads(response)
@@ -309,14 +310,14 @@ class AccuracyEvaluator:
                         "precision_reasoning": "",
                         "issues": ["LLM response parsing failed"]
                     }
-            
+
             # Validate and calculate overall_score if not provided
             if "overall_score" not in evaluation_result:
                 accuracy = float(evaluation_result.get("accuracy", 0.0))
                 completeness = float(evaluation_result.get("completeness", 0.0))
                 precision = float(evaluation_result.get("precision", 0.0))
                 evaluation_result["overall_score"] = 0.4 * accuracy + 0.4 * completeness + 0.2 * precision
-            
+
             return {
                 "chunk_id": chunk.id,
                 "chunk_content": chunk.content[:200] if chunk.content else "",
@@ -358,7 +359,7 @@ class AccuracyEvaluator:
             median = sorted_scores[n // 2] if n % 2 == 1 else (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
             variance = sum((x - mean) ** 2 for x in scores) / n
             std = variance ** 0.5
-            
+
             return {
                 "mean": mean,
                 "median": median,
@@ -366,18 +367,18 @@ class AccuracyEvaluator:
                 "max": max(scores),
                 "std": std
             }
-        
+
         # Extract scores
         entity_overall_scores = [e.get("overall_score", 0.0) for e in entity_evaluations]
         entity_accuracy_scores = [e.get("accuracy", 0.0) for e in entity_evaluations]
         entity_completeness_scores = [e.get("completeness", 0.0) for e in entity_evaluations]
         entity_precision_scores = [e.get("precision", 0.0) for e in entity_evaluations]
-        
+
         relation_overall_scores = [r.get("overall_score", 0.0) for r in relation_evaluations]
         relation_accuracy_scores = [r.get("accuracy", 0.0) for r in relation_evaluations]
         relation_completeness_scores = [r.get("completeness", 0.0) for r in relation_evaluations]
         relation_precision_scores = [r.get("precision", 0.0) for r in relation_evaluations]
-        
+
         return {
             "entity_accuracy": {
                 "overall_score": calculate_stats(entity_overall_scores),
