@@ -1,20 +1,38 @@
 from typing import Any, Dict, Optional
 
-try:
-    import networkx as nx
-except ImportError:
-    nx = None
+import networkx as nx
+import numpy as np
 
 try:
     from scipy import stats
 except ImportError:
     stats = None
 
-import numpy as np
-
 from graphgen.bases import BaseGraphStorage
-from graphgen.models.evaluator.kg.utils import convert_to_networkx
 from graphgen.utils import logger
+
+
+def _convert_to_networkx(graph_storage: BaseGraphStorage) -> nx.DiGraph:
+    """Convert graph storage to NetworkX graph."""
+    G = nx.DiGraph()
+
+    # Add nodes
+    nodes = graph_storage.get_all_nodes() or []
+    for node_id, node_data in nodes:
+        if isinstance(node_data, dict):
+            G.add_node(node_id, **node_data)
+        else:
+            G.add_node(node_id)
+
+    # Add edges
+    edges = graph_storage.get_all_edges() or []
+    for src, dst, edge_data in edges:
+        if isinstance(edge_data, dict):
+            G.add_edge(src, dst, **edge_data)
+        else:
+            G.add_edge(src, dst)
+
+    return G
 
 
 class StructureEvaluator:
@@ -37,11 +55,8 @@ class StructureEvaluator:
         self.powerlaw_r2_threshold = powerlaw_r2_threshold
 
     def evaluate(self) -> Dict[str, Any]:
-        if nx is None:
-            return {"error": "NetworkX not installed"}
-
         # Convert graph to NetworkX
-        G = convert_to_networkx(self.graph_storage)
+        G = _convert_to_networkx(self.graph_storage)
 
         if G.number_of_nodes() == 0:
             return {"error": "Empty graph"}

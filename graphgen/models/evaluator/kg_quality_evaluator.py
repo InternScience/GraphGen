@@ -7,8 +7,8 @@ This module provides comprehensive quality evaluation for knowledge graphs,
 3. robustness assessment (noise ratio, connectivity, degree distribution).
 """
 
-from dataclasses import dataclass
-from typing import Any, Dict, Optional
+from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
 
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.models.evaluator.kg import (
@@ -27,7 +27,6 @@ class KGQualityEvaluator:
     graph_backend: str = "kuzu"
     kv_backend: str = "rocksdb"
     llm_client: Optional[BaseLLMWrapper] = None
-    sample_size: int = 100
     max_concurrent: int = 10
 
     def __post_init__(self):
@@ -65,17 +64,21 @@ class KGQualityEvaluator:
         try:
             logger.info("Starting consistency evaluation...")
             consistency_evaluator = ConsistencyEvaluator(
-                graph_storage=self.graph_storage
+                graph_storage=self.graph_storage,
+                chunk_storage=self.chunk_storage,
+                llm_client=self.llm_client,
+                max_concurrent=self.max_concurrent,
             )
             results["consistency"] = consistency_evaluator.evaluate()
         except Exception as e:
             logger.error(f"Consistency evaluation failed: {e}")
             results["consistency"] = {"error": str(e)}
 
-        # Structural robustness evaluation
         try:
             logger.info("Starting structural robustness evaluation...")
-            structure_evaluator = StructureEvaluator(graph_storage=self.graph_storage)
+            structure_evaluator = StructureEvaluator(
+                graph_storage=self.graph_storage
+            )
             results["structure"] = structure_evaluator.evaluate()
         except Exception as e:
             logger.error(f"Structural evaluation failed: {e}")
@@ -88,15 +91,21 @@ class KGQualityEvaluator:
             graph_storage=self.graph_storage,
             chunk_storage=self.chunk_storage,
             llm_client=self.llm_client,
-            sample_size=self.sample_size,
             max_concurrent=self.max_concurrent,
         )
         return accuracy_evaluator.evaluate()
 
     def evaluate_consistency(self) -> Dict[str, Any]:
-        consistency_evaluator = ConsistencyEvaluator(graph_storage=self.graph_storage)
+        consistency_evaluator = ConsistencyEvaluator(
+            graph_storage=self.graph_storage,
+            chunk_storage=self.chunk_storage,
+            llm_client=self.llm_client,
+            max_concurrent=self.max_concurrent,
+        )
         return consistency_evaluator.evaluate()
 
     def evaluate_structure(self) -> Dict[str, Any]:
-        structure_evaluator = StructureEvaluator(graph_storage=self.graph_storage)
+        structure_evaluator = StructureEvaluator(
+            graph_storage=self.graph_storage
+        )
         return structure_evaluator.evaluate()

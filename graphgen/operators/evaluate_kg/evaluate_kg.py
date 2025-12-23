@@ -1,7 +1,6 @@
 import argparse
 import json
 from pathlib import Path
-
 from dotenv import load_dotenv
 
 from graphgen.models import KGQualityEvaluator
@@ -32,12 +31,39 @@ def _print_accuracy_summary(acc):
         print("\n[Accuracy]")
         if "entity_accuracy" in acc:
             e = acc["entity_accuracy"]
-            print(f"  Entity - Precision: {e.get('precision', 0):.3f}, "
-                  f"Recall: {e.get('recall', 0):.3f}, F1: {e.get('f1', 0):.3f}")
-        if "triple_accuracy" in acc:
-            t = acc["triple_accuracy"]
-            print(f"  Triple (RLC) - Precision: {t.get('precision', 0):.3f}, "
-                  f"Recall: {t.get('recall', 0):.3f}, F1: {t.get('f1', 0):.3f}")
+            overall = e.get("overall_score", {})
+            accuracy = e.get("accuracy", {})
+            completeness = e.get("completeness", {})
+            precision = e.get("precision", {})
+            
+            print(f"  Entity Extraction Quality:")
+            print(f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
+                  f"{overall.get('median', 0):.3f} (median)")
+            print(f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
+                  f"{accuracy.get('median', 0):.3f} (median)")
+            print(f"    Completeness: {completeness.get('mean', 0):.3f} (mean), "
+                  f"{completeness.get('median', 0):.3f} (median)")
+            print(f"    Precision: {precision.get('mean', 0):.3f} (mean), "
+                  f"{precision.get('median', 0):.3f} (median)")
+            print(f"    Total Chunks Evaluated: {e.get('total_chunks', 0)}")
+            
+        if "relation_accuracy" in acc:
+            r = acc["relation_accuracy"]
+            overall = r.get("overall_score", {})
+            accuracy = r.get("accuracy", {})
+            completeness = r.get("completeness", {})
+            precision = r.get("precision", {})
+            
+            print(f"  Relation Extraction Quality:")
+            print(f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
+                  f"{overall.get('median', 0):.3f} (median)")
+            print(f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
+                  f"{accuracy.get('median', 0):.3f} (median)")
+            print(f"    Completeness: {completeness.get('mean', 0):.3f} (mean), "
+                  f"{completeness.get('median', 0):.3f} (median)")
+            print(f"    Precision: {precision.get('mean', 0):.3f} (mean), "
+                  f"{precision.get('median', 0):.3f} (median)")
+            print(f"    Total Chunks Evaluated: {r.get('total_chunks', 0)}")
     else:
         print(f"\n[Accuracy] Error: {acc['error']}")
 
@@ -49,6 +75,17 @@ def _print_consistency_summary(cons):
         print(f"  Conflict Rate: {cons.get('conflict_rate', 0):.3f}")
         print(f"  Conflict Entities: {cons.get('conflict_entities_count', 0)} / "
               f"{cons.get('total_entities', 0)}")
+        entities_checked = cons.get('entities_checked', 0)
+        if entities_checked > 0:
+            print(f"  Entities Checked: {entities_checked} (entities with multiple sources)")
+        conflicts = cons.get('conflicts', [])
+        if conflicts:
+            print(f"  Total Conflicts Found: {len(conflicts)}")
+            # Show sample conflicts
+            sample_conflicts = conflicts[:3]
+            for conflict in sample_conflicts:
+                print(f"    - {conflict.get('entity_id', 'N/A')}: {conflict.get('conflict_type', 'N/A')} "
+                      f"(severity: {conflict.get('conflict_severity', 0):.2f})")
     else:
         print(f"\n[Consistency] Error: {cons['error']}")
 
@@ -125,10 +162,9 @@ Examples:
   # Basic evaluation
   python -m graphgen.operators.evaluate_kg.evaluate_kg --working_dir cache
 
-  # Custom sample size and output
+  # Custom output
   python -m graphgen.operators.evaluate_kg.evaluate_kg \\
     --working_dir cache \\
-    --sample_size 200 \\
     --output cache/kg_evaluation.json
 
   # Specify backends
@@ -158,12 +194,6 @@ Examples:
         default="rocksdb",
         choices=["rocksdb", "json_kv"],
         help="KV storage backend (default: rocksdb)",
-    )
-    parser.add_argument(
-        "--sample_size",
-        type=int,
-        default=100,
-        help="Sample size for accuracy evaluation (default: 100)",
     )
     parser.add_argument(
         "--max_concurrent",
@@ -211,15 +241,12 @@ Examples:
     logger.info(f"Working directory: {args.working_dir}")
     logger.info(f"Graph backend: {args.graph_backend}")
     logger.info(f"KV backend: {args.kv_backend}")
-    logger.info(f"Sample size: {args.sample_size}")
 
-    # Initialize evaluator
     try:
         evaluator = KGQualityEvaluator(
             working_dir=args.working_dir,
             graph_backend=args.graph_backend,
             kv_backend=args.kv_backend,
-            sample_size=args.sample_size,
             max_concurrent=args.max_concurrent,
         )
     except Exception as e:
