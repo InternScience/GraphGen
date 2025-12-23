@@ -52,8 +52,8 @@ class VQAGenerator(BaseGenerator):
                     "question": question,
                     "answer": answer,
                 }
-            return qa_pairs
-        logger.warning("Error parsing the response %s", response)
+        else:
+            logger.warning("Error parsing the response %s", response)
         return qa_pairs
 
     async def generate(
