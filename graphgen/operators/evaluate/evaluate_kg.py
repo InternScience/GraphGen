@@ -1,6 +1,7 @@
 import argparse
 import json
 from pathlib import Path
+
 from dotenv import load_dotenv
 
 from graphgen.models import KGQualityEvaluator
@@ -37,14 +38,22 @@ def _print_accuracy_summary(acc):
             precision = e.get("precision", {})
 
             print("  Entity Extraction Quality:")
-            print(f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
-                  f"{overall.get('median', 0):.3f} (median)")
-            print(f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
-                  f"{accuracy.get('median', 0):.3f} (median)")
-            print(f"    Completeness: {completeness.get('mean', 0):.3f} (mean), "
-                  f"{completeness.get('median', 0):.3f} (median)")
-            print(f"    Precision: {precision.get('mean', 0):.3f} (mean), "
-                  f"{precision.get('median', 0):.3f} (median)")
+            print(
+                f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
+                f"{overall.get('median', 0):.3f} (median)"
+            )
+            print(
+                f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
+                f"{accuracy.get('median', 0):.3f} (median)"
+            )
+            print(
+                f"    Completeness: {completeness.get('mean', 0):.3f} (mean), "
+                f"{completeness.get('median', 0):.3f} (median)"
+            )
+            print(
+                f"    Precision: {precision.get('mean', 0):.3f} (mean), "
+                f"{precision.get('median', 0):.3f} (median)"
+            )
             print(f"    Total Chunks Evaluated: {e.get('total_chunks', 0)}")
 
         if "relation_accuracy" in acc:
@@ -55,14 +64,22 @@ def _print_accuracy_summary(acc):
             precision = r.get("precision", {})
 
             print("  Relation Extraction Quality:")
-            print(f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
-                  f"{overall.get('median', 0):.3f} (median)")
-            print(f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
-                  f"{accuracy.get('median', 0):.3f} (median)")
-            print(f"    Completeness: {completeness.get('mean', 0):.3f} (mean), "
-                  f"{completeness.get('median', 0):.3f} (median)")
-            print(f"    Precision: {precision.get('mean', 0):.3f} (mean), "
-                  f"{precision.get('median', 0):.3f} (median)")
+            print(
+                f"    Overall Score: {overall.get('mean', 0):.3f} (mean), "
+                f"{overall.get('median', 0):.3f} (median)"
+            )
+            print(
+                f"    Accuracy: {accuracy.get('mean', 0):.3f} (mean), "
+                f"{accuracy.get('median', 0):.3f} (median)"
+            )
+            print(
+                f"    Completeness: {completeness.get('mean', 0):.3f} (mean), "
+                f"{completeness.get('median', 0):.3f} (median)"
+            )
+            print(
+                f"    Precision: {precision.get('mean', 0):.3f} (mean), "
+                f"{precision.get('median', 0):.3f} (median)"
+            )
             print(f"    Total Chunks Evaluated: {r.get('total_chunks', 0)}")
     else:
         print(f"\n[Accuracy] Error: {acc['error']}")
@@ -73,19 +90,25 @@ def _print_consistency_summary(cons):
     if "error" not in cons:
         print("\n[Consistency]")
         print(f"  Conflict Rate: {cons.get('conflict_rate', 0):.3f}")
-        print(f"  Conflict Entities: {cons.get('conflict_entities_count', 0)} / "
-              f"{cons.get('total_entities', 0)}")
-        entities_checked = cons.get('entities_checked', 0)
+        print(
+            f"  Conflict Entities: {cons.get('conflict_entities_count', 0)} / "
+            f"{cons.get('total_entities', 0)}"
+        )
+        entities_checked = cons.get("entities_checked", 0)
         if entities_checked > 0:
-            print(f"  Entities Checked: {entities_checked} (entities with multiple sources)")
-        conflicts = cons.get('conflicts', [])
+            print(
+                f"  Entities Checked: {entities_checked} (entities with multiple sources)"
+            )
+        conflicts = cons.get("conflicts", [])
         if conflicts:
             print(f"  Total Conflicts Found: {len(conflicts)}")
             # Show sample conflicts
             sample_conflicts = conflicts[:3]
             for conflict in sample_conflicts:
-                print(f"    - {conflict.get('entity_id', 'N/A')}: {conflict.get('conflict_type', 'N/A')} "
-                      f"(severity: {conflict.get('conflict_severity', 0):.2f})")
+                print(
+                    f"    - {conflict.get('entity_id', 'N/A')}: {conflict.get('conflict_type', 'N/A')} "
+                    f"(severity: {conflict.get('conflict_severity', 0):.2f})"
+                )
     else:
         print(f"\n[Consistency] Error: {cons['error']}")
 
@@ -103,15 +126,19 @@ def _print_structure_summary(struct):
         noise_check = thresholds.get("noise_ratio", {})
         noise_threshold = noise_check.get("threshold", "N/A")
         noise_pass = noise_check.get("pass", False)
-        print(f"  Noise Ratio: {struct.get('noise_ratio', 0):.3f} "
-              f"({'✓' if noise_pass else '✗'} < {noise_threshold})")
+        print(
+            f"  Noise Ratio: {struct.get('noise_ratio', 0):.3f} "
+            f"({'✓' if noise_pass else '✗'} < {noise_threshold})"
+        )
 
         # Largest CC Ratio
         lcc_check = thresholds.get("largest_cc_ratio", {})
         lcc_threshold = lcc_check.get("threshold", "N/A")
         lcc_pass = lcc_check.get("pass", False)
-        print(f"  Largest CC Ratio: {struct.get('largest_cc_ratio', 0):.3f} "
-              f"({'✓' if lcc_pass else '✗'} > {lcc_threshold})")
+        print(
+            f"  Largest CC Ratio: {struct.get('largest_cc_ratio', 0):.3f} "
+            f"({'✓' if lcc_pass else '✗'} > {lcc_threshold})"
+        )
 
         # Avg Degree
         avg_degree_check = thresholds.get("avg_degree", {})
@@ -122,16 +149,20 @@ def _print_structure_summary(struct):
             threshold_str = f"{avg_degree_threshold[0]}-{avg_degree_threshold[1]}"
         else:
             threshold_str = str(avg_degree_threshold)
-        print(f"  Avg Degree: {struct.get('avg_degree', 0):.2f} "
-              f"({'✓' if avg_degree_pass else '✗'} {threshold_str})")
+        print(
+            f"  Avg Degree: {struct.get('avg_degree', 0):.2f} "
+            f"({'✓' if avg_degree_pass else '✗'} {threshold_str})"
+        )
 
         # Power Law R²
-        if struct.get('powerlaw_r2') is not None:
+        if struct.get("powerlaw_r2") is not None:
             powerlaw_check = thresholds.get("powerlaw_r2", {})
             powerlaw_threshold = powerlaw_check.get("threshold", "N/A")
             powerlaw_pass = powerlaw_check.get("pass", False)
-            print(f"  Power Law R²: {struct.get('powerlaw_r2', 0):.3f} "
-                  f"({'✓' if powerlaw_pass else '✗'} > {powerlaw_threshold})")
+            print(
+                f"  Power Law R²: {struct.get('powerlaw_r2', 0):.3f} "
+                f"({'✓' if powerlaw_pass else '✗'} > {powerlaw_threshold})"
+            )
     else:
         print(f"\n[Structural Robustness] Error: {struct['error']}")
 
