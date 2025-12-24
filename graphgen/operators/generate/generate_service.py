@@ -64,6 +64,9 @@ class GenerateService(BaseOperator):
             unit="batch",
         )
 
+        # Filter out empty results
+        results = [res for res in results if res]
+
         results = self.generator.format_generation_results(
             results, output_data_format=self.data_format
         )

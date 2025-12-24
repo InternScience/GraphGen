@@ -81,7 +81,7 @@ Input:
 Output:
 """
 
-COT_TEMPLATE_DESIGN_ZH = """你是一位“元推理架构师”。你的任务不是回答问题，\
+COT_TEMPLATE_DESIGN_ZH: str = """你是一位“元推理架构师”。你的任务不是回答问题，\
 而是根据给定的知识图谱中的实体和关系的名称以及描述信息，设计一条可复用、可泛化的 CoT 推理路径模板。\
 
 -步骤-
@@ -115,8 +115,8 @@ COT_TEMPLATE_DESIGN_ZH = """你是一位“元推理架构师”。你的任务�
 4. 不要出现具体数值或结论，不要出现“识别实体”、“识别关系”这类无意义的操作描述。
 5. 使用中文作为输出语言。
 6. 输出格式为：
-问题：
-推理路径设计：
+<question>问题文本</question>
+<reasoning_path>推理路径设计文本</reasoning_path>
 
 -真实数据-
 输入:
@@ -130,7 +130,7 @@ COT_TEMPLATE_DESIGN_ZH = """你是一位“元推理架构师”。你的任务�
 """
 
 
-COT_TEMPLATE_DESIGN_EN = """You are a “meta-reasoning architect”. \
+COT_TEMPLATE_DESIGN_EN: str = """You are a “meta-reasoning architect”. \
 Your task is NOT to answer the question, but to design a reusable, generalizable CoT reasoning-path \
 template based solely on the names and descriptions of entities and \
 relationships in the provided knowledge graph.
@@ -168,8 +168,8 @@ relationships in the provided knowledge graph.
 and DO NOT describing meaningless operations like "Identify the entity" or "Identify the relationship".
 5. Use English as the output language.
 6. The output format is:
-Question:
-Reasoning-Path Design:
+<question>question text</question>
+<reasoning_path>reasoning path design text</reasoning_path>
 
 Please summarize the information expressed by the knowledge graph based on the following [Entities:] and [Relationships:] provided.
 
