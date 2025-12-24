@@ -30,6 +30,7 @@ nodes:
     execution_params:
       replicas: 1
       batch_size: 128
+    save_output: true
     params:
       method: schema_guided
       schema_path: graphgen/templates/extraction/schemas/legal_contract.json
