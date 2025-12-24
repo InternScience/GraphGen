@@ -50,7 +50,7 @@ def _build_reader(suffix: str, cache_dir: str | None, **reader_kwargs):
 def read(
     input_path: Union[str, List[str]],
     allowed_suffix: Optional[List[str]] = None,
-    cache_dir: Optional[str] = "cache",
+    working_dir: Optional[str] = "cache",
     parallelism: int = 4,
     recursive: bool = True,
     **reader_kwargs: Any,
@@ -60,7 +60,7 @@ def read(
 
     :param input_path: File or directory path(s) to read from
     :param allowed_suffix: List of allowed file suffixes (e.g., ['pdf', 'txt'])
-    :param cache_dir: Directory to cache intermediate files (PDF processing)
+    :param working_dir: Directory to cache intermediate files (PDF processing)
     :param parallelism: Number of parallel workers
     :param recursive: Whether to scan directories recursively
     :param reader_kwargs: Additional kwargs passed to readers
@@ -70,7 +70,7 @@ def read(
         # 1. Scan all paths to discover files
         logger.info("[READ] Scanning paths: %s", input_path)
         scanner = ParallelFileScanner(
-            cache_dir=cache_dir,
+            cache_dir=working_dir,
             allowed_suffix=allowed_suffix,
             rescan=False,
             max_workers=parallelism if parallelism > 0 else 1,
@@ -100,7 +100,7 @@ def read(
         # 3. Create read tasks
         read_tasks = []
         for suffix, file_paths in files_by_suffix.items():
-            reader = _build_reader(suffix, cache_dir, **reader_kwargs)
+            reader = _build_reader(suffix, working_dir, **reader_kwargs)
             ds = reader.read(file_paths)
             read_tasks.append(ds)
 

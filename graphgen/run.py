@@ -6,7 +6,6 @@ from typing import Any, Dict
 
 import ray
 import yaml
-from dotenv import load_dotenv
 from ray.data.block import Block
 from ray.data.datasource.filename_provider import FilenameProvider
 
@@ -15,8 +14,6 @@ from graphgen.operators import operators
 from graphgen.utils import CURRENT_LOGGER_VAR, logger, set_logger
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
-
-load_dotenv()
 
 
 def set_working_dir(folder):
@@ -78,7 +75,9 @@ def main():
     with open(args.config_file, "r", encoding="utf-8") as f:
         config = yaml.load(f, Loader=yaml.FullLoader)
 
-    working_dir = args.output_dir or config.get("global_params", {}).get("working_dir", "cache")
+    working_dir = args.output_dir or config.get("global_params", {}).get(
+        "working_dir", "cache"
+    )
     unique_id = int(time.time())
     output_path = os.path.join(working_dir, "output", f"{unique_id}")
     set_working_dir(output_path)

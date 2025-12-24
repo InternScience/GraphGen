@@ -12,15 +12,17 @@ def build_text_kg(
     llm_client: BaseLLMWrapper,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
+    max_loop: int = 3,
 ):
     """
     :param llm_client: Synthesizer LLM model to extract entities and relationships
     :param kg_instance
     :param chunks
+    :param max_loop: Maximum number of loops for entity and relationship extraction
     :return:
     """
 
-    kg_builder = LightRAGKGBuilder(llm_client=llm_client, max_loop=3)
+    kg_builder = LightRAGKGBuilder(llm_client=llm_client, max_loop=max_loop)
 
     results = run_concurrent(
         kg_builder.extract,
