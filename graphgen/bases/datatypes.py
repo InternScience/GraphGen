@@ -63,7 +63,11 @@ class Node(BaseModel):
         default_factory=list, description="list of dependent node ids"
     )
     execution_params: dict = Field(
-        default_factory=dict, description="execution parameters like replicas, batch_size"
+        default_factory=dict,
+        description="execution parameters like replicas, batch_size",
+    )
+    save_output: bool = Field(
+        default=False, description="whether to save the output of this node"
     )
 
     @classmethod
