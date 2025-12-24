@@ -37,6 +37,13 @@ class SearchService(BaseOperator):
             backend=kv_backend, working_dir=working_dir, namespace="search"
         )
 
+        # 初始化，根据data_sources选择
+        self.searchers = {
+            "uniprot": UniProtSearcher(**kwargs),
+            "ncbi": NCBISearcher(**kwargs),
+            "rnacentral": RNAcentralSearcher(**kwargs),
+        }
+
     def _perform_searches(self, seed_data: list) -> dict:
         """
         Internal method to perform searches across multiple search types and aggregate the results.
@@ -85,7 +92,8 @@ class SearchService(BaseOperator):
                 from graphgen.models import UniProtSearch
 
                 uniprot_params = self.kwargs.get("uniprot_params", {})
-                searcher = UniProtSearch(working_dir=self.working_dir, **uniprot_params)
+                # searcher = UniProtSearch(working_dir=self.working_dir, **uniprot_params)
+                searcher = self.searchers["uniprot"]
 
             elif data_source == "ncbi":
                 from graphgen.models import NCBISearch
@@ -115,7 +123,16 @@ class SearchService(BaseOperator):
                 self.logger.error("Data source %s not supported.", data_source)
                 continue
 
-            # 如果search_result中有有重复的，直接跳过
+            # 3 如果search_result中有有重复的，直接跳过
+            # key value
+            # key: datasource-compute_content_hash(query)
+
+            for seed in seed_data:
+                query = seed["_search_query"]
+                key = f"{data_source}-{compute_content_hash(query)}"
+                if key in self.search_storage:
+                    self.logger.info("Duplicate query found: %s", query)
+                    continue
 
             search_results = run_concurrent(
                 searcher.search,
@@ -123,40 +140,10 @@ class SearchService(BaseOperator):
                 desc=f"Searching {data_source} database",
                 unit="keyword",
             )
-            results[data_source] = search_results
+            # results[data_source] = search_results
+            # 可以是key value的格式
 
         return results
-
-    # @staticmethod
-    # def _already_searched(doc: dict) -> bool:
-    #     """
-    #     Check if a document already contains search results.
-    #
-    #     :param doc: Document dictionary
-    #     :return: True if document appears to already contain search results
-    #     """
-    #     # Check for data_source field (added by search_service)
-    #     if "data_source" in doc and doc["data_source"]:
-    #         return True
-    #
-    #     # Check for database field (added by search operations)
-    #     if "database" in doc and doc["database"] in ["UniProt", "NCBI", "RNAcentral"]:
-    #         # Also check for molecule_type to confirm it's a search result
-    #         if "molecule_type" in doc and doc["molecule_type"] in ["DNA", "RNA", "protein"]:
-    #             return True
-    #
-    #     # Check for search-specific fields that indicate search results
-    #     search_indicators = [
-    #         "uniprot_id", "entry_name",  # UniProt
-    #         "gene_id", "gene_name", "chromosome",  # NCBI
-    #         "rnacentral_id", "rna_type",  # RNAcentral
-    #     ]
-    #     if any(indicator in doc for indicator in search_indicators):
-    #         # Make sure it's not just metadata by checking for database or molecule_type
-    #         if "database" in doc or "molecule_type" in doc:
-    #             return True
-    #
-    #     return False
 
     @staticmethod
     def _clean_value(v):
@@ -268,32 +255,11 @@ class SearchService(BaseOperator):
         """
         docs = batch.to_dict(orient="records")
 
-        # # Check if data already contains search results
-        # already_searched = all(self._already_searched(doc) for doc in docs if doc)
-        #
-        # if already_searched:
-        #     # Data already contains search results, normalize and return directly
-        #     self.logger.info(
-        #         "Input data already contains search results. "
-        #         "Skipping search step and normalizing data."
-        #     )
-        #     result_rows = []
-        #     for doc in docs:
-        #         if not doc:
-        #             continue
-        #         normalized_doc = self._normalize_searched_data(doc)
-        #         result_rows.append(normalized_doc)
-        #
-        #     if not result_rows:
-        #         self.logger.warning("No documents found in batch")
-        #         return pd.DataFrame(columns=["_doc_id", "type", "content", "data_source"])
-        #
-        #     return pd.DataFrame(result_rows)
-
         # Data doesn't contain search results, perform search as usual
         # seed_data = {doc.get("_doc_id", f"doc-{i}"): doc for i, doc in enumerate(docs)}
 
         # docs may contain None entries, filter them out & remove duplicates based on content
+        # 1 去重
         unique_contents = set()
         seed_data = []
         for doc in docs:
@@ -306,62 +272,67 @@ class SearchService(BaseOperator):
 
         search_results = self._perform_searches(seed_data)
 
+        # 4 更新到search_storage里
+
+        # query json dict
+
         # Convert search_results from {data_source: [results]} to DataFrame
         # Each result becomes a document row compatible with chunk service
         result_rows = []
 
-        for data_source, result_list in search_results.items():
-            if not isinstance(result_list, list):
-                continue
+        # for data_source, result_list in search_results.items():
+        #     if not isinstance(result_list, list):
+        #         continue
 
-            for result in result_list:
-                if result is None:
-                    continue
+        #     for result in result_list:
+        #         if result is None:
+        #             continue
 
-                # Convert search result to document format expected by chunk service
-                # Build content from available fields
-                content_parts = []
-                if result.get("title"):
-                    content_parts.append(f"Title: {result['title']}")
-                if result.get("description"):
-                    content_parts.append(f"Description: {result['description']}")
-                if result.get("function"):
-                    content_parts.append(f"Function: {result['function']}")
-                if result.get("sequence"):
-                    content_parts.append(f"Sequence: {result['sequence']}")
+        #         # Convert search result to document format expected by chunk service
+        #         # Build content from available fields
+        #         content_parts = []
+        #         if result.get("title"):
+        #             content_parts.append(f"Title: {result['title']}")
+        #         if result.get("description"):
+        #             content_parts.append(f"Description: {result['description']}")
+        #         if result.get("function"):
+        #             content_parts.append(f"Function: {result['function']}")
+        #         if result.get("sequence"):
+        #             content_parts.append(f"Sequence: {result['sequence']}")
 
-                # If no content parts, use a default or combine all fields
-                if not content_parts:
-                    # Fallback: create content from all string fields
-                    content_parts = [
-                        f"{k}: {v}"
-                        for k, v in result.items()
-                        if isinstance(v, (str, int, float)) and k != "_search_query"
-                    ]
+        #         # If no content parts, use a default or combine all fields
+        #         if not content_parts:
+        #             # Fallback: create content from all string fields
+        #             content_parts = [
+        #                 f"{k}: {v}"
+        #                 for k, v in result.items()
+        #                 if isinstance(v, (str, int, float)) and k != "_search_query"
+        #             ]
 
-                content = "\n".join(content_parts) if content_parts else str(result)
+        #         content = "\n".join(content_parts) if content_parts else str(result)
 
-                # Determine document type from molecule_type or default to "text"
-                doc_type = result.get("molecule_type", "text").lower()
-                if doc_type not in ["text", "dna", "rna", "protein"]:
-                    doc_type = "text"
+        #         # Determine document type from molecule_type or default to "text"
+        #         doc_type = result.get("molecule_type", "text").lower()
+        #         if doc_type not in ["text", "dna", "rna", "protein"]:
+        #             doc_type = "text"
 
-                # Convert to string to handle Ray Data ListElement and other types
-                raw_doc_id = (
-                    result.get("id")
-                    or result.get("_search_query")
-                    or f"search-{len(result_rows)}"
-                )
-                doc_id = str(raw_doc_id)
+        #         # Convert to string to handle Ray Data ListElement and other types
+        #         raw_doc_id = (
+        #             result.get("id")
+        #             or result.get("_search_query")
+        #             or f"search-{len(result_rows)}"
+        #         )
+        #         doc_id = str(raw_doc_id)
 
-                # Ensure doc_id starts with "doc-" prefix
-                if not doc_id.startswith("doc-"):
-                    doc_id = f"doc-{doc_id}"
+        #         # Ensure doc_id starts with "doc-" prefix
+        #         if not doc_id.startswith("doc-"):
+        #             doc_id = f"doc-{doc_id}"
 
                 # Convert numpy arrays and complex types to Python-native types
                 # to avoid Ray Data tensor extension casting issues
-                cleaned_result = {k: self._clean_value(v) for k, v in result.items()}
+                # cleaned_result = {k: self._clean_value(v) for k, v in result.items()}
 
+        # TODO: 待定
                 # Create document row with all result fields plus required fields
                 row = {
                     "_doc_id": doc_id,

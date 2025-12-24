@@ -540,7 +540,7 @@ class NCBISearch(BaseSearcher):
         retry=retry_if_exception_type((RequestException, IncompleteRead)),
         reraise=True,
     )
-    async def search(self, query: str, threshold: float = 0.01, **kwargs) -> Optional[Dict]:
+    def search(self, query: str, threshold: float = 0.01, **kwargs) -> Optional[Dict]:
         """Search NCBI with either a gene ID, accession number, keyword, or DNA sequence."""
         if not query or not isinstance(query, str):
             self.logger.error("Empty or non-string input.")
