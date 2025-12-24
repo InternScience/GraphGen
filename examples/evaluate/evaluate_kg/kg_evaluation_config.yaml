@@ -35,6 +35,7 @@ nodes:
   - id: evaluate
     op_name: evaluate
     type: aggregate
+    save_output: true
     dependencies:
       - build_kg
     params:
