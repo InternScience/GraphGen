@@ -1,20 +1,21 @@
-import os
 import inspect
 import logging
+import os
 from collections import defaultdict, deque
 from functools import wraps
 from typing import Any, Callable, Dict, List, Set
-from dotenv import load_dotenv
 
 import ray
 import ray.data
+from dotenv import load_dotenv
 from ray.data import DataContext
 
 from graphgen.bases import Config, Node
-from graphgen.utils import logger
 from graphgen.common import init_llm, init_storage
+from graphgen.utils import logger
 
 load_dotenv()
+
 
 class Engine:
     def __init__(
@@ -42,7 +43,7 @@ class Engine:
         existing_env_vars = ray_init_kwargs["runtime_env"].get("env_vars", {})
         ray_init_kwargs["runtime_env"]["env_vars"] = {
             **all_env_vars,
-            **existing_env_vars
+            **existing_env_vars,
         }
 
         if not ray.is_initialized():
@@ -265,24 +266,11 @@ class Engine:
                     f"Unsupported node type {node.type} for node {node.id}"
                 )
 
-    @staticmethod
-    def _find_leaf_nodes(nodes: List[Node]) -> Set[str]:
-        all_ids = {n.id for n in nodes}
-        deps_set = set()
-        for n in nodes:
-            deps_set.update(n.dependencies)
-        return all_ids - deps_set
-
     def execute(self, initial_ds: ray.data.Dataset) -> Dict[str, ray.data.Dataset]:
         sorted_nodes = self._topo_sort(self.config.nodes)
 
         for node in sorted_nodes:
             self._execute_node(node, initial_ds)
 
-        leaf_nodes = self._find_leaf_nodes(sorted_nodes)
-
-        @ray.remote
-        def _fetch_result(ds: ray.data.Dataset) -> List[Any]:
-            return ds.take_all()
-
-        return {node_id: self.datasets[node_id] for node_id in leaf_nodes}
+        output_nodes = [n for n in sorted_nodes if getattr(n, "save_output", False)]
+        return {node.id: self.datasets[node.id] for node in output_nodes}
