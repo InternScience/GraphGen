@@ -6,7 +6,7 @@ from .judge import JudgeService
 from .partition import PartitionService
 from .quiz import QuizService
 from .read import read
-from .search import search_all
+from .search import SearchService
 
 operators = {
     "read": read,
@@ -15,7 +15,7 @@ operators = {
     "quiz": QuizService,
     "judge": JudgeService,
     "extract": ExtractService,
-    "search": search_all,
+    "search": SearchService,
     "partition": PartitionService,
     "generate": GenerateService,
 }
