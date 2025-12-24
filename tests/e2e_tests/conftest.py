@@ -5,32 +5,18 @@ from pathlib import Path
 
 
 def run_generate_test(tmp_path: Path, config_name: str):
-    """
-    Run the generate test with the given configuration file and temporary path.
-
-    Args:
-        tmp_path: pytest temporary path
-        config_name: configuration file name (e.g. "atomic_config.yaml")
-
-    Returns:
-        tuple: (run_folder, json_files[0])
-    """
     repo_root = Path(__file__).resolve().parents[2]
     os.chdir(repo_root)
 
-    config_path = repo_root / "graphgen" / "configs" / config_name
-    output_dir = tmp_path / "output"
-    output_dir.mkdir(parents=True, exist_ok=True)
+    config_path = repo_root / config_name
 
     result = subprocess.run(
         [
             "python",
             "-m",
-            "graphgen.generate",
+            "graphgen.run",
             "--config_file",
             str(config_path),
-            "--output_dir",
-            str(output_dir),
         ],
         capture_output=True,
         text=True,
@@ -38,26 +24,29 @@ def run_generate_test(tmp_path: Path, config_name: str):
     )
     assert result.returncode == 0, f"Script failed with error: {result.stderr}"
 
-    data_root = output_dir / "data" / "graphgen"
-    assert data_root.exists(), f"{data_root} does not exist"
-    run_folders = sorted(data_root.iterdir(), key=lambda p: p.name, reverse=True)
-    assert run_folders, f"No run folders found in {data_root}"
+    run_root = repo_root / "cache" / "output"
+    assert run_root.exists(), f"{run_root} does not exist"
+    run_folders = sorted(
+        [p for p in run_root.iterdir() if p.is_dir()], key=lambda p: p.name, reverse=True
+    )
+    assert run_folders, f"No run folders found in {run_root}"
     run_folder = run_folders[0]
 
-    config_saved = run_folder / "config.yaml"
-    assert config_saved.exists(), f"{config_saved} not found"
+    node_dirs = [p for p in run_folder.iterdir() if p.is_dir()]
+    assert node_dirs, f"No node outputs found in {run_folder}"
 
-    json_files = list(run_folder.glob("*.json"))
-    assert json_files, f"No JSON output found in {run_folder}"
+    json_files = []
+    for nd in node_dirs:
+        json_files.extend(nd.glob("*.jsonl"))
+    assert json_files, f"No JSONL output found under nodes in {run_folder}"
 
-    log_files = list(run_folder.glob("*.log"))
-    assert log_files, "No log file generated"
+    log_file = repo_root / "cache" / "logs" / "Driver.log"
+    assert log_file.exists(), "No log file generated"
 
     with open(json_files[0], "r", encoding="utf-8") as f:
-        data = json.load(f)
-    assert (
-        isinstance(data, list) and len(data) > 0
-    ), "JSON output is empty or not a list"
+        first_line = f.readline().strip()
+        assert first_line, "JSONL output is empty"
+        data = json.loads(first_line)
+    assert isinstance(data, dict), "First JSONL record is not a dict"
 
     return run_folder, json_files[0]
-
