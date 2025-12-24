@@ -58,6 +58,20 @@ else
     echo "Using date as release identifier: ${RELEASE}"
 fi
 
+# Function to check if a file is already downloaded (compressed or decompressed)
+check_file_downloaded() {
+    local filename=$1
+    local decompressed_file="${filename%.gz}"
+    # Check if compressed or decompressed version exists
+    [ -f "${filename}" ] || [ -f "${decompressed_file}" ]
+}
+
+# Function to check if a file contains target species sequences
+check_file_for_species() {
+    local url=$1
+    local filename=$2
+    local temp_file="/tmp/check_${filename//\//_}"
+    
     # First check if file is already downloaded locally
     if check_file_downloaded "${filename}"; then
         # File already exists, check if it contains target species
