@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional
 import ray
 
 from graphgen.bases import BaseLLMWrapper
-from graphgen.common.init_storage import get_actor_handle
 from graphgen.models import Tokenizer
 
 
@@ -74,9 +73,9 @@ class LLMServiceProxy(BaseLLMWrapper):
     A proxy class to interact with the LLMServiceActor for distributed LLM operations.
     """
 
-    def __init__(self, actor_name: str):
+    def __init__(self, actor_handle: ray.actor.ActorHandle):
         super().__init__()
-        self.actor_handle = get_actor_handle(actor_name)
+        self.actor_handle = actor_handle
         self._create_local_tokenizer()
 
     async def generate_answer(
@@ -128,25 +127,25 @@ class LLMFactory:
 
         actor_name = f"Actor_LLM_{model_type}"
         try:
-            ray.get_actor(actor_name)
+            actor_handle = ray.get_actor(actor_name)
+            print(f"Using existing Ray actor: {actor_name}")
         except ValueError:
             print(f"Creating Ray actor for LLM {model_type} with backend {backend}.")
-            num_gpus = int(config.pop("num_gpus", 0))
-            actor = (
+            num_gpus = float(config.pop("num_gpus", 0))
+            actor_handle = (
                 ray.remote(LLMServiceActor)
                 .options(
                     name=actor_name,
                     num_gpus=num_gpus,
-                    lifetime="detached",
                     get_if_exists=True,
                 )
                 .remote(backend, config)
             )
 
             # wait for actor to be ready
-            ray.get(actor.ready.remote())
+            ray.get(actor_handle.ready.remote())
 
-        return LLMServiceProxy(actor_name)
+        return LLMServiceProxy(actor_handle)
 
 
 def _load_env_group(prefix: str) -> Dict[str, Any]:

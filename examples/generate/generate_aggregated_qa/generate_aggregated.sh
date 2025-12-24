@@ -1,3 +1,2 @@
 python3 -m graphgen.run \
---config_file examples/generate/generate_aggregated_qa/aggregated_config.yaml \
---output_dir cache/
+--config_file examples/generate/generate_aggregated_qa/aggregated_config.yaml

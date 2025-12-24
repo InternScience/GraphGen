@@ -19,4 +19,3 @@ from .help_nltk import NLTKHelper
 from .log import CURRENT_LOGGER_VAR, logger, set_logger
 from .loop import create_event_loop
 from .run_concurrent import run_concurrent
-from .wrap import async_to_sync_method

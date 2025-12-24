@@ -8,7 +8,7 @@ from typing import List
 from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
-from graphgen.models import OpenAIClient
+from graphgen.models import OpenAIClient, Tokenizer
 from graphgen.utils import compute_content_hash, create_event_loop
 
 PROMPT_TEMPLATE = """Instruction: Given the next [document], create a [question] and [answer] pair that are grounded \
@@ -75,14 +75,20 @@ class Genie:
 
         tasks = []
         for doc in docs:
-            for chunk in doc:
-                tasks.append(process_chunk(chunk["content"]))
+            if isinstance(doc, list):
+                for chunk in doc:
+                    tasks.append(process_chunk(chunk["content"]))
+            elif isinstance(doc, dict):
+                tasks.append(process_chunk(doc["content"]))
 
         for result in tqdm_async(
             asyncio.as_completed(tasks), total=len(tasks), desc="Generating using Genie"
         ):
             try:
-                question, answer = _post_process(await result)
+                response = await result
+                if response is None:
+                    continue
+                question, answer = _post_process(response)
                 if question and answer:
                     final_results[compute_content_hash(question)] = {
                         "question": question,
@@ -102,13 +108,6 @@ if __name__ == "__main__":
         type=str,
     )
     parser.add_argument(
-        "--data_type",
-        help="Data type of input file. (Raw context or chunked context)",
-        choices=["raw", "chunked"],
-        default="raw",
-        type=str,
-    )
-    parser.add_argument(
         "--output_file",
         help="Output file path.",
         default="cache/data/genie.json",
@@ -123,20 +122,20 @@ if __name__ == "__main__":
         model=os.getenv("SYNTHESIZER_MODEL"),
         api_key=os.getenv("SYNTHESIZER_API_KEY"),
         base_url=os.getenv("SYNTHESIZER_BASE_URL"),
+        tokenizer=Tokenizer(model_name=os.getenv("TOKENIZER_MODEL")),
     )
 
     genie = Genie(llm_client=llm_client)
 
-    if args.data_type == "raw":
-        with open(args.input_file, "r", encoding="utf-8") as f:
-            data = [json.loads(line) for line in f]
-            data = [[chunk] for chunk in data]
-    elif args.data_type == "chunked":
-        with open(args.input_file, "r", encoding="utf-8") as f:
-            data = json.load(f)
+    with open(args.input_file, "r", encoding="utf-8") as f:
+        data = json.load(f)
 
     results = genie.generate(data)
 
     # Save results
+    output_dir = os.path.dirname(args.output_file)
+    if output_dir:
+        os.makedirs(output_dir, exist_ok=True)
+
     with open(args.output_file, "w", encoding="utf-8") as f:
         json.dump(results, f, indent=4, ensure_ascii=False)

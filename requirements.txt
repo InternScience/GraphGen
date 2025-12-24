@@ -23,6 +23,8 @@ aiohttp
 socksio
 pydantic
 ray==2.52.1
+kuzu
+pyarrow
 
 leidenalg
 igraph
