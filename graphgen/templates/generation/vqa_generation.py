@@ -39,14 +39,16 @@ Create multiple sets of VQA question-answer pairs that satisfy the following:
 ################
 {relationships}
 ################
-Directly output the generated questions and answers, please do not directly copy the example questions and answers, and do not provide irrelevant information.
+
+Please directly output the generated questions and answers, do not directly copy the example questions and answers, and do not provide irrelevant information.
+
 Here is the response format you should follow:
-Question: <Question1>
-Answer: <Answer1>
+<question>question1</question>
+<answer>answer1</answer>
+<question>question2</question>
+<answer>answer2</answer>
 
-Question: <Question2>
-Answer: <Answer2>
-
+Output:
 """
 
 TEMPLATE_ZH: str = """---角色---
@@ -91,14 +93,15 @@ TEMPLATE_ZH: str = """---角色---
 ################
 {relationships}
 ################
-直接输出生成的问题和答案，请不要直接复制示例问题和答案，不要输出无关内容。
-以下是你应该遵循的响应格式：
-问题： <问题1>
-答案： <答案1>
 
-问题： <问题2>
-答案： <答案2>
+请直接输出生成的问题和答案，不要直接复制示例问题和答案，也不要提供无关信息。
+以下是你应遵循的响应格式：
+<question>question1</question>
+<answer>answer1</answer>
+<question>question2</question>
+<answer>answer2</answer>
 
+输出：
 """
 
 VQA_GENERATION_PROMPT = {"en": TEMPLATE_EN, "zh": TEMPLATE_ZH}

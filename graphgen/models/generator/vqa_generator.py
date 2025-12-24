@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
@@ -38,25 +39,21 @@ class VQAGenerator(BaseGenerator):
         :return: QA pairs
         """
         qa_pairs = {}
-        qa_list = response.strip().split("\n\n")
-        for qa in qa_list:
-            if "Question:" in qa and "Answer:" in qa:
-                question = qa.split("Question:")[1].split("Answer:")[0].strip()
-                answer = qa.split("Answer:")[1].strip()
-            elif "问题：" in qa and "答案：" in qa:
-                question = qa.split("问题：")[1].split("答案：")[0].strip()
-                answer = qa.split("答案：")[1].strip()
-            else:
-                logger.error("Failed to parse QA pair: %s", qa)
-                continue
-            question = question.strip('"')
-            answer = answer.strip('"')
-            logger.debug("Question: %s", question)
-            logger.debug("Answer: %s", answer)
-            qa_pairs[compute_content_hash(question)] = {
-                "question": question,
-                "answer": answer,
-            }
+        pattern = r"<question>(.*?)</question>\s*<answer>(.*?)</answer>"
+        matches = re.findall(pattern, response, re.DOTALL)
+
+        if matches:
+            for question, answer in matches:
+                question = question.strip().strip('"').strip("'")
+                answer = answer.strip().strip('"').strip("'")
+                logger.debug("Question: %s", question)
+                logger.debug("Answer: %s", answer)
+                qa_pairs[compute_content_hash(question)] = {
+                    "question": question,
+                    "answer": answer,
+                }
+        else:
+            logger.warning("Error parsing the response %s", response)
         return qa_pairs
 
     async def generate(

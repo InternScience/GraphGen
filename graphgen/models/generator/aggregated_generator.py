@@ -1,4 +1,5 @@
-from typing import Any
+import re
+from typing import Any, Optional
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import AGGREGATED_GENERATION_PROMPT
@@ -56,19 +57,21 @@ class AggregatedGenerator(BaseGenerator):
         return prompt
 
     @staticmethod
-    def parse_rephrased_text(response: str) -> str:
+    def parse_rephrased_text(response: str) -> Optional[str]:
         """
         Parse the rephrased text from the response.
         :param response:
         :return: rephrased text
         """
-        if "Rephrased Text:" in response:
-            rephrased_text = response.split("Rephrased Text:")[1].strip()
-        elif "重述文本:" in response:
-            rephrased_text = response.split("重述文本:")[1].strip()
+        rephrased_match = re.search(
+            r"<rephrased_text>(.*?)</rephrased_text>", response, re.DOTALL
+        )
+        if rephrased_match:
+            rephrased_text = rephrased_match.group(1).strip()
         else:
-            rephrased_text = response.strip()
-        return rephrased_text.strip('"')
+            logger.warning("Failed to parse rephrased text from response: %s", response)
+            return None
+        return rephrased_text.strip('"').strip("'")
 
     @staticmethod
     def _build_prompt_for_question_generation(answer: str) -> str:
@@ -85,15 +88,13 @@ class AggregatedGenerator(BaseGenerator):
 
     @staticmethod
     def parse_response(response: str) -> dict:
-        if response.startswith("Question:"):
-            question = response[len("Question:") :].strip()
-        elif response.startswith("问题："):
-            question = response[len("问题：") :].strip()
+        question_match = re.search(r"<question>(.*?)</question>", response, re.DOTALL)
+        if question_match:
+            question = question_match.group(1).strip()
         else:
-            question = response.strip()
-        return {
-            "question": question,
-        }
+            logger.warning("Failed to parse question from response: %s", response)
+            return {"question": ""}
+        return {"question": question.strip('"').strip("'")}
 
     async def generate(
         self,
@@ -110,9 +111,13 @@ class AggregatedGenerator(BaseGenerator):
         rephrasing_prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(rephrasing_prompt)
         context = self.parse_rephrased_text(response)
+        if not context:
+            return result
         question_generation_prompt = self._build_prompt_for_question_generation(context)
         response = await self.llm_client.generate_answer(question_generation_prompt)
         question = self.parse_response(response)["question"]
+        if not question:
+            return result
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", context)
         qa_pairs = {

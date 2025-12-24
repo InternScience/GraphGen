@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
@@ -29,17 +30,18 @@ class AtomicGenerator(BaseGenerator):
         :param response:
         :return:
         """
-        if "Question:" in response and "Answer:" in response:
-            question = response.split("Question:")[1].split("Answer:")[0].strip()
-            answer = response.split("Answer:")[1].strip()
-        elif "问题：" in response and "答案：" in response:
-            question = response.split("问题：")[1].split("答案：")[0].strip()
-            answer = response.split("答案：")[1].strip()
+        question_match = re.search(r"<question>(.*?)</question>", response, re.DOTALL)
+        answer_match = re.search(r"<answer>(.*?)</answer>", response, re.DOTALL)
+
+        if question_match and answer_match:
+            question = question_match.group(1).strip()
+            answer = answer_match.group(1).strip()
         else:
             logger.warning("Failed to parse response: %s", response)
             return {}
-        question = question.strip('"')
-        answer = answer.strip('"')
+
+        question = question.strip('"').strip("'")
+        answer = answer.strip('"').strip("'")
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", answer)
         return {
