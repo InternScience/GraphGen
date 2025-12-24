@@ -11,11 +11,11 @@ from graphgen.utils import logger, run_concurrent, yes_no_loss_entropy
 class JudgeService(BaseOperator):
     """Service for judging graph edges and nodes using a trainee LLM."""
 
-    def __init__(self, working_dir: str = "cache", graph_backend: str = "kuzu"):
+    def __init__(self, working_dir: str = "cache"):
         super().__init__(working_dir=working_dir, op_name="judge_service")
         self.llm_client: BaseLLMWrapper = init_llm("trainee")
         self.graph_storage: BaseGraphStorage = init_storage(
-            backend=graph_backend,
+            backend="kuzu",
             working_dir=working_dir,
             namespace="graph",
         )

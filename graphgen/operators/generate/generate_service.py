@@ -7,6 +7,7 @@ from graphgen.models import (
     AtomicGenerator,
     CoTGenerator,
     MultiHopGenerator,
+    OmicsQAGenerator,
     VQAGenerator,
 )
 from graphgen.utils import logger, run_concurrent
@@ -37,6 +38,8 @@ class GenerateService(BaseOperator):
             self.generator = MultiHopGenerator(self.llm_client)
         elif self.method == "cot":
             self.generator = CoTGenerator(self.llm_client)
+        elif self.method == "omics_qa":
+            self.generator = OmicsQAGenerator(self.llm_client)
         elif self.method in ["vqa"]:
             self.generator = VQAGenerator(self.llm_client)
         else:

@@ -1,20 +1,20 @@
-import os
 import inspect
-import logging
+import os
 from collections import defaultdict, deque
 from functools import wraps
 from typing import Any, Callable, Dict, List, Set
-from dotenv import load_dotenv
 
 import ray
 import ray.data
+from dotenv import load_dotenv
 from ray.data import DataContext
 
 from graphgen.bases import Config, Node
-from graphgen.utils import logger
 from graphgen.common import init_llm, init_storage
+from graphgen.utils import logger
 
 load_dotenv()
+
 
 class Engine:
     def __init__(
@@ -42,13 +42,12 @@ class Engine:
         existing_env_vars = ray_init_kwargs["runtime_env"].get("env_vars", {})
         ray_init_kwargs["runtime_env"]["env_vars"] = {
             **all_env_vars,
-            **existing_env_vars
+            **existing_env_vars,
         }
 
         if not ray.is_initialized():
             context = ray.init(
                 ignore_reinit_error=True,
-                logging_level=logging.ERROR,
                 log_to_driver=True,
                 **ray_init_kwargs,
             )

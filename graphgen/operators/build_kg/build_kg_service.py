@@ -8,6 +8,7 @@ from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger
 
 from .build_mm_kg import build_mm_kg
+from .build_omics_kg import build_omics_kg
 from .build_text_kg import build_text_kg
 
 
@@ -41,6 +42,9 @@ class BuildKGService(BaseOperator):
             for chunk in chunks
             if chunk.type in ("image", "video", "table", "formula")
         ]
+        omics_chunks = [
+            chunk for chunk in chunks if chunk.type in ("dna", "rna", "protein")
+        ]
 
         if len(text_chunks) == 0:
             logger.info("All text chunks are already in the storage")
@@ -60,6 +64,18 @@ class BuildKGService(BaseOperator):
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,
                 chunks=mm_chunks,
+            )
+        if len(omics_chunks) == 0:
+            logger.info("All omics chunks are already in the storage")
+        else:
+            logger.info(
+                "[Omics Entity and Relation Extraction] processing %d chunks (DNA/RNA/protein)...",
+                len(omics_chunks),
+            )
+            build_omics_kg(
+                llm_client=self.llm_client,
+                kg_instance=self.graph_storage,
+                chunks=omics_chunks,
             )
 
         self.graph_storage.index_done_callback()

@@ -1,6 +1,6 @@
 import random
 from collections import deque
-from typing import Any, Iterable, List, Literal, Set, Tuple
+from typing import Any, Iterable, List, Set, Tuple
 
 from graphgen.bases import BaseGraphStorage
 from graphgen.bases.datatypes import Community
@@ -22,12 +22,16 @@ class AnchorBFSPartitioner(BFSPartitioner):
 
     def __init__(
         self,
-        *,
-        anchor_type: Literal["image"] = "image",
+        anchor_type: list | None = None,
         anchor_ids: Set[str] | None = None,
     ) -> None:
         super().__init__()
-        self.anchor_type = anchor_type
+        if anchor_type is None:
+            anchor_type = ["image"]
+        if isinstance(anchor_type, str):
+            self.anchor_types = [anchor_type]
+        else:
+            self.anchor_types = list(anchor_type)
         self.anchor_ids = anchor_ids
 
     def partition(
@@ -60,7 +64,7 @@ class AnchorBFSPartitioner(BFSPartitioner):
             if comm_n or comm_e:
                 yield Community(id=seed_node, nodes=comm_n, edges=comm_e)
 
-    def _pick_anchor_ids(
+    def _pick_anchor_ids(  # pylint: disable=too-many-branches
         self,
         nodes: List[tuple[str, dict]],
     ) -> Set[str]:
@@ -68,10 +72,53 @@ class AnchorBFSPartitioner(BFSPartitioner):
             return self.anchor_ids
 
         anchor_ids: Set[str] = set()
+        anchor_types_lower = [at.lower() for at in self.anchor_types]
+
         for node_id, meta in nodes:
+            # Check if node matches any of the anchor types
+            matched = False
+
+            # Check 1: entity_type (for image, etc.)
             node_type = str(meta.get("entity_type", "")).lower()
-            if self.anchor_type.lower() in node_type:
+            for anchor_type_lower in anchor_types_lower:
+                if anchor_type_lower in node_type:
+                    anchor_ids.add(node_id)
+                    matched = True
+                    break
+
+            if matched:
+                continue
+
+            # Check 2: molecule_type (for omics data: dna, rna, protein)
+            molecule_type = str(meta.get("molecule_type", "")).lower()
+            if molecule_type in anchor_types_lower:
                 anchor_ids.add(node_id)
+                continue
+
+            # Check 3: source_id prefix (for omics data: dna-, rna-, protein-)
+            source_id = str(meta.get("source_id", "")).lower()
+            for anchor_type_lower in anchor_types_lower:
+                if source_id.startswith(f"{anchor_type_lower}-"):
+                    anchor_ids.add(node_id)
+                    matched = True
+                    break
+
+            if matched:
+                continue
+
+            # Check 4: Check if source_id contains multiple IDs separated by <SEP>
+            if "<sep>" in source_id:
+                source_ids = source_id.split("<sep>")
+                for sid in source_ids:
+                    sid = sid.strip()
+                    for anchor_type_lower in anchor_types_lower:
+                        if sid.startswith(f"{anchor_type_lower}-"):
+                            anchor_ids.add(node_id)
+                            matched = True
+                            break
+                    if matched:
+                        break
+
         return anchor_ids
 
     @staticmethod
@@ -113,7 +160,21 @@ class AnchorBFSPartitioner(BFSPartitioner):
                 if it in used_e:
                     continue
                 used_e.add(it)
-                u, v = it
+                # Convert frozenset to tuple for edge representation
+                # Note: Self-loops should be filtered during graph construction,
+                # but we handle edge cases defensively
+                try:
+                    u, v = tuple(it)
+                except ValueError:
+                    # Handle edge case: frozenset with unexpected number of elements
+                    # This should not happen if graph construction is correct
+                    edge_nodes = list(it)
+                    if len(edge_nodes) == 1:
+                        # Self-loop edge (should have been filtered during graph construction)
+                        u, v = edge_nodes[0], edge_nodes[0]
+                    else:
+                        # Invalid edge, skip it
+                        continue
                 comm_e.append((u, v))
                 cnt += 1
                 for n in it:

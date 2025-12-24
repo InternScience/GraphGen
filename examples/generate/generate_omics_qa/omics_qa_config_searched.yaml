@@ -1,0 +1,73 @@
+global_params:
+  working_dir: cache
+  graph_backend: kuzu # graph database backend, support: kuzu, networkx
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+
+nodes:
+  - id: read_files
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        # Use pre-searched data files (skip search step)
+        # The search_service will automatically detect and skip search if data already contains search results
+        - examples/input_examples/searched_dna_demo.jsonl
+        - examples/input_examples/searched_rna_demo.jsonl
+        - examples/input_examples/searched_protein_demo.jsonl
+
+  - id: search_data
+    op_name: search
+    type: map_batch
+    dependencies:
+      - read_files
+    execution_params:
+      replicas: 1
+      batch_size: 10
+    # Note: search_service will automatically detect pre-searched data and skip search,
+    # but it will still normalize the data format (ensure _doc_id, content, data_source fields exist)
+
+  - id: chunk_documents
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - search_data
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 1024 # chunk size for text splitting
+      chunk_overlap: 100 # chunk overlap for text splitting
+      sequence_chunk_size: 1000 # For sequence chunks (bp for DNA/RNA, aa for protein)
+      sequence_chunk_overlap: 100
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    dependencies:
+      - chunk_documents
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - build_kg
+    params:
+      method: anchor_bfs # partition method
+      method_params:
+        anchor_type: [dna, rna, protein] # Multi-omics: support multiple anchor types (list or single string)
+        max_units_per_community: 10 # max nodes and edges per community
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      method: omics_qa # unified QA generation method for DNA/RNA/Protein
+      data_format: ChatML # Alpaca, Sharegpt, ChatML

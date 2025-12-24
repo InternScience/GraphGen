@@ -1,7 +1,8 @@
+import asyncio
+
 from graphgen.bases.datatypes import QAPair
 from graphgen.models.evaluator.base_evaluator import BaseEvaluator
 from graphgen.models.tokenizer import Tokenizer
-from graphgen.utils import create_event_loop
 
 
 class LengthEvaluator(BaseEvaluator):
@@ -11,7 +12,8 @@ class LengthEvaluator(BaseEvaluator):
         self.tokenizer = Tokenizer(model_name=self.tokenizer_name)
 
     async def evaluate_single(self, pair: QAPair) -> float:
-        loop = create_event_loop()
+        # In async context, we should use the running loop
+        loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._calculate_length, pair.answer)
 
     def _calculate_length(self, text: str) -> float:
