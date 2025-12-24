@@ -106,7 +106,7 @@ COT_TEMPLATE_DESIGN_ZH: str = """你是一位“元推理架构师”。你的�
 
 5. 推理路径生成
 - 根据问题设计一个**可被后续模型直接执行的推理蓝图**。
-- 保持步骤最小化：每一步只解决一个“不可分割”的子问题。 
+- 保持步骤最小化：每一步只解决一个“不可分割”的子问题。
 
 -约束条件-
 1. 不要在回答中描述你的思考过程，直接给出回复，只给出问题和推理路径设计，不要生成无关信息。
@@ -155,7 +155,7 @@ relationships in the provided knowledge graph.
 - The question must be verifiable directly within the graph through entities, relationships, or attributes; avoid subjective judgments.
 - The question should allow the model to think sufficiently, fully utilizing the entities and relationships in the graph, avoiding overly simple or irrelevant questions.
 
-5. Reasoning-Path Design 
+5. Reasoning-Path Design
 - Output a **blueprint that any later model can directly execute**.
 - Keep steps minimal: each step solves one indivisible sub-problem.
 
