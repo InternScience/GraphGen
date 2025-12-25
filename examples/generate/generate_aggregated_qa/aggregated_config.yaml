@@ -74,6 +74,7 @@ nodes:
     execution_params:
       replicas: 1
       batch_size: 128
+    save_output: true # save output
     params:
       method: aggregated # atomic, aggregated, multi_hop, cot, vqa
       data_format: ChatML # Alpaca, Sharegpt, ChatML
