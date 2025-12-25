@@ -8,7 +8,6 @@ follow the instructions [here](https://www.microsoft.com/en-us/bing/apis/bing-we
 and obtain your Bing subscription key.
 """
 
-import numpy as np
 import pandas as pd
 
 from graphgen.bases import BaseOperator
@@ -37,11 +36,17 @@ class SearchService(BaseOperator):
             backend=kv_backend, working_dir=working_dir, namespace="search"
         )
 
-        # 初始化，根据data_sources选择
+        # 初始化所有 searchers（延迟导入以避免循环导入）
+        from graphgen.models import NCBISearch, RNACentralSearch, UniProtSearch
+        
+        uniprot_params = kwargs.get("uniprot_params", {})
+        ncbi_params = kwargs.get("ncbi_params", {})
+        rnacentral_params = kwargs.get("rnacentral_params", {})
+        
         self.searchers = {
-            "uniprot": UniProtSearcher(**kwargs),
-            "ncbi": NCBISearcher(**kwargs),
-            "rnacentral": RNAcentralSearcher(**kwargs),
+            "uniprot": UniProtSearch(working_dir=self.working_dir, **uniprot_params),
+            "ncbi": NCBISearch(working_dir=self.working_dir, **ncbi_params),
+            "rnacentral": RNACentralSearch(working_dir=self.working_dir, **rnacentral_params),
         }
 
     def _perform_searches(self, seed_data: list) -> dict:
@@ -53,191 +58,51 @@ class SearchService(BaseOperator):
         results = {}
 
         for data_source in self.data_sources:
-            # # Prepare save callback for this data source
-            # def make_save_callback(source_name):
-            #     def save_callback(intermediate_results, completed_count):
-            #         """Save intermediate search results."""
-            #         if self.search_storage is None:
-            #             return
-            #
-            #         # Convert results list to dict format
-            #         # Results are tuples of (query, result_dict) or just result_dict
-            #         batch_results = {}
-            #         for result in intermediate_results:
-            #             if result is None:
-            #                 continue
-            #             # Check if result is a dict with _search_query key
-            #             if isinstance(result, dict) and "_search_query" in result:
-            #                 query = result["_search_query"]
-            #                 # Create a key for the result (using query as key)
-            #                 key = f"{source_name}:{query}"
-            #                 batch_results[key] = result
-            #             elif isinstance(result, dict):
-            #                 # If no _search_query, use a generated key
-            #                 key = f"{source_name}:{completed_count}"
-            #                 batch_results[key] = result
-            #
-            #         if batch_results:
-            #             # Filter out already existing keys
-            #             new_keys = self.search_storage.filter_keys(list(batch_results.keys()))
-            #             new_results = {k: v for k, v in batch_results.items() if k in new_keys}
-            #             if new_results:
-            #                 self.search_storage.upsert(new_results)
-            #                 self.search_storage.index_done_callback()
-            #                 self.logger.debug("Saved %d intermediate results for %s", len(new_results), source_name)
-            #
-            #     return save_callback
-
-            if data_source == "uniprot":
-                from graphgen.models import UniProtSearch
-
-                uniprot_params = self.kwargs.get("uniprot_params", {})
-                # searcher = UniProtSearch(working_dir=self.working_dir, **uniprot_params)
-                searcher = self.searchers["uniprot"]
-
-            elif data_source == "ncbi":
-                from graphgen.models import NCBISearch
-
-                ncbi_params = self.kwargs.get("ncbi_params", {})
-                searcher = NCBISearch(working_dir=self.working_dir, **ncbi_params)
-
-            elif data_source == "rnacentral":
-                from graphgen.models import RNACentralSearch
-
-                rnacentral_params = self.kwargs.get("rnacentral_params", {})
-
-                searcher = RNACentralSearch(
-                    working_dir=self.working_dir, **rnacentral_params
-                )
-
-            elif data_source == "google":
-                # TODO: Implement Google searcher here
-                continue
-            elif data_source == "bing":
-                # TODO: Implement Bing searcher here
-                continue
-            elif data_source == "wikipedia":
-                # TODO: Implement Wikipedia searcher here
-                continue
-            else:
-                self.logger.error("Data source %s not supported.", data_source)
-                continue
-
-            # 3 如果search_result中有有重复的，直接跳过
-            # key value
-            # key: datasource-compute_content_hash(query)
-
-            for seed in seed_data:
-                query = seed["_search_query"]
-                key = f"{data_source}-{compute_content_hash(query)}"
-                if key in self.search_storage:
-                    self.logger.info("Duplicate query found: %s", query)
+            if data_source not in self.searchers:
+                if data_source in ["google", "bing", "wikipedia"]:
+                    # TODO: Implement these searchers here
+                    continue
+                else:
+                    self.logger.error("Data source %s not supported.", data_source)
                     continue
 
+            searcher = self.searchers[data_source]
+            
+            # 创建异步包装器，将同步的search方法包装成异步
+            async def async_search_wrapper(seed: dict):
+                import asyncio
+                query = seed.get("_search_query") or seed.get("content", "")
+                threshold = seed.get("threshold", 0.01)
+                # 在executor中运行同步的search方法
+                loop = asyncio.get_event_loop()
+                result = await loop.run_in_executor(None, searcher.search, query, threshold)
+                if result:
+                    # 生成 _doc_id（从 id 字段，确保以 "doc-" 开头）
+                    doc_id = result.get("id") or result.get("_search_query") or f"doc-{hash(str(result))}"
+                    doc_id = str(doc_id)
+                    if not doc_id.startswith("doc-"):
+                        doc_id = f"doc-{doc_id}"
+                    result["_doc_id"] = doc_id
+                    
+                    # 直接添加已知的 data_source
+                    result["data_source"] = data_source
+                    
+                    # 设置 type 字段（从输入数据获取，如果没有则默认为 "text"）
+                    if "type" in seed:
+                        result["type"] = seed.get("type", "text")
+                    else:
+                        result["type"] = "text"
+                return result
+
             search_results = run_concurrent(
-                searcher.search,
+                async_search_wrapper,
                 seed_data,
                 desc=f"Searching {data_source} database",
                 unit="keyword",
             )
-            # results[data_source] = search_results
-            # 可以是key value的格式
+            results[data_source] = search_results
 
         return results
-
-    @staticmethod
-    def _clean_value(v):
-        """Recursively convert numpy arrays and other problematic types to Python-native types."""
-        if isinstance(v, np.ndarray):
-            return v.tolist()
-        if isinstance(v, (list, tuple)):
-            return [SearchService._clean_value(item) for item in v]
-        if isinstance(v, dict):
-            return {k: SearchService._clean_value(val) for k, val in v.items()}
-        return v
-
-    def _normalize_searched_data(
-        self, doc: dict
-    ) -> dict:  # pylint: disable=too-many-branches
-        """
-        Normalize a document that already contains search results to the expected format.
-
-        :param doc: Document dictionary with search results
-        :return: Normalized document dictionary
-        """
-        # Ensure required fields exist
-        doc_id = doc.get("_doc_id")
-        if not doc_id:
-            # Generate doc_id from id or other fields
-            raw_doc_id = (
-                doc.get("id") or doc.get("_search_query") or f"doc-{hash(str(doc))}"
-            )
-            doc_id = str(raw_doc_id)
-
-        # Ensure doc_id starts with "doc-" prefix
-        if not doc_id.startswith("doc-"):
-            doc_id = f"doc-{doc_id}"
-
-        # Determine document type from molecule_type or existing type
-        doc_type = doc.get("type", "text")
-        if doc_type == "text" and "molecule_type" in doc:
-            molecule_type = doc.get("molecule_type", "").lower()
-            if molecule_type in ["dna", "rna", "protein"]:
-                doc_type = molecule_type
-
-        # Ensure data_source field exists
-        data_source = doc.get("data_source")
-        if not data_source:
-            # Infer from database field
-            database = doc.get("database", "").lower()
-            if "uniprot" in database:
-                data_source = "uniprot"
-            elif "ncbi" in database:
-                data_source = "ncbi"
-            elif "rnacentral" in database or "rna" in database:
-                data_source = "rnacentral"
-
-        # Build or preserve content field
-        content = doc.get("content")
-        if not content or content.strip() == "":
-            # Build content from available fields if missing
-            content_parts = []
-            if doc.get("title"):
-                content_parts.append(f"Title: {doc['title']}")
-            if doc.get("description"):
-                content_parts.append(f"Description: {doc['description']}")
-            if doc.get("function"):
-                func = doc["function"]
-                if isinstance(func, list):
-                    func = ", ".join(str(f) for f in func)
-                content_parts.append(f"Function: {func}")
-            if doc.get("sequence"):
-                content_parts.append(f"Sequence: {doc['sequence']}")
-
-            if not content_parts:
-                # Fallback: create content from key fields
-                key_fields = [
-                    "protein_name",
-                    "gene_name",
-                    "gene_description",
-                    "organism",
-                ]
-                for field in key_fields:
-                    if field in doc and doc[field]:
-                        content_parts.append(f"{field}: {doc[field]}")
-
-            content = "\n".join(content_parts) if content_parts else str(doc)
-
-        # Create normalized row
-        normalized_doc = {
-            "_doc_id": doc_id,
-            "type": doc_type,
-            "content": content,
-            "data_source": data_source,
-            **doc,  # Include all original fields for metadata
-        }
-
-        return normalized_doc
 
     def process(
         self, batch: pd.DataFrame
@@ -246,102 +111,28 @@ class SearchService(BaseOperator):
         Process a batch of documents and perform searches.
         This is the Ray Data operator interface.
 
-        If input data already contains search results (detected by presence of
-        data_source, database, or search-specific fields), the search step is
-        skipped and the data is normalized and returned directly.
-
-        :param batch: DataFrame containing documents with at least '_doc_id' and 'content' columns
-        :return: DataFrame containing search results
+        :param batch: DataFrame containing documents with at least 'content' column
+        :return: DataFrame containing search results with '_doc_id', 'type', 'data_source' fields
         """
         docs = batch.to_dict(orient="records")
 
-        # Data doesn't contain search results, perform search as usual
-        # seed_data = {doc.get("_doc_id", f"doc-{i}"): doc for i, doc in enumerate(docs)}
-
-        # docs may contain None entries, filter them out & remove duplicates based on content
-        # 1 去重
-        unique_contents = set()
-        seed_data = []
-        for doc in docs:
-            if not doc or "content" not in doc:
-                continue
-            content = doc["content"]
-            if content not in unique_contents:
-                unique_contents.add(content)
-                seed_data.append(doc)
+        # Filter out None entries and documents without content
+        seed_data = [doc for doc in docs if doc and "content" in doc]
 
         search_results = self._perform_searches(seed_data)
 
-        # 4 更新到search_storage里
-
-        # query json dict
-
         # Convert search_results from {data_source: [results]} to DataFrame
-        # Each result becomes a document row compatible with chunk service
         result_rows = []
 
-        # for data_source, result_list in search_results.items():
-        #     if not isinstance(result_list, list):
-        #         continue
+        for data_source, result_list in search_results.items():
+            if not isinstance(result_list, list):
+                continue
 
-        #     for result in result_list:
-        #         if result is None:
-        #             continue
+            for result in result_list:
+                if result is None:
+                    continue
 
-        #         # Convert search result to document format expected by chunk service
-        #         # Build content from available fields
-        #         content_parts = []
-        #         if result.get("title"):
-        #             content_parts.append(f"Title: {result['title']}")
-        #         if result.get("description"):
-        #             content_parts.append(f"Description: {result['description']}")
-        #         if result.get("function"):
-        #             content_parts.append(f"Function: {result['function']}")
-        #         if result.get("sequence"):
-        #             content_parts.append(f"Sequence: {result['sequence']}")
-
-        #         # If no content parts, use a default or combine all fields
-        #         if not content_parts:
-        #             # Fallback: create content from all string fields
-        #             content_parts = [
-        #                 f"{k}: {v}"
-        #                 for k, v in result.items()
-        #                 if isinstance(v, (str, int, float)) and k != "_search_query"
-        #             ]
-
-        #         content = "\n".join(content_parts) if content_parts else str(result)
-
-        #         # Determine document type from molecule_type or default to "text"
-        #         doc_type = result.get("molecule_type", "text").lower()
-        #         if doc_type not in ["text", "dna", "rna", "protein"]:
-        #             doc_type = "text"
-
-        #         # Convert to string to handle Ray Data ListElement and other types
-        #         raw_doc_id = (
-        #             result.get("id")
-        #             or result.get("_search_query")
-        #             or f"search-{len(result_rows)}"
-        #         )
-        #         doc_id = str(raw_doc_id)
-
-        #         # Ensure doc_id starts with "doc-" prefix
-        #         if not doc_id.startswith("doc-"):
-        #             doc_id = f"doc-{doc_id}"
-
-                # Convert numpy arrays and complex types to Python-native types
-                # to avoid Ray Data tensor extension casting issues
-                # cleaned_result = {k: self._clean_value(v) for k, v in result.items()}
-
-        # TODO: 待定
-                # Create document row with all result fields plus required fields
-                row = {
-                    "_doc_id": doc_id,
-                    "type": doc_type,
-                    "content": content,
-                    "data_source": data_source,
-                    **cleaned_result,  # Include all original result fields for metadata
-                }
-                result_rows.append(row)
+                result_rows.append(result)
 
         if not result_rows:
             self.logger.warning("No search results generated for this batch")
