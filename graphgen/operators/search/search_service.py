@@ -38,11 +38,11 @@ class SearchService(BaseOperator):
 
         # 初始化所有 searchers（延迟导入以避免循环导入）
         from graphgen.models import NCBISearch, RNACentralSearch, UniProtSearch
-        
+
         uniprot_params = kwargs.get("uniprot_params", {})
         ncbi_params = kwargs.get("ncbi_params", {})
         rnacentral_params = kwargs.get("rnacentral_params", {})
-        
+
         self.searchers = {
             "uniprot": UniProtSearch(working_dir=self.working_dir, **uniprot_params),
             "ncbi": NCBISearch(working_dir=self.working_dir, **ncbi_params),
@@ -62,20 +62,19 @@ class SearchService(BaseOperator):
                 if data_source in ["google", "bing", "wikipedia"]:
                     # TODO: Implement these searchers here
                     continue
-                else:
-                    self.logger.error("Data source %s not supported.", data_source)
-                    continue
+                self.logger.error("Data source %s not supported.", data_source)
+                continue
 
             searcher = self.searchers[data_source]
-            
+
             # 创建异步包装器，将同步的search方法包装成异步
-            async def async_search_wrapper(seed: dict):
+            async def async_search_wrapper(seed: dict, searcher_obj=searcher, ds=data_source):
                 import asyncio
                 query = seed.get("_search_query") or seed.get("content", "")
                 threshold = seed.get("threshold", 0.01)
                 # 在executor中运行同步的search方法
                 loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None, searcher.search, query, threshold)
+                result = await loop.run_in_executor(None, searcher_obj.search, query, threshold)
                 if result:
                     # 生成 _doc_id（从 id 字段，确保以 "doc-" 开头）
                     doc_id = result.get("id") or result.get("_search_query") or f"doc-{hash(str(result))}"
@@ -83,10 +82,10 @@ class SearchService(BaseOperator):
                     if not doc_id.startswith("doc-"):
                         doc_id = f"doc-{doc_id}"
                     result["_doc_id"] = doc_id
-                    
+
                     # 直接添加已知的 data_source
-                    result["data_source"] = data_source
-                    
+                    result["data_source"] = ds
+
                     # 设置 type 字段（从输入数据获取，如果没有则默认为 "text"）
                     if "type" in seed:
                         result["type"] = seed.get("type", "text")
@@ -124,15 +123,13 @@ class SearchService(BaseOperator):
         # Convert search_results from {data_source: [results]} to DataFrame
         result_rows = []
 
-        for data_source, result_list in search_results.items():
+        for result_list in search_results.values():
             if not isinstance(result_list, list):
                 continue
 
             for result in result_list:
-                if result is None:
-                    continue
-
-                result_rows.append(result)
+                if result is not None:
+                    result_rows.append(result)
 
         if not result_rows:
             self.logger.warning("No search results generated for this batch")

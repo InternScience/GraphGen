@@ -11,7 +11,7 @@ class BaseOperator(ABC):
     def __init__(self, working_dir: str = "cache", op_name: str = None):
         # lazy import to avoid circular import
         from graphgen.utils import set_logger
-        
+
         log_dir = os.path.join(working_dir, "logs")
         self.op_name = op_name or self.__class__.__name__
 
@@ -42,7 +42,7 @@ class BaseOperator(ABC):
     ) -> Union[pd.DataFrame, Iterable[pd.DataFrame]]:
         # lazy import to avoid circular import
         from graphgen.utils import CURRENT_LOGGER_VAR
-        
+
         logger_token = CURRENT_LOGGER_VAR.set(self.logger)
         try:
             result = self.process(batch)
