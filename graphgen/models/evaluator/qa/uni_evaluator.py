@@ -1,10 +1,10 @@
 # https://github.com/maszhongming/UniEval/tree/main
 
-from dataclasses import dataclass, field
+from dataclasses import field
 
 from tqdm import tqdm
 
-from graphgen.bases.datatypes import QAPair
+from graphgen.bases import BaseEvaluator, QAPair
 
 
 def _add_questions(dimension: str, question: str, answer: str):
@@ -32,8 +32,11 @@ def _add_questions(dimension: str, question: str, answer: str):
     return cur_input
 
 
-@dataclass
+
 class UniEvaluator:
+    """
+    UniEvaluator class
+    """
     model_name: str = "MingZhong/unieval-sum"
     dimensions: list = field(
         default_factory=lambda: ["naturalness", "coherence", "understandability"]

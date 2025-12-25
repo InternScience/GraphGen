@@ -1,5 +1,4 @@
-from graphgen.bases.base_evaluator import BaseEvaluator
-from graphgen.bases.datatypes import QAPair
+from graphgen.bases import BaseEvaluator, QAPair
 from graphgen.models.tokenizer import Tokenizer
 
 

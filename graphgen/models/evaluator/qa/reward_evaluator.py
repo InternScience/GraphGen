@@ -1,107 +1,64 @@
-from dataclasses import dataclass
-
-from tqdm import tqdm
-
-from graphgen.bases.datatypes import QAPair
+from typing import Optional
+from graphgen.bases import BaseEvaluator, QAPair
 
 
-@dataclass
-class RewardEvaluator:
+class RewardEvaluator(BaseEvaluator):
     """
-    Reward Model Evaluator.
-    OpenAssistant/reward-model-deberta-v3-large-v2: 分数范围为[-inf, inf]，越高越好
+    Reward Model Evaluator for single QAPair evaluation.
     """
 
-    reward_name: str = "OpenAssistant/reward-model-deberta-v3-large-v2"
-    max_length: int = 2560
-    results: list[float] = None
+    def __init__(
+        self,
+        reward_name: str = "OpenAssistant/reward-model-deberta-v3-large-v2",
+        max_length: int = 2560,
+        device: Optional[str] = None,
+    ):
+        """
+        Initialize the reward evaluator.
+        
+        Args:
+            reward_name: Model name or path on HuggingFace Hub
+            max_length: Maximum token length for the model
+            device: Device to run the model on. If None, auto-detect CUDA/CPU.
+        """
+        self.reward_name = reward_name
+        self.max_length = max_length
 
-    def __post_init__(self):
-        import torch
-
-        self.num_gpus = torch.cuda.device_count()
-
-    @staticmethod
-    def process_chunk(rank, pairs, reward_name, max_length, return_dict):
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
 
-        device = f"cuda:{rank}"
-        torch.cuda.set_device(rank)
+        # Set device (auto-detect if not specified)
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        rank_model = AutoModelForSequenceClassification.from_pretrained(reward_name)
-        tokenizer = AutoTokenizer.from_pretrained(reward_name)
-        rank_model.to(device)
-        rank_model.eval()
+        try:
+            self.tokenizer = AutoTokenizer.from_pretrained(reward_name)
+            self.model = AutoModelForSequenceClassification.from_pretrained(reward_name)
+            self.model.to(self.device)
+            self.model.eval()
+        except Exception as e:
+            raise RuntimeError(f"Failed to load reward model '{reward_name}': {e}") from e
 
-        results = []
-        with torch.no_grad():
-            for pair in tqdm(pairs):
-                inputs = tokenizer(
-                    pair.question,
-                    pair.answer,
-                    return_tensors="pt",
-                    max_length=max_length,
-                    truncation=True,
-                )
-                inputs = {k: v.to(device) for k, v in inputs.items()}
-                score = rank_model(**inputs).logits[0].item()
-                results.append(score)
-
-        return_dict[rank] = results
-
-    def evaluate(self, pairs: list[QAPair]) -> list[float]:
-        import torch.multiprocessing as mp
-
-        chunk_size = len(pairs) // self.num_gpus
-        chunks = []
-        for i in range(self.num_gpus):
-            start = i * chunk_size
-            end = start + chunk_size
-            if i == self.num_gpus - 1:
-                end = len(pairs)
-            chunks.append(pairs[start:end])
-
-        # multi-process
-        manager = mp.Manager()
-        return_dict = manager.dict()
-        processes = []
-
-        for rank, chunk in enumerate(chunks):
-            p = mp.Process(
-                target=self.process_chunk,
-                args=(rank, chunk, self.reward_name, self.max_length, return_dict),
-            )
-            p.start()
-            processes.append(p)
-
-        for p in processes:
-            p.join()
-
-        # 合并结果
-        results = []
-        for rank in range(len(chunks)):
-            results.extend(return_dict[rank])
-
-        for p in processes:
-            if p.is_alive():
-                p.terminate()
-                p.join()
-
-        return results
-
-    def get_average_score(self, pairs: list[QAPair]) -> float:
+    def evaluate(self, pair: QAPair) -> float:
         """
-        Get the average score of a batch of texts.
+        Evaluate a single question-answer pair using the reward model.
+        
+        Args:
+            pair: QAPair containing question and answer strings
+            
+        Returns:
+            Score as a float
         """
-        results = self.evaluate(pairs)
-        self.results = results
-        return sum(self.results) / len(pairs)
+        # Tokenize
+        inputs = self.tokenizer(
+            pair.question,
+            pair.answer,
+            return_tensors="pt",
+            max_length=self.max_length,
+            truncation=True,
+        )
+        inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
-    def get_min_max_score(self, pairs: list[QAPair]) -> tuple[float, float]:
-        """
-        Get the min and max score of a batch of texts.
-        """
-        if self.results is None:
-            self.get_average_score(pairs)
-        return min(self.results), max(self.results)
+        # Get score
+        score = self.model(**inputs).logits[0].item()
+
+        return score

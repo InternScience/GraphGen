@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from graphgen.bases.datatypes import QAPair
+from .datatypes import QAPair
 
 
 class BaseEvaluator(ABC):
