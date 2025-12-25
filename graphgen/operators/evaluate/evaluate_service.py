@@ -1,7 +1,9 @@
+from typing import Any
 import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper, BaseOperator
+from graphgen.bases import BaseLLMWrapper, BaseOperator, QAPair
 from graphgen.common import init_llm
+from graphgen.utils import run_concurrent
 
 
 class EvaluateService(BaseOperator):
@@ -38,7 +40,49 @@ class EvaluateService(BaseOperator):
         items = batch.to_dict(orient="records")
         return pd.DataFrame(self.evaluate(items))
 
-    def evaluate(self, items: list[dict]) -> list[dict]:
-        print(items)
-        pass
+    async def _process_single(self, item: dict[str, Any]) -> dict[str, Any]:
+        try:
+            qa_pair = QAPair(
+                question=str(item.get("question", "")),
+                answer=str(item.get("answer", ""))
+            )
+            if not qa_pair.question or not qa_pair.answer:
+                self.logger.error("Empty question or answer, skipping.")
+                return {}
+        except Exception as e:
+            self.logger.error(
+                "Error in QAPair creation: %s",
+                str(e)
+            )
+            return {}
 
+        for metric, evaluator in self.evaluators.items():
+            try:
+                score = evaluator.evaluate(qa_pair)
+                if isinstance(score, dict):
+                    for sub_metric, sub_score in score.items():
+                        item[f"{metric}_{sub_metric}"] = float(sub_score)
+                else:
+                    item[metric] = float(score)
+            except Exception as e:
+                self.logger.error(
+                    "Error in %s evaluation: %s",
+                    metric,
+                    str(e)
+                )
+                item[metric] = None
+
+    def evaluate(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
+        if not items:
+            return []
+
+        results = run_concurrent(
+            self._process_single,
+            items,
+            desc="Evaluating items",
+            unit="item",
+        )
+
+        results = [item for item in results if item]
+
+        return results
