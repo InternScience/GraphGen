@@ -2,37 +2,33 @@ from typing import Set
 
 from graphgen.bases.base_evaluator import BaseEvaluator
 from graphgen.bases.datatypes import QAPair
-from graphgen.utils import NLTKHelper, create_event_loop, detect_main_language
-
-nltk_helper = NLTKHelper()
+from graphgen.utils import NLTKHelper, detect_main_language
 
 
 class MTLDEvaluator(BaseEvaluator):
     """
-    衡量文本词汇多样性的指标
+    Metrics for measuring the lexical diversity of text.
     """
 
-    def __init__(self, max_concurrent: int = 100):
-        super().__init__(max_concurrent)
-        self.stopwords_en: Set[str] = set(nltk_helper.get_stopwords("english"))
-        self.stopwords_zh: Set[str] = set(nltk_helper.get_stopwords("chinese"))
+    def __init__(self, threshold: float = 0.72):
+        self.nltk_helper = NLTKHelper()
+        self.stopwords_en: Set[str] = set(self.nltk_helper.get_stopwords("english"))
+        self.stopwords_zh: Set[str] = set(self.nltk_helper.get_stopwords("chinese"))
+        self.threshold = threshold
 
-    async def evaluate_single(self, pair: QAPair) -> float:
-        loop = create_event_loop()
-        return await loop.run_in_executor(None, self._calculate_mtld_score, pair.answer)
-
-    def _calculate_mtld_score(self, text: str, threshold=0.72) -> float:
+    def evaluate(self, pair: QAPair) -> float:
         """
-        计算MTLD (向前和向后的平均值)
+        Calculate the MTLD (Mean Token Length Diversity) score for a given text.
 
         min is 1.0
         higher is better
         """
+        text = pair.answer
         if not text or not text.strip():
             return 0.0
 
         lang = detect_main_language(text)
-        tokens = nltk_helper.word_tokenize(text, lang)
+        tokens = self.nltk_helper.word_tokenize(text, lang)
 
         stopwords = self.stopwords_zh if lang == "zh" else self.stopwords_en
         filtered_tokens = [word for word in tokens if word not in stopwords]
@@ -41,13 +37,13 @@ class MTLDEvaluator(BaseEvaluator):
         if not filtered_tokens:
             return 0
 
-        # 计算向前的MTLD
-        forward_factors = self._compute_factors(filtered_tokens, threshold)
+        # Compute forward factors
+        forward_factors = self._compute_factors(filtered_tokens, self.threshold)
 
-        # 计算向后的MTLD
-        backward_factors = self._compute_factors(filtered_tokens[::-1], threshold)
+        # Compute backward factors
+        backward_factors = self._compute_factors(filtered_tokens[::-1], self.threshold)
 
-        # 取平均值
+        # Compute average factors
         return (forward_factors + backward_factors) / 2
 
     @staticmethod
@@ -66,7 +62,7 @@ class MTLDEvaluator(BaseEvaluator):
                 current_segment = []
                 unique_words = set()
 
-        # 处理最后一个不完整片段
+        # handle last segment
         if current_segment:
             ttr = len(unique_words) / len(current_segment)
             if ttr <= threshold:
