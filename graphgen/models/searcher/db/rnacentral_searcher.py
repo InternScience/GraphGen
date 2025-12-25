@@ -1,15 +1,11 @@
-import asyncio
 import os
 import re
 import subprocess
-from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 import tempfile
 from typing import Dict, Optional, List, Any, Set
 
 import hashlib
 import requests
-import aiohttp
 from tenacity import (
     retry,
     retry_if_exception_type,
@@ -18,11 +14,6 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
-
-
-@lru_cache(maxsize=None)
-def _get_pool():
-    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
 
 class RNACentralSearch(BaseSearcher):
     """
@@ -355,10 +346,10 @@ class RNACentralSearch(BaseSearcher):
     @retry(
         stop=stop_after_attempt(3),
         wait=wait_exponential(multiplier=1, min=2, max=10),
-        retry=retry_if_exception_type((aiohttp.ClientError, asyncio.TimeoutError)),
+        retry=retry_if_exception_type((requests.Timeout, requests.RequestException)),
         reraise=True,
     )
-    async def search(self, query: str, threshold: float = 0.1, **kwargs) -> Optional[Dict]:
+    def search(self, query: str, threshold: float = 0.1, **kwargs) -> Optional[Dict]:
         """Search RNAcentral with either an RNAcentral ID, keyword, or RNA sequence."""
         if not query or not isinstance(query, str):
             self.logger.error("Empty or non-string input.")
@@ -367,8 +358,6 @@ class RNACentralSearch(BaseSearcher):
         query = query.strip()
         self.logger.debug("RNAcentral search query: %s", query)
 
-        loop = asyncio.get_running_loop()
-
         # check if RNA sequence (AUCG or ATCG characters, contains U or T)
         # Note: Sequences with T are also RNA sequences
         is_rna_sequence = query.startswith(">") or (
@@ -376,13 +365,13 @@ class RNACentralSearch(BaseSearcher):
             ("U" in query.upper() or "T" in query.upper())
         )
         if is_rna_sequence:
-            result = await loop.run_in_executor(_get_pool(), self.get_by_fasta, query, threshold)
+            result = self.get_by_fasta(query, threshold)
         # check if RNAcentral ID (typically starts with URS)
         elif re.fullmatch(r"URS\d+", query, re.I):
-            result = await loop.run_in_executor(_get_pool(), self.get_by_rna_id, query)
+            result = self.get_by_rna_id(query)
         else:
             # otherwise treat as keyword
-            result = await loop.run_in_executor(_get_pool(), self.get_best_hit, query)
+            result = self.get_best_hit(query)
 
         if result:
             result["_search_query"] = query

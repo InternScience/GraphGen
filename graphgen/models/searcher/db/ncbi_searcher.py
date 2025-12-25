@@ -1,10 +1,7 @@
-import asyncio
 import os
 import re
 import subprocess
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 from http.client import IncompleteRead
 from typing import Dict, Optional
 
@@ -19,15 +16,6 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
-
-
-@lru_cache(maxsize=None)
-def _get_pool():
-    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
-
-
-# ensure only one NCBI request at a time
-_blast_lock = asyncio.Lock()
 
 
 class NCBISearch(BaseSearcher):
@@ -549,28 +537,21 @@ class NCBISearch(BaseSearcher):
         query = query.strip()
         self.logger.debug("NCBI search query: %s", query)
 
-        loop = asyncio.get_running_loop()
-
-        # Auto-detect query type and execute in thread pool
-        # All methods need lock because they all call NCBI API (rate limit: max 3 requests per second)
+        # Auto-detect query type and execute
+        # All methods call NCBI API (rate limit: max 3 requests per second)
         # Even if get_by_fasta uses local BLAST, it still calls get_by_accession which needs API
-        async def _execute_with_lock(func, *args):
-            """Execute function with lock for NCBI API calls."""
-            async with _blast_lock:
-                return await loop.run_in_executor(_get_pool(), func, *args)
-
         if query.startswith(">") or re.fullmatch(r"[ATCGN\s]+", query, re.I):
-            # FASTA sequence: always use lock (even with local BLAST, get_by_accession needs API)
-            result = await _execute_with_lock(self.get_by_fasta, query, threshold)
+            # FASTA sequence
+            result = self.get_by_fasta(query, threshold)
         elif re.fullmatch(r"^\d+$", query):
-            # Gene ID: always use lock (network API call)
-            result = await _execute_with_lock(self.get_by_gene_id, query)
+            # Gene ID
+            result = self.get_by_gene_id(query)
         elif re.fullmatch(r"[A-Z]{2}_\d+\.?\d*", query, re.I):
-            # Accession: always use lock (network API call)
-            result = await _execute_with_lock(self.get_by_accession, query)
+            # Accession
+            result = self.get_by_accession(query)
         else:
-            # Keyword: always use lock (network API call)
-            result = await _execute_with_lock(self.get_best_hit, query)
+            # Keyword
+            result = self.get_best_hit(query)
 
         if result:
             result["_search_query"] = query

@@ -1,10 +1,7 @@
-import asyncio
 import os
 import re
 import subprocess
 import tempfile
-from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 from io import StringIO
 from typing import Dict, Optional
 
@@ -19,15 +16,6 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
-
-
-@lru_cache(maxsize=None)
-def _get_pool():
-    return ThreadPoolExecutor(max_workers=20)  # NOTE：can increase for better parallelism
-
-
-# ensure only one BLAST searcher at a time
-_blast_lock = asyncio.Lock()
 
 
 class UniProtSearch(BaseSearcher):
@@ -239,7 +227,7 @@ class UniProtSearch(BaseSearcher):
         retry=retry_if_exception_type(RequestException),
         reraise=True,
     )
-    async def search(
+    def search(
         self, query: str, threshold: float = 0.7, **kwargs
     ) -> Optional[Dict]:
         """
@@ -257,36 +245,21 @@ class UniProtSearch(BaseSearcher):
 
         self.logger.debug("UniProt searcher query: %s", query)
 
-        loop = asyncio.get_running_loop()
-
         # check if fasta sequence
         if query.startswith(">") or re.fullmatch(
             r"[ACDEFGHIKLMNPQRSTVWY\s]+", query, re.I
         ):
-            # Only use lock for network BLAST (NCBIWWW), local BLAST can run in parallel
-            if self.use_local_blast:
-                # Local BLAST can run in parallel, no lock needed
-                result = await loop.run_in_executor(
-                    _get_pool(), self.get_by_fasta, query, threshold
-                )
-            else:
-                # Network BLAST needs lock to respect rate limits
-                async with _blast_lock:
-                    result = await loop.run_in_executor(
-                        _get_pool(), self.get_by_fasta, query, threshold
-                    )
+            result = self.get_by_fasta(query, threshold)
 
         # check if accession number
         # UniProt accession IDs: 6-10 characters, must start with a letter
         # Format: [A-Z][A-Z0-9]{5,9} (6-10 chars total: 1 letter + 5-9 alphanumeric)
         elif re.fullmatch(r"[A-Z][A-Z0-9]{5,9}", query, re.I):
-            result = await loop.run_in_executor(
-                _get_pool(), self.get_by_accession, query
-            )
+            result = self.get_by_accession(query)
 
         else:
             # otherwise treat as keyword
-            result = await loop.run_in_executor(_get_pool(), self.get_best_hit, query)
+            result = self.get_best_hit(query)
 
         if result:
             result["_search_query"] = query
