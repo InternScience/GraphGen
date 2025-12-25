@@ -24,8 +24,8 @@ set -e
 #   - {category}.{number}.genomic.fna.gz (基因组序列)
 #   - {category}.{number}.rna.fna.gz (RNA序列)
 #
-# Usage: ./build_dna_blast_db.sh [human_mouse|representative|complete|all]
-#   human_mouse: Download only Homo sapiens and Mus musculus sequences (minimal, smallest)
+# Usage: ./build_dna_blast_db.sh [human_mouse_drosophila_yeast|representative|complete|all]
+#   human_mouse_drosophila_yeast: Download only Homo sapiens, Mus musculus, Drosophila melanogaster, and Saccharomyces cerevisiae sequences (minimal, smallest)
 #   representative: Download genomic sequences from major categories (recommended, smaller)
 #                    Includes: vertebrate_mammalian, vertebrate_other, bacteria, archaea, fungi
 #   complete: Download all complete genomic sequences from complete/ directory (very large)
@@ -36,7 +36,7 @@ set -e
 # For CentOS/RHEL/Fedora: sudo dnf install ncbi-blast+
 # Or download from: https://ftp.ncbi.nlm.nih.gov/blast/executables/blast+/LATEST/
 
-DOWNLOAD_TYPE=${1:-human_mouse}
+DOWNLOAD_TYPE=${1:-human_mouse_drosophila_yeast}
 
 # Better to use a stable DOWNLOAD_TMP name to support resuming downloads
 DOWNLOAD_TMP=_downloading_dna
@@ -58,17 +58,49 @@ else
     echo "Using date as release identifier: ${RELEASE}"
 fi
 
-# Function to check if a file contains target species
+# Function to check if a file is already downloaded (compressed or decompressed)
+check_file_downloaded() {
+    local filename=$1
+    local decompressed_file="${filename%.gz}"
+    # Check if compressed or decompressed version exists
+    [ -f "${filename}" ] || [ -f "${decompressed_file}" ]
+}
+
+# Function to check if a file contains target species sequences
 check_file_for_species() {
     local url=$1
     local filename=$2
     local temp_file="/tmp/check_${filename//\//_}"
     
+    # First check if file is already downloaded locally
+    if check_file_downloaded "${filename}"; then
+        # File already exists, check if it contains target species
+        # Check both compressed and decompressed versions
+        local decompressed_file="${filename%.gz}"
+        if [ -f "${filename}" ]; then
+            # Compressed file exists
+            if gunzip -c "${filename}" 2>/dev/null | head -2000 | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+                return 0  # Contains target species
+            else
+                return 1  # Does not contain target species
+            fi
+        elif [ -f "${decompressed_file}" ]; then
+            # Decompressed file exists
+            if head -2000 "${decompressed_file}" 2>/dev/null | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
+                return 0  # Contains target species
+            else
+                return 1  # Does not contain target species
+            fi
+        fi
+    fi
+    
+    # File not downloaded yet, download first 500KB to check
     # Download first 500KB (enough to get many sequence headers)
     # This should be sufficient to identify the species in most cases
     if curl -s --max-time 30 --range 0-512000 "${url}" -o "${temp_file}" 2>/dev/null && [ -s "${temp_file}" ]; then
         # Try to decompress and check for species names
-        if gunzip -c "${temp_file}" 2>/dev/null | head -2000 | grep -qE "(Homo sapiens|Mus musculus)"; then
+        # Check for: Homo sapiens (人), Mus musculus (小鼠), Drosophila melanogaster (果蝇), Saccharomyces cerevisiae (酵母)
+        if gunzip -c "${temp_file}" 2>/dev/null | head -2000 | grep -qE "(Homo sapiens|Mus musculus|Drosophila melanogaster|Saccharomyces cerevisiae)"; then
             rm -f "${temp_file}"
             return 0  # Contains target species
         else
@@ -84,39 +116,57 @@ check_file_for_species() {
 
 # Download based on type
 case ${DOWNLOAD_TYPE} in
-    human_mouse)
-        echo "Downloading RefSeq sequences for Homo sapiens and Mus musculus only (minimal size)..."
-        echo "This will check each file to see if it contains human or mouse sequences..."
-        category="vertebrate_mammalian"
-        echo "Checking files in ${category} category..."
+    human_mouse_drosophila_yeast)
+        echo "Downloading RefSeq sequences for Homo sapiens, Mus musculus, Drosophila melanogaster, and Saccharomyces cerevisiae (minimal size)..."
+        echo "This will check each file to see if it contains target species sequences..."
         
-        # Get list of files and save to temp file to avoid subshell issues
-        curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
-            grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-            sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files.txt
+        # Check multiple categories: vertebrate_mammalian (人、小鼠), invertebrate (果蝇), fungi (酵母)
+        categories="vertebrate_mammalian invertebrate fungi"
+        total_file_count=0
+        total_download_count=0
         
-        file_count=0
-        download_count=0
-        
-        while read filename; do
-            file_count=$((file_count + 1))
-            url="https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}"
-            echo -n "[${file_count}] Checking ${filename}... "
+        for category in ${categories}; do
+            echo "Checking files in ${category} category..."
             
-            if check_file_for_species "${url}" "${filename}"; then
-                echo "✓ contains target species, downloading..."
-                download_count=$((download_count + 1))
-                wget -c -q --show-progress "${url}" || {
-                    echo "Warning: Failed to download ${filename}"
-                }
-            else
-                echo "✗ skipping (no human/mouse data)"
-            fi
-        done < /tmp/refseq_files.txt
+            # Get list of files and save to temp file to avoid subshell issues
+            curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
+                grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            file_count=0
+            download_count=0
+            
+            while read filename; do
+                file_count=$((file_count + 1))
+                total_file_count=$((total_file_count + 1))
+                url="https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}"
+                echo -n "[${total_file_count}] Checking ${category}/${filename}... "
+                
+                if check_file_for_species "${url}" "${filename}"; then
+                    # Check if file is already downloaded
+                    if check_file_downloaded "${filename}"; then
+                        echo "✓ already downloaded (contains target species)"
+                        download_count=$((download_count + 1))
+                        total_download_count=$((total_download_count + 1))
+                    else
+                        echo "✓ contains target species, downloading..."
+                        download_count=$((download_count + 1))
+                        total_download_count=$((total_download_count + 1))
+                        wget -c -q --show-progress "${url}" || {
+                            echo "Warning: Failed to download ${filename}"
+                        }
+                    fi
+                else
+                    echo "✗ skipping (no target species data)"
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
+            echo "  ${category}: Checked ${file_count} files, downloaded ${download_count} files."
+        done
         
-        rm -f /tmp/refseq_files.txt
         echo ""
-        echo "Summary: Checked ${file_count} files, downloaded ${download_count} files containing human or mouse sequences."
+        echo "Summary: Checked ${total_file_count} files total, downloaded ${total_download_count} files containing target species (human, mouse, fruit fly, yeast)."
         ;;
     representative)
         echo "Downloading RefSeq representative sequences (recommended, smaller size)..."
@@ -124,52 +174,76 @@ case ${DOWNLOAD_TYPE} in
         # Note: You can modify this list based on your specific requirements
         for category in vertebrate_mammalian vertebrate_other bacteria archaea fungi; do
             echo "Downloading ${category} sequences..."
+            # Get list of files and save to temp file to avoid subshell issues
             curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
                 grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-                sed 's/href="\(.*\)"/\1/' | \
-                while read filename; do
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            while read filename; do
+                if check_file_downloaded "${filename}"; then
+                    echo "  ✓ ${filename} already downloaded, skipping..."
+                else
                     echo "  Downloading ${filename}..."
                     wget -c -q --show-progress \
                         "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}" || {
                         echo "Warning: Failed to download ${filename}"
                     }
-                done
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
         done
         ;;
     complete)
         echo "Downloading RefSeq complete genomic sequences (WARNING: very large, may take hours)..."
+        # Get list of files and save to temp file to avoid subshell issues
         curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/complete/" | \
             grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-            sed 's/href="\(.*\)"/\1/' | \
-            while read filename; do
+            sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_complete.txt
+        
+        while read filename; do
+            if check_file_downloaded "${filename}"; then
+                echo "  ✓ ${filename} already downloaded, skipping..."
+            else
                 echo "  Downloading ${filename}..."
                 wget -c -q --show-progress \
                     "https://ftp.ncbi.nlm.nih.gov/refseq/release/complete/${filename}" || {
                     echo "Warning: Failed to download ${filename}"
                 }
-            done
+            fi
+        done < /tmp/refseq_files_complete.txt
+        
+        rm -f /tmp/refseq_files_complete.txt
         ;;
     all)
         echo "Downloading all RefSeq genomic sequences from all categories (WARNING: extremely large, may take many hours)..."
         # Download genomic sequences from all categories
         for category in vertebrate_mammalian vertebrate_other bacteria archaea fungi invertebrate plant viral protozoa mitochondrion plastid plasmid other; do
             echo "Downloading ${category} genomic sequences..."
+            # Get list of files and save to temp file to avoid subshell issues
             curl -s "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/" | \
                 grep -oE 'href="[^"]*\.genomic\.fna\.gz"' | \
-                sed 's/href="\(.*\)"/\1/' | \
-                while read filename; do
+                sed 's/href="\(.*\)"/\1/' > /tmp/refseq_files_${category}.txt
+            
+            while read filename; do
+                if check_file_downloaded "${filename}"; then
+                    echo "  ✓ ${filename} already downloaded, skipping..."
+                else
                     echo "  Downloading ${filename}..."
                     wget -c -q --show-progress \
                         "https://ftp.ncbi.nlm.nih.gov/refseq/release/${category}/${filename}" || {
                         echo "Warning: Failed to download ${filename}"
                     }
-                done
+                fi
+            done < /tmp/refseq_files_${category}.txt
+            
+            rm -f /tmp/refseq_files_${category}.txt
         done
         ;;
     *)
         echo "Error: Unknown download type '${DOWNLOAD_TYPE}'"
-        echo "Usage: $0 [human_mouse|representative|complete|all]"
-        echo "  human_mouse: Download only Homo sapiens and Mus musculus (minimal)"
+        echo "Usage: $0 [human_mouse_drosophila_yeast|representative|complete|all]"
+        echo "  human_mouse_drosophila_yeast: Download only Homo sapiens, Mus musculus, Drosophila melanogaster, and Saccharomyces cerevisiae (minimal)"
         echo "  representative: Download major categories (recommended)"
         echo "  complete: Download all complete genomic sequences (very large)"
         echo "  all: Download all genomic sequences (extremely large)"

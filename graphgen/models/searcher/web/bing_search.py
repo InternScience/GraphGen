@@ -1,3 +1,9 @@
+"""
+To use Bing Web Search API,
+follow the instructions [here](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api)
+and obtain your Bing subscription key.
+"""
+
 import requests
 from fastapi import HTTPException
 
