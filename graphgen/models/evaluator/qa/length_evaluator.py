@@ -1,10 +1,12 @@
+
+import os
 from graphgen.bases import BaseEvaluator, QAPair
 from graphgen.models.tokenizer import Tokenizer
 
 
 class LengthEvaluator(BaseEvaluator):
-    def __init__(self, tokenizer: Tokenizer):
-        self.tokenizer = tokenizer
+    def __init__(self):
+        self.tokenizer: Tokenizer = Tokenizer(os.environ["TOKENIZER_MODEL"] or "cl100k_base")
 
     def evaluate(self, pair: QAPair) -> float:
         """

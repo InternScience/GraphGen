@@ -95,3 +95,9 @@ ENTITY_EXTRACTION_PROMPT = """从以下文本块中提取指定实体的类型�
     "description": "<实体描述>"
 }}
 """
+
+CONSISTENCY_EVALUATION_PROMPT = {
+    "en": "",
+    "zh": ""
+}
+

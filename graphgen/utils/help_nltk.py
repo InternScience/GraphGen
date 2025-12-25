@@ -1,7 +1,16 @@
 from functools import lru_cache
 import os
 from typing import Dict, List, Final, Optional
+import warnings
 import nltk
+
+warnings.filterwarnings(
+    "ignore", 
+    category=UserWarning,
+    module="jieba\._compat"
+)
+
+
 import jieba
 
 class NLTKHelper:

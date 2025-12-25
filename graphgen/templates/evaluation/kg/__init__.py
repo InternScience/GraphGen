@@ -1,1 +1,2 @@
 from .accuracy_evaluation import ACCURACY_EVALUATION_PROMPT
+from .consistency_evaluation import CONSISTENCY_EVALUATION_PROMPT

@@ -152,7 +152,9 @@ class AccuracyEvaluator:
     ) -> Dict[str, Any]:
         """Use LLM to evaluate entity extraction quality."""
         try:
-            prompt = ENTITY_EVALUATION_PROMPT.format(
+            lang = detect_main_language(chunk.content)
+
+            prompt = ACCURACY_EVALUATION_PROMPT[lang]["ENTITY"].format(
                 chunk_content=chunk.content,
                 extracted_entities=json.dumps(
                     extracted_entities, ensure_ascii=False, indent=2
@@ -225,7 +227,8 @@ class AccuracyEvaluator:
     ) -> Dict[str, Any]:
         """Use LLM to evaluate relation extraction quality."""
         try:
-            prompt = RELATION_EVALUATION_PROMPT.format(
+            lang = detect_main_language(chunk.content)
+            prompt = ACCURACY_EVALUATION_PROMPT[lang]["RELATION"].format(
                 chunk_content=chunk.content,
                 extracted_relations=json.dumps(
                     extracted_relations, ensure_ascii=False, indent=2
