@@ -67,9 +67,9 @@ python3 -m graphgen.run \
 The input file should be in JSONL format with DNA sequence queries:
 
 ```jsonl
-{"type": "text", "content": "BRCA1"}
-{"type": "text", "content": ">query\nATGCGATCG..."}
-{"type": "text", "content": "ATGCGATCG..."}
+{"type": "dna", "content": "BRCA1"}
+{"type": "dna", "content": ">query\nATGCGATCG..."}
+{"type": "dna", "content": "ATGCGATCG..."}
 ```
 
 ## Output

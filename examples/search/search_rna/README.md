@@ -63,9 +63,9 @@ python3 -m graphgen.run \
 The input file should be in JSONL format with RNA sequence queries:
 
 ```jsonl
-{"type": "text", "content": "miR-21"}
-{"type": "text", "content": ">query\nAUGCAUGC..."}
-{"type": "text", "content": "AUGCAUGC..."}
+{"type": "rna", "content": "miR-21"}
+{"type": "rna", "content": ">query\nAUGCAUGC..."}
+{"type": "rna", "content": "AUGCAUGC..."}
 ```
 
 ## Output
