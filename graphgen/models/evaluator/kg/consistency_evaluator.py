@@ -5,7 +5,13 @@ from typing import Any, Dict, List
 
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
-from graphgen.utils import create_event_loop, logger
+from graphgen.templates.evaluation.kg.consistency_evaluation import (
+    ENTITY_DESCRIPTION_CONFLICT_PROMPT,
+    ENTITY_EXTRACTION_PROMPT,
+    ENTITY_TYPE_CONFLICT_PROMPT,
+    RELATION_CONFLICT_PROMPT,
+)
+from graphgen.utils import logger
 
 
 class ConsistencyEvaluator:
@@ -20,12 +26,10 @@ class ConsistencyEvaluator:
         graph_storage: BaseGraphStorage,
         chunk_storage: BaseKVStorage,
         llm_client: BaseLLMWrapper,
-        max_concurrent: int = 10,
     ):
         self.graph_storage = graph_storage
         self.chunk_storage = chunk_storage
         self.llm_client = llm_client
-        self.max_concurrent = max_concurrent
 
     def evaluate(self) -> Dict[str, Any]:
         """Evaluate consistency by detecting semantic conflicts."""
@@ -33,11 +37,10 @@ class ConsistencyEvaluator:
         if not all_nodes:
             return {"error": "Empty graph"}
 
-        loop = create_event_loop()
-        return loop.run_until_complete(self._evaluate_consistency(all_nodes))
+        return self._evaluate_consistency(all_nodes)
 
-    async def _evaluate_consistency(self, all_nodes: List) -> Dict[str, Any]:
-        """Async evaluation of consistency."""
+    def _evaluate_consistency(self, all_nodes: List) -> Dict[str, Any]:
+        """Evaluate consistency by detecting semantic conflicts."""
         # Filter entities with multiple source chunks
         entities_with_multiple_sources = []
         for node_id, node_data in all_nodes:
@@ -63,34 +66,21 @@ class ConsistencyEvaluator:
             f"Checking consistency for {len(entities_with_multiple_sources)} entities with multiple sources"
         )
 
-        # Evaluate entities concurrently
-        semaphore = asyncio.Semaphore(self.max_concurrent)
-
-        async def evaluate_entity(entity_info):
-            async with semaphore:
-                return await self._evaluate_entity_consistency(entity_info)
-
-        tasks = [
-            evaluate_entity(entity_info)
-            for entity_info in entities_with_multiple_sources
-        ]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
-        # Aggregate results
+        # Evaluate entities sequentially
         conflicts = []
         conflict_entities = set()
 
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
+        for entity_info in entities_with_multiple_sources:
+            try:
+                entity_id, entity_conflicts = self._evaluate_entity_consistency(entity_info)
+                if entity_conflicts:
+                    conflicts.extend(entity_conflicts)
+                    conflict_entities.add(entity_id)
+            except Exception as e:
                 logger.error(
-                    f"Failed to evaluate entity {entities_with_multiple_sources[i][0]}: {result}"
+                    f"Failed to evaluate entity {entity_info[0]}: {e}"
                 )
                 continue
-
-            entity_id, entity_conflicts = result
-            if entity_conflicts:
-                conflicts.extend(entity_conflicts)
-                conflict_entities.add(entity_id)
 
         total_entities = len(all_nodes)
         conflict_rate = (
@@ -114,7 +104,7 @@ class ConsistencyEvaluator:
             clean_id = clean_id[1:-1].strip()
         return clean_id
 
-    async def _evaluate_entity_consistency(
+    def _evaluate_entity_consistency(
         self, entity_info: tuple
     ) -> tuple[str, List[Dict]]:
         """Evaluate consistency for a single entity."""
@@ -131,7 +121,7 @@ class ConsistencyEvaluator:
         # Extract entity attributes from each chunk
         entity_extractions = {}
         for chunk in chunks:
-            extraction = await self._extract_entity_from_chunk(entity_id, chunk)
+            extraction = self._extract_entity_from_chunk(entity_id, chunk)
             if extraction:
                 entity_extractions[chunk.id] = extraction
 
@@ -143,7 +133,7 @@ class ConsistencyEvaluator:
             chunk_id: ext.get("entity_type", "")
             for chunk_id, ext in entity_extractions.items()
         }
-        type_conflict = await self._check_entity_type_consistency(
+        type_conflict = self._check_entity_type_consistency(
             entity_id, type_extractions
         )
         if type_conflict and type_conflict.get("has_conflict", False):
@@ -163,7 +153,7 @@ class ConsistencyEvaluator:
             chunk_id: ext.get("description", "")
             for chunk_id, ext in entity_extractions.items()
         }
-        desc_conflict = await self._check_entity_description_consistency(
+        desc_conflict = self._check_entity_description_consistency(
             entity_id, descriptions
         )
         if desc_conflict and desc_conflict.get("has_conflict", False):
@@ -196,7 +186,7 @@ class ConsistencyEvaluator:
                     continue
         return chunks
 
-    async def _extract_entity_from_chunk(
+    def _extract_entity_from_chunk(
         self, entity_id: str, chunk: Chunk
     ) -> Dict[str, str]:
         """Extract entity attributes from a chunk using LLM."""
@@ -211,7 +201,7 @@ class ConsistencyEvaluator:
                 else "",  # Limit content length
             )
 
-            response = await self.llm_client.generate_answer(prompt)
+            response = asyncio.run(self.llm_client.generate_answer(prompt))
 
             # Try to parse JSON response
             try:
@@ -265,7 +255,7 @@ class ConsistencyEvaluator:
             )
             return {}
 
-    async def _check_entity_type_consistency(
+    def _check_entity_type_consistency(
         self, entity_id: str, type_extractions: Dict[str, str]
     ) -> Dict[str, Any]:
         """Check entity type consistency using LLM."""
@@ -284,7 +274,7 @@ class ConsistencyEvaluator:
                 entity_name=entity_id, type_extractions="\n".join(type_list)
             )
 
-            response = await self.llm_client.generate_answer(prompt)
+            response = asyncio.run(self.llm_client.generate_answer(prompt))
 
             # Parse JSON response
             try:
@@ -304,7 +294,7 @@ class ConsistencyEvaluator:
             logger.error(f"Error checking type consistency for {entity_id}: {e}")
             return {"has_conflict": False}
 
-    async def _check_entity_description_consistency(
+    def _check_entity_description_consistency(
         self, entity_id: str, descriptions: Dict[str, str]
     ) -> Dict[str, Any]:
         """Check entity description consistency using LLM."""
@@ -327,7 +317,7 @@ class ConsistencyEvaluator:
                 entity_name=entity_id, descriptions="\n".join(desc_list)
             )
 
-            response = await self.llm_client.generate_answer(prompt)
+            response = asyncio.run(self.llm_client.generate_answer(prompt))
 
             # Parse JSON response
             try:
@@ -347,7 +337,7 @@ class ConsistencyEvaluator:
             logger.error(f"Error checking description consistency for {entity_id}: {e}")
             return {"has_conflict": False}
 
-    async def _check_relation_consistency(
+    def _check_relation_consistency(
         self, src_id: str, dst_id: str, relation_extractions: Dict[str, str]
     ) -> Dict[str, Any]:
         """Check relation consistency using LLM."""
@@ -367,7 +357,7 @@ class ConsistencyEvaluator:
                 relation_descriptions="\n".join(rel_list),
             )
 
-            response = await self.llm_client.generate_answer(prompt)
+            response = asyncio.run(self.llm_client.generate_answer(prompt))
 
             # Parse JSON response
             try:
