@@ -273,4 +273,8 @@ class Engine:
             self._execute_node(node, initial_ds)
 
         output_nodes = [n for n in sorted_nodes if getattr(n, "save_output", False)]
+        logger.info(
+            "Execution completed. Output nodes: %s",
+            [n.id for n in output_nodes],
+        )
         return {node.id: self.datasets[node.id] for node in output_nodes}

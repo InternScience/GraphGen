@@ -20,6 +20,7 @@ nodes:
     execution_params:
       replicas: 1
       batch_size: 10
+    save_output: true
     params:
       data_sources: [rnacentral] # data source for searcher, support: wikipedia, google, uniprot, ncbi, rnacentral
       rnacentral_params:

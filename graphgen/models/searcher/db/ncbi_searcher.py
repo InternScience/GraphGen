@@ -16,6 +16,7 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
+from graphgen.utils import logger
 
 
 class NCBISearch(BaseSearcher):
@@ -38,7 +39,6 @@ class NCBISearch(BaseSearcher):
         tool: str = "GraphGen",
         blast_num_threads: int = 4,
         threshold: float = 0.01,
-        working_dir: str = "cache",
     ):
         """
         Initialize the NCBI Search client.
@@ -50,9 +50,7 @@ class NCBISearch(BaseSearcher):
             api_key (str): API key for NCBI API requests, see https://account.ncbi.nlm.nih.gov/settings/.
             tool (str): Tool name for NCBI API requests.
             blast_num_threads (int): Number of threads for BLAST search.
-            working_dir (str): Working directory for log files.
         """
-        super().__init__(working_dir=working_dir)
         Entrez.timeout = 60  # 60 seconds timeout
         Entrez.email = email
         Entrez.tool = tool
@@ -70,10 +68,10 @@ class NCBISearch(BaseSearcher):
                 f"{self.local_blast_db}.00.nhr"
             )
             if not db_exists:
-                self.logger.error(
+                logger.error(
                     "Local BLAST database files not found. Please check the path."
                 )
-                self.logger.error(
+                logger.error(
                     "Expected: %s.nhr or %s.00.nhr",
                     self.local_blast_db,
                     self.local_blast_db,
@@ -276,7 +274,7 @@ class NCBISearch(BaseSearcher):
                     result["sequence"] = str(fasta_record.seq)
                     result["sequence_length"] = len(fasta_record.seq)
             except Exception as fasta_exc:
-                self.logger.warning(
+                logger.warning(
                     "Failed to extract sequence from accession %s using FASTA format: %s",
                     accession,
                     fasta_exc,
@@ -302,7 +300,7 @@ class NCBISearch(BaseSearcher):
                     # Failed to extract from local DB, set to None (no fallback to API)
                     result["sequence"] = None
                     result["sequence_length"] = None
-                    self.logger.warning(
+                    logger.warning(
                         "Failed to extract sequence from local DB for accession %s. "
                         "Not falling back to NCBI API as use_local_blast=True.",
                         accession,
@@ -334,7 +332,7 @@ class NCBISearch(BaseSearcher):
         except (RequestException, IncompleteRead):
             raise
         except Exception as exc:
-            self.logger.error("Gene ID %s not found: %s", gene_id, exc)
+            logger.error("Gene ID %s not found: %s", gene_id, exc)
             return None
 
     @retry(
@@ -365,7 +363,7 @@ class NCBISearch(BaseSearcher):
                 gene_id = _extract_gene_id(link_handle)
 
             if not gene_id:
-                self.logger.warning("Accession %s has no associated GeneID", accession)
+                logger.warning("Accession %s has no associated GeneID", accession)
                 return None
 
             result = self.get_by_gene_id(gene_id, preferred_accession=accession)
@@ -378,7 +376,7 @@ class NCBISearch(BaseSearcher):
         except (RequestException, IncompleteRead):
             raise
         except Exception as exc:
-            self.logger.error("Accession %s not found: %s", accession, exc)
+            logger.error("Accession %s not found: %s", accession, exc)
             return None
 
     @retry(
@@ -405,7 +403,7 @@ class NCBISearch(BaseSearcher):
         except (RequestException, IncompleteRead):
             raise
         except Exception as e:
-            self.logger.error("Keyword %s not found: %s", keyword, e)
+            logger.error("Keyword %s not found: %s", keyword, e)
         return None
 
     def _extract_sequence_from_local_db(self, accession: str) -> Optional[str]:
@@ -428,12 +426,12 @@ class NCBISearch(BaseSearcher):
             ).strip()
             return sequence if sequence else None
         except subprocess.TimeoutExpired:
-            self.logger.warning(
+            logger.warning(
                 "Timeout extracting sequence from local DB for accession %s", accession
             )
             return None
         except Exception as exc:
-            self.logger.warning(
+            logger.warning(
                 "Failed to extract sequence from local DB for accession %s: %s",
                 accession,
                 exc,
@@ -472,7 +470,7 @@ class NCBISearch(BaseSearcher):
                 "-outfmt",
                 "6 sacc",  # Only accession, tab-separated
             ]
-            self.logger.debug(
+            logger.debug(
                 "Running local blastn (threads=%d): %s",
                 self.blast_num_threads,
                 " ".join(cmd),
@@ -487,16 +485,14 @@ class NCBISearch(BaseSearcher):
                     stderr=subprocess.DEVNULL,  # Suppress BLAST warnings to reduce I/O
                 ).strip()
             except subprocess.TimeoutExpired:
-                self.logger.warning(
-                    "BLAST search timed out after 5 minutes for sequence"
-                )
+                logger.warning("BLAST search timed out after 5 minutes for sequence")
                 os.remove(tmp_name)
                 return None
 
             os.remove(tmp_name)
             return out.split("\n", maxsplit=1)[0] if out else None
         except Exception as exc:
-            self.logger.error("Local blastn failed: %s", exc)
+            logger.error("Local blastn failed: %s", exc)
             # Clean up temp file if it still exists
             try:
                 if "tmp_name" in locals():
@@ -521,13 +517,13 @@ class NCBISearch(BaseSearcher):
         ) -> Optional[dict]:
             """Process network BLAST result and return dictionary or None."""
             if not blast_record.alignments:
-                self.logger.info("No BLAST hits found for the given sequence.")
+                logger.info("No BLAST hits found for the given sequence.")
                 return None
 
             best_alignment = blast_record.alignments[0]
             best_hsp = best_alignment.hsps[0]
             if best_hsp.expect > threshold:
-                self.logger.info("No BLAST hits below the threshold E-value.")
+                logger.info("No BLAST hits below the threshold E-value.")
                 return None
 
             hit_id = best_alignment.hit_id
@@ -550,7 +546,7 @@ class NCBISearch(BaseSearcher):
 
         try:
             if not (seq := _extract_and_normalize_sequence(sequence)):
-                self.logger.error("Empty or invalid DNA sequence provided.")
+                logger.error("Empty or invalid DNA sequence provided.")
                 return None
 
             # Try local BLAST first if enabled
@@ -558,20 +554,20 @@ class NCBISearch(BaseSearcher):
                 accession = self._local_blast(seq, threshold)
 
                 if accession:
-                    self.logger.debug("Local BLAST found accession: %s", accession)
+                    logger.debug("Local BLAST found accession: %s", accession)
                     # When using local BLAST, skip sequence fetching by default (faster, fewer API calls)
                     # Sequence is already known from the query, so we only need metadata
                     result = self.get_by_accession(accession)
                     return result
 
-                self.logger.info(
+                logger.info(
                     "Local BLAST found no match for sequence. "
                     "API fallback disabled when using local database."
                 )
                 return None
 
             # Fall back to network BLAST only if local BLAST is not enabled
-            self.logger.debug("Falling back to NCBIWWW.qblast")
+            logger.debug("Falling back to NCBIWWW.qblast")
             with NCBIWWW.qblast(
                 "blastn", "nr", seq, hitlist_size=1, expect=threshold
             ) as result_handle:
@@ -582,7 +578,7 @@ class NCBISearch(BaseSearcher):
         except (RequestException, IncompleteRead):
             raise
         except Exception as e:
-            self.logger.error("BLAST search failed: %s", e)
+            logger.error("BLAST search failed: %s", e)
             return None
 
     @retry(
@@ -595,11 +591,11 @@ class NCBISearch(BaseSearcher):
         """Search NCBI with either a gene ID, accession number, keyword, or DNA sequence."""
         threshold = threshold or self.threshold
         if not query or not isinstance(query, str):
-            self.logger.error("Empty or non-string input.")
+            logger.error("Empty or non-string input.")
             return None
 
         query = query.strip()
-        self.logger.debug("NCBI search query: %s", query)
+        logger.debug("NCBI search query: %s", query)
 
         # Auto-detect query type and execute
         # All methods call NCBI API (rate limit: max 3 requests per second)

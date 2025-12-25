@@ -1,18 +1,11 @@
-"""
-To use Google Web Search API,
-follow the instructions [here](https://developers.google.com/custom-search/v1/overview)
-to get your Google searcher api key.
-
-To use Bing Web Search API,
-follow the instructions [here](https://www.microsoft.com/en-us/bing/apis/bing-web-search-api)
-and obtain your Bing subscription key.
-"""
+from functools import partial
+from typing import Optional
 
 import pandas as pd
 
 from graphgen.bases import BaseOperator
 from graphgen.common import init_storage
-from graphgen.utils import run_concurrent
+from graphgen.utils import compute_content_hash, logger, run_concurrent
 
 
 class SearchService(BaseOperator):
@@ -35,105 +28,136 @@ class SearchService(BaseOperator):
         self.search_storage = init_storage(
             backend=kv_backend, working_dir=working_dir, namespace="search"
         )
+        self.searchers = {}
 
-        # 初始化所有 searchers（延迟导入以避免循环导入）
-        from graphgen.models import NCBISearch, RNACentralSearch, UniProtSearch
-
-        uniprot_params = kwargs.get("uniprot_params", {})
-        ncbi_params = kwargs.get("ncbi_params", {})
-        rnacentral_params = kwargs.get("rnacentral_params", {})
-
-        self.searchers = {
-            "uniprot": UniProtSearch(working_dir=self.working_dir, **uniprot_params),
-            "ncbi": NCBISearch(working_dir=self.working_dir, **ncbi_params),
-            "rnacentral": RNACentralSearch(working_dir=self.working_dir, **rnacentral_params),
-        }
-
-    def _perform_searches(self, seed_data: list) -> dict:
+    def _init_searchers(self):
         """
-        Internal method to perform searches across multiple search types and aggregate the results.
-        :param seed_data: A list of seed data dictionaries to search for
-        :return: A dictionary with search results
+        Initialize all searchers (deferred import to avoid circular imports).
         """
-        results = {}
-
-        for data_source in self.data_sources:
-            if data_source not in self.searchers:
-                if data_source in ["google", "bing", "wikipedia"]:
-                    # TODO: Implement these searchers here
-                    continue
-                self.logger.error("Data source %s not supported.", data_source)
+        for datasource in self.data_sources:
+            if datasource in self.searchers:
                 continue
+            if datasource == "uniprot":
+                from graphgen.models import UniProtSearch
 
-            searcher = self.searchers[data_source]
+                params = self.kwargs.get("uniprot_params", {})
+                self.searchers[datasource] = UniProtSearch(**params)
+            elif datasource == "ncbi":
+                from graphgen.models import NCBISearch
 
-            # 创建异步包装器，将同步的search方法包装成异步
-            async def async_search_wrapper(seed: dict, searcher_obj=searcher, ds=data_source):
-                import asyncio
-                query = seed.get("_search_query") or seed.get("content", "")
-                threshold = seed.get("threshold", 0.01)
-                # 在executor中运行同步的search方法
-                loop = asyncio.get_event_loop()
-                result = await loop.run_in_executor(None, searcher_obj.search, query, threshold)
-                if result:
-                    # 生成 _doc_id（从 id 字段，确保以 "doc-" 开头）
-                    doc_id = result.get("id") or result.get("_search_query") or f"doc-{hash(str(result))}"
-                    doc_id = str(doc_id)
-                    if not doc_id.startswith("doc-"):
-                        doc_id = f"doc-{doc_id}"
-                    result["_doc_id"] = doc_id
+                params = self.kwargs.get("ncbi_params", {})
+                self.searchers[datasource] = NCBISearch(**params)
+            elif datasource == "rnacentral":
+                from graphgen.models import RNACentralSearch
 
-                    # 直接添加已知的 data_source
-                    result["data_source"] = ds
+                params = self.kwargs.get("rnacentral_params", {})
+                self.searchers[datasource] = RNACentralSearch(**params)
+            else:
+                logger.error(f"Unknown data source: {datasource}, skipping")
 
-                    # 设置 type 字段（从输入数据获取，如果没有则默认为 "text"）
-                    if "type" in seed:
-                        result["type"] = seed.get("type", "text")
-                    else:
-                        result["type"] = "text"
-                return result
+    @staticmethod
+    async def _perform_search(
+        seed: dict, searcher_obj, data_source: str
+    ) -> Optional[dict]:
+        """
+        Perform search for a single seed using the specified searcher.
 
-            search_results = run_concurrent(
-                async_search_wrapper,
-                seed_data,
+        :param seed: The seed document with 'content' field
+        :param searcher_obj: The searcher instance
+        :param data_source: The data source name
+        :return: Search result with metadata
+        """
+        query = seed.get("content", "")
+
+        if not query:
+            logger.warning("Empty query for seed: %s", seed)
+            return None
+
+        result = searcher_obj.search(query)
+        if result:
+            result["_doc_id"] = compute_content_hash(str(data_source) + query, "doc-")
+            result["data_source"] = data_source
+            result["type"] = seed.get("type", "text")
+
+        return result
+
+    def _process_single_source(
+        self, data_source: str, seed_data: list[dict]
+    ) -> list[dict]:
+        """
+        process a single data source: check cache, search missing, update cache.
+        """
+        searcher = self.searchers[data_source]
+
+        seeds_with_ids = []
+        for seed in seed_data:
+            query = seed.get("content", "")
+            if not query:
+                continue
+            doc_id = compute_content_hash(str(data_source) + query, "doc-")
+            seeds_with_ids.append((doc_id, seed))
+
+        if not seeds_with_ids:
+            return []
+
+        doc_ids = [doc_id for doc_id, _ in seeds_with_ids]
+        cached_results = self.search_storage.get_by_ids(doc_ids)
+
+        to_search_seeds = []
+        final_results = []
+
+        for (doc_id, seed), cached in zip(seeds_with_ids, cached_results):
+            if cached is not None:
+                if "_doc_id" not in cached:
+                    cached["_doc_id"] = doc_id
+                final_results.append(cached)
+            else:
+                to_search_seeds.append(seed)
+
+        if to_search_seeds:
+            new_results = run_concurrent(
+                partial(
+                    self._perform_search, searcher_obj=searcher, data_source=data_source
+                ),
+                to_search_seeds,
                 desc=f"Searching {data_source} database",
                 unit="keyword",
             )
-            results[data_source] = search_results
+            new_results = [res for res in new_results if res is not None]
 
-        return results
+            if new_results:
+                upsert_data = {res["_doc_id"]: res for res in new_results}
+                self.search_storage.upsert(upsert_data)
+                logger.info(
+                    f"Saved {len(upsert_data)} new results to {data_source} cache"
+                )
 
-    def process(
-        self, batch: pd.DataFrame
-    ) -> pd.DataFrame:  # pylint: disable=too-many-branches
-        """
-        Process a batch of documents and perform searches.
-        This is the Ray Data operator interface.
+            final_results.extend(new_results)
 
-        :param batch: DataFrame containing documents with at least 'content' column
-        :return: DataFrame containing search results with '_doc_id', 'type', 'data_source' fields
-        """
+        return final_results
+
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         docs = batch.to_dict(orient="records")
 
-        # Filter out None entries and documents without content
+        self._init_searchers()
+
         seed_data = [doc for doc in docs if doc and "content" in doc]
 
-        search_results = self._perform_searches(seed_data)
+        if not seed_data:
+            logger.warning("No valid seeds in batch")
+            return pd.DataFrame([])
 
-        # Convert search_results from {data_source: [results]} to DataFrame
-        result_rows = []
+        all_results = []
 
-        for result_list in search_results.values():
-            if not isinstance(result_list, list):
+        for data_source in self.data_sources:
+            if data_source not in self.searchers:
+                logger.error(f"Data source {data_source} not initialized, skipping")
                 continue
 
-            for result in result_list:
-                if result is not None:
-                    result_rows.append(result)
+            source_results = self._process_single_source(data_source, seed_data)
+            all_results.extend(source_results)
 
-        if not result_rows:
-            self.logger.warning("No search results generated for this batch")
-            # Return empty DataFrame with expected structure
-            return pd.DataFrame(columns=["_doc_id", "type", "content", "data_source"])
+        if not all_results:
+            logger.warning("No search results generated for this batch")
 
-        return pd.DataFrame(result_rows)
+        return pd.DataFrame(all_results)
