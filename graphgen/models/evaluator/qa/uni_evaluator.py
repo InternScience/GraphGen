@@ -1,186 +1,105 @@
 # https://github.com/maszhongming/UniEval/tree/main
-
-from dataclasses import field
-
-from tqdm import tqdm
-
+from typing import Optional, List
 from graphgen.bases import BaseEvaluator, QAPair
 
 
-def _add_questions(dimension: str, question: str, answer: str):
-    if dimension == "naturalness":
-        cur_input = (
-            "question: Is this a natural response in the dialogue? </s> response: "
-            + answer
-        )
-    elif dimension == "coherence":
-        cur_input = (
-            "question: Is this a coherent response given the dialogue history? </s> response: "
-            + answer
-            + " </s> dialogue history: "
-            + question
-        )
-    elif dimension == "understandability":
-        cur_input = (
-            "question: Is this an understandable response in the dialogue? </s> response: "
-            + answer
-        )
-    else:
-        raise NotImplementedError(
-            "The input format for this dimension is still undefined. Please customize it first."
-        )
-    return cur_input
-
-
-
-class UniEvaluator:
+class UniEvaluator(BaseEvaluator):
     """
-    UniEvaluator class
+    UniEvaluator for single QAPair evaluation across quality dimensions.
+    
+    Dimensions: naturalness, coherence, understandability
+    
+    Usage:
+        evaluator = UniEvaluator()
+        pair = QAPair(question="...", answer="...")
+        scores = evaluator.evaluate(pair)
+        # {"naturalness": 0.85, "coherence": 0.92, "understandability": 0.88}
     """
-    model_name: str = "MingZhong/unieval-sum"
-    dimensions: list = field(
-        default_factory=lambda: ["naturalness", "coherence", "understandability"]
-    )
-    max_length: int = 2560
-    results: dict = None
 
-    def __post_init__(self):
-        import torch
+    DEFAULT_MODEL: str = "MingZhong/unieval-sum"
+    DEFAULT_DIMS: List[str] = ["naturalness", "coherence", "understandability"]
+    DEFAULT_MAX_LENGTH: int = 2560
 
-        self.num_gpus = torch.cuda.device_count()
-        self.results = {}
-
-    @staticmethod
-    def process_chunk(rank, pairs, model_name, max_length, dimension, return_dict):
+    def __init__(
+        self,
+        model_name: Optional[str] = None,
+        max_length: Optional[int] = None,
+        device: Optional[str] = None,
+    ):
+        """
+        Args:
+            model_name: HuggingFace model name/path
+            max_length: Tokenizer max sequence length
+            device: 'cuda', 'cpu', or None for auto-detect
+        """
         import torch
         from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+        self.torch = torch
 
-        device = f"cuda:{rank}"
-        torch.cuda.set_device(rank)
+        self.model_name = model_name or self.DEFAULT_MODEL
+        self.max_length = max_length or self.DEFAULT_MAX_LENGTH
+        self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
 
-        rank_model = AutoModelForSeq2SeqLM.from_pretrained(model_name)
-        tokenizer = AutoTokenizer.from_pretrained(model_name)
-        rank_model.to(device)
-        rank_model.eval()
+        # Load model & tokenizer
+        self.tokenizer = AutoTokenizer.from_pretrained(self.model_name)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(self.model_name)
+        self.model.to(self.device)
+        self.model.eval()
 
-        softmax = torch.nn.Softmax(dim=1)
+        # Pre-compute Yes/No token IDs
+        self._yes_id = self.tokenizer("Yes")["input_ids"][0]
+        self._no_id = self.tokenizer("No")["input_ids"][0]
 
-        pos_id = tokenizer("Yes")["input_ids"][0]
-        neg_id = tokenizer("No")["input_ids"][0]
+    @staticmethod
+    def _build_input_text(dimension: str, question: str, answer: str) -> str:
+        """Construct input text for specified dimension."""
+        if dimension == "naturalness":
+            return f"question: Is this a natural response? </s> response: {answer}"
+        elif dimension == "coherence":
+            return f"question: Is this a coherent response? </s> response: {answer} </s> history: {question}"
+        elif dimension == "understandability":
+            return f"question: Is this an understandable response? </s> response: {answer}"
+        raise NotImplementedError(f"Unsupported dimension '{dimension}'")
 
-        results = []
-        with torch.no_grad():
-            for pair in tqdm(pairs):
-                text = _add_questions(dimension, pair.question, pair.answer)
+    def evaluate(
+        self,
+        pair: QAPair,
+        dimensions: Optional[List[str]] = None,
+    ) -> dict[str, float]:
+        """Evaluate a single QAPair across specified dimensions."""
+        dimensions = dimensions or self.DEFAULT_DIMS
 
-                tgt = "No"
+        # Validate dimensions
+        invalid = set(dimensions) - set(self.DEFAULT_DIMS)
+        if invalid:
+            raise ValueError(f"Invalid dimensions: {invalid}. Available: {self.DEFAULT_DIMS}")
 
-                encoded_src = tokenizer(
-                    text,
-                    max_length=max_length,
-                    truncation=True,
-                    padding=True,
-                    return_tensors="pt",
-                )
-                encoded_tgt = tokenizer(
-                    tgt,
-                    max_length=max_length,
-                    truncation=True,
-                    padding=True,
-                    return_tensors="pt",
-                )
+        results = {}
+        no_token = self.torch.tensor([[self._no_id]], device=self.device)
 
-                src_tokens = encoded_src["input_ids"].to(device)
-                src_mask = encoded_src["attention_mask"].to(device)
+        for dim in dimensions:
+            # Tokenize input
+            src = self.tokenizer(
+                self._build_input_text(dim, pair.question, pair.answer),
+                max_length=self.max_length,
+                truncation=True,
+                return_tensors="pt",
+            )
+            src_tokens = src["input_ids"].to(self.device)
+            src_mask = src["attention_mask"].to(self.device)
 
-                tgt_tokens = encoded_tgt["input_ids"].to(device)[:, 0].unsqueeze(-1)
-
-                output = rank_model(
+            # Score
+            with self.torch.no_grad():
+                logits = self.model(
                     input_ids=src_tokens,
                     attention_mask=src_mask,
-                    labels=tgt_tokens,
+                    labels=no_token,
                     use_cache=False,
-                )
+                ).logits[:, 0, :]  # [1, vocab_size]
 
-                logits = output.logits.view(-1, rank_model.config.vocab_size)
+                probs = self.torch.softmax(logits, dim=-1)[0]
+                score = probs[self._yes_id] / (probs[self._yes_id] + probs[self._no_id])
 
-                pos_score = softmax(logits)[:, pos_id]  # Yes
-                neg_score = softmax(logits)[:, neg_id]
-                score = pos_score / (pos_score + neg_score)
+            results[dim] = score.item()
 
-                results.append(score.item())
-
-        return_dict[rank] = results
-
-    def evaluate(self, pairs: list[QAPair]) -> list[dict]:
-        import torch.multiprocessing as mp
-
-        final_results = []
-        for dimension in self.dimensions:
-            chunk_size = len(pairs) // self.num_gpus
-            chunks = []
-            for i in range(self.num_gpus):
-                start = i * chunk_size
-                end = start + chunk_size
-                if i == self.num_gpus - 1:
-                    end = len(pairs)
-                chunks.append(pairs[start:end])
-
-            # multi-process
-            manager = mp.Manager()
-            return_dict = manager.dict()
-            processes = []
-
-            for rank, chunk in enumerate(chunks):
-                p = mp.Process(
-                    target=self.process_chunk,
-                    args=(
-                        rank,
-                        chunk,
-                        self.model_name,
-                        self.max_length,
-                        dimension,
-                        return_dict,
-                    ),
-                )
-                p.start()
-                processes.append(p)
-
-            for p in processes:
-                p.join()
-
-            # 合并结果
-            results = []
-            for rank in range(len(chunks)):
-                results.extend(return_dict[rank])
-
-            for p in processes:
-                if p.is_alive():
-                    p.terminate()
-                    p.join()
-
-            final_results.append({dimension: results})
-        return final_results
-
-    def get_average_score(self, pairs: list[QAPair]) -> dict:
-        """
-        Get the average score of a batch of texts.
-        """
-        results = self.evaluate(pairs)
-        final_results = {}
-        for result in results:
-            for key, value in result.items():
-                final_results[key] = sum(value) / len(value)
-                self.results[key] = value
-        return final_results
-
-    def get_min_max_score(self, pairs: list[QAPair]) -> dict:
-        """
-        Get the min and max score of a batch of texts.
-        """
-        if self.results is None:
-            self.get_average_score(pairs)
-        final_results = {}
-        for key, value in self.results.items():
-            final_results[key] = min(value), max(value)
-        return final_results
+        return results

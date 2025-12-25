@@ -26,6 +26,7 @@ class RewardEvaluator(BaseEvaluator):
 
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
+        self.torch = torch
 
         # Set device (auto-detect if not specified)
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
@@ -59,6 +60,7 @@ class RewardEvaluator(BaseEvaluator):
         inputs = {k: v.to(self.device) for k, v in inputs.items()}
 
         # Get score
-        score = self.model(**inputs).logits[0].item()
+        with self.torch.no_grad():
+            score = self.model(**inputs).logits[0].item()
 
         return score
