@@ -1,5 +1,7 @@
 global_params:
   working_dir: cache
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+  graph_backend: kuzu # graph database backend, support: kuzu, networkx
 
 nodes:
   - id: read_step
