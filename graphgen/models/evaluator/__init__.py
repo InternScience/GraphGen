@@ -1,2 +1,2 @@
-from graphgen.models.evaluator.kg.kg_quality_evaluator import KGQualityEvaluator
-from graphgen.models.evaluator.qa.uni_evaluator import UniEvaluator
+from .qa import LengthEvaluator, MTLDEvaluator, RewardEvaluator, UniEvaluator
+from .kg import AccuracyEvaluator, ConsistencyEvaluator, StructureEvaluator
