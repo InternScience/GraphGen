@@ -8,106 +8,6 @@ from graphgen.bases.datatypes import Chunk
 from graphgen.utils import create_event_loop, logger
 
 
-# LLM prompts for conflict detection
-ENTITY_TYPE_CONFLICT_PROMPT = """你是一个知识图谱一致性评估专家。你的任务是判断同一个实体在不同文本块中被提取为不同的类型，是否存在语义冲突。
-
-实体名称：{entity_name}
-
-在不同文本块中的类型提取结果：
-{type_extractions}
-
-预设的实体类型列表（供参考）：
-concept, date, location, keyword, organization, person, event, work, nature, artificial, science, technology, mission, gene
-
-请判断这些类型是否存在语义冲突（即它们是否描述的是同一类事物，还是存在矛盾）。
-注意：如果类型只是同一概念的不同表述（如 concept 和 keyword），可能不算严重冲突。
-
-请以 JSON 格式返回：
-{{
-    "has_conflict": <true/false>,
-    "conflict_severity": <0-1之间的浮点数，0表示无冲突，1表示严重冲突>,
-    "conflict_reasoning": "<冲突判断的理由>",
-    "conflicting_types": ["<存在冲突的类型对>"],
-    "recommended_type": "<如果存在冲突，推荐的正确类型（必须是预设类型之一）>"
-}}
-"""
-
-ENTITY_DESCRIPTION_CONFLICT_PROMPT = """你是一个知识图谱一致性评估专家。你的任务是判断同一个实体在不同文本块中的描述是否存在语义冲突。
-
-实体名称：{entity_name}
-
-在不同文本块中的描述：
-{descriptions}
-
-请判断这些描述是否存在语义冲突（即它们是否描述的是同一个实体，还是存在矛盾的信息）。
-
-请以 JSON 格式返回：
-{{
-    "has_conflict": <true/false>,
-    "conflict_severity": <0-1之间的浮点数>,
-    "conflict_reasoning": "<冲突判断的理由>",
-    "conflicting_descriptions": ["<存在冲突的描述对>"],
-    "conflict_details": "<具体的冲突内容>"
-}}
-"""
-
-RELATION_CONFLICT_PROMPT = """你是一个知识图谱一致性评估专家。你的任务是判断同一对实体在不同文本块中的关系描述是否存在语义冲突。
-
-实体对：{source_entity} -> {target_entity}
-
-在不同文本块中的关系描述：
-{relation_descriptions}
-
-请判断这些关系描述是否存在语义冲突。
-
-请以 JSON 格式返回：
-{{
-    "has_conflict": <true/false>,
-    "conflict_severity": <0-1之间的浮点数>,
-    "conflict_reasoning": "<冲突判断的理由>",
-    "conflicting_relations": ["<存在冲突的关系描述对>"]
-}}
-"""
-
-ENTITY_EXTRACTION_PROMPT = """从以下文本块中提取指定实体的类型和描述。
-
-**重要**：你只需要提取指定的实体，不要提取其他实体。
-
-实体名称：{entity_name}
-
-文本块：
-{chunk_content}
-
-请从文本块中找到并提取**仅此实体**（实体名称：{entity_name}）的以下信息：
-
-1. entity_type: 实体类型，必须是以下预设类型之一（小写）：
-   - concept: 概念
-   - date: 日期
-   - location: 地点
-   - keyword: 关键词
-   - organization: 组织
-   - person: 人物
-   - event: 事件
-   - work: 作品/工作
-   - nature: 自然
-   - artificial: 人工
-   - science: 科学
-   - technology: 技术
-   - mission: 任务
-   - gene: 基因
-
-   如果无法确定类型，请使用 "concept" 作为默认值。
-
-2. description: 实体描述（简要描述该实体在文本中的作用和特征）
-
-请以 JSON 格式返回：
-{{
-    "entity_type": "<实体类型（必须是上述预设类型之一）>",
-    "description": "<实体描述>"
-}}
-"""
-
-
 class ConsistencyEvaluator:
     """Evaluates consistency by detecting semantic conflicts using LLM-as-a-Judge.
 
@@ -149,7 +49,9 @@ class ConsistencyEvaluator:
                 entities_with_multiple_sources.append((node_id, node_data, source_ids))
 
         if not entities_with_multiple_sources:
-            logger.info("No entities with multiple sources found, skipping consistency check")
+            logger.info(
+                "No entities with multiple sources found, skipping consistency check"
+            )
             return {
                 "conflict_rate": 0.0,
                 "conflict_entities_count": 0,
@@ -157,7 +59,9 @@ class ConsistencyEvaluator:
                 "conflicts": [],
             }
 
-        logger.info(f"Checking consistency for {len(entities_with_multiple_sources)} entities with multiple sources")
+        logger.info(
+            f"Checking consistency for {len(entities_with_multiple_sources)} entities with multiple sources"
+        )
 
         # Evaluate entities concurrently
         semaphore = asyncio.Semaphore(self.max_concurrent)
@@ -166,7 +70,10 @@ class ConsistencyEvaluator:
             async with semaphore:
                 return await self._evaluate_entity_consistency(entity_info)
 
-        tasks = [evaluate_entity(entity_info) for entity_info in entities_with_multiple_sources]
+        tasks = [
+            evaluate_entity(entity_info)
+            for entity_info in entities_with_multiple_sources
+        ]
         results = await asyncio.gather(*tasks, return_exceptions=True)
 
         # Aggregate results
@@ -175,7 +82,9 @@ class ConsistencyEvaluator:
 
         for i, result in enumerate(results):
             if isinstance(result, Exception):
-                logger.error(f"Failed to evaluate entity {entities_with_multiple_sources[i][0]}: {result}")
+                logger.error(
+                    f"Failed to evaluate entity {entities_with_multiple_sources[i][0]}: {result}"
+                )
                 continue
 
             entity_id, entity_conflicts = result
@@ -199,8 +108,9 @@ class ConsistencyEvaluator:
     def _clean_entity_id(self, entity_id: str) -> str:
         """Clean entity ID by removing surrounding quotes."""
         clean_id = entity_id.strip()
-        if (clean_id.startswith('"') and clean_id.endswith('"')) or \
-           (clean_id.startswith("'") and clean_id.endswith("'")):
+        if (clean_id.startswith('"') and clean_id.endswith('"')) or (
+            clean_id.startswith("'") and clean_id.endswith("'")
+        ):
             clean_id = clean_id[1:-1].strip()
         return clean_id
 
@@ -237,14 +147,16 @@ class ConsistencyEvaluator:
             entity_id, type_extractions
         )
         if type_conflict and type_conflict.get("has_conflict", False):
-            conflicts.append({
-                "entity_id": clean_entity_id,
-                "conflict_type": "entity_type",
-                "conflict_severity": type_conflict.get("conflict_severity", 0.0),
-                "conflict_reasoning": type_conflict.get("conflict_reasoning", ""),
-                "conflicting_values": type_conflict.get("conflicting_types", []),
-                "recommended_value": type_conflict.get("recommended_type", ""),
-            })
+            conflicts.append(
+                {
+                    "entity_id": clean_entity_id,
+                    "conflict_type": "entity_type",
+                    "conflict_severity": type_conflict.get("conflict_severity", 0.0),
+                    "conflict_reasoning": type_conflict.get("conflict_reasoning", ""),
+                    "conflicting_values": type_conflict.get("conflicting_types", []),
+                    "recommended_value": type_conflict.get("recommended_type", ""),
+                }
+            )
 
         # Check entity description consistency
         descriptions = {
@@ -255,14 +167,18 @@ class ConsistencyEvaluator:
             entity_id, descriptions
         )
         if desc_conflict and desc_conflict.get("has_conflict", False):
-            conflicts.append({
-                "entity_id": clean_entity_id,
-                "conflict_type": "description",
-                "conflict_severity": desc_conflict.get("conflict_severity", 0.0),
-                "conflict_reasoning": desc_conflict.get("conflict_reasoning", ""),
-                "conflicting_values": desc_conflict.get("conflicting_descriptions", []),
-                "conflict_details": desc_conflict.get("conflict_details", ""),
-            })
+            conflicts.append(
+                {
+                    "entity_id": clean_entity_id,
+                    "conflict_type": "description",
+                    "conflict_severity": desc_conflict.get("conflict_severity", 0.0),
+                    "conflict_reasoning": desc_conflict.get("conflict_reasoning", ""),
+                    "conflicting_values": desc_conflict.get(
+                        "conflicting_descriptions", []
+                    ),
+                    "conflict_details": desc_conflict.get("conflict_details", ""),
+                }
+            )
 
         return entity_id, conflicts
 
@@ -290,7 +206,9 @@ class ConsistencyEvaluator:
 
             prompt = ENTITY_EXTRACTION_PROMPT.format(
                 entity_name=clean_entity_id,
-                chunk_content=chunk.content[:2000] if chunk.content else ""  # Limit content length
+                chunk_content=chunk.content[:2000]
+                if chunk.content
+                else "",  # Limit content length
             )
 
             response = await self.llm_client.generate_answer(prompt)
@@ -300,20 +218,33 @@ class ConsistencyEvaluator:
                 extraction = json.loads(response)
             except json.JSONDecodeError:
                 # Try to extract JSON from markdown code blocks
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
                     extraction = json.loads(json_match.group(0))
                 else:
-                    logger.warning(f"Failed to parse extraction response for {entity_id} in chunk {chunk.id}")
+                    logger.warning(
+                        f"Failed to parse extraction response for {entity_id} in chunk {chunk.id}"
+                    )
                     return {}
 
             # Normalize entity_type to lowercase and validate
             entity_type = extraction.get("entity_type", "").lower().strip()
             # Valid preset types
             valid_types = {
-                "concept", "date", "location", "keyword", "organization", 
-                "person", "event", "work", "nature", "artificial", 
-                "science", "technology", "mission", "gene"
+                "concept",
+                "date",
+                "location",
+                "keyword",
+                "organization",
+                "person",
+                "event",
+                "work",
+                "nature",
+                "artificial",
+                "science",
+                "technology",
+                "mission",
+                "gene",
             }
             # If entity_type is not in valid types, default to "concept"
             if entity_type not in valid_types:
@@ -329,7 +260,9 @@ class ConsistencyEvaluator:
                 "description": extraction.get("description", ""),
             }
         except Exception as e:
-            logger.error(f"Error extracting entity {entity_id} from chunk {chunk.id}: {e}")
+            logger.error(
+                f"Error extracting entity {entity_id} from chunk {chunk.id}: {e}"
+            )
             return {}
 
     async def _check_entity_type_consistency(
@@ -341,13 +274,14 @@ class ConsistencyEvaluator:
             return {"has_conflict": False}
 
         try:
-            type_list = [f"Chunk {chunk_id}: {entity_type}"
-                        for chunk_id, entity_type in type_extractions.items()
-                        if entity_type]
+            type_list = [
+                f"Chunk {chunk_id}: {entity_type}"
+                for chunk_id, entity_type in type_extractions.items()
+                if entity_type
+            ]
 
             prompt = ENTITY_TYPE_CONFLICT_PROMPT.format(
-                entity_name=entity_id,
-                type_extractions="\n".join(type_list)
+                entity_name=entity_id, type_extractions="\n".join(type_list)
             )
 
             response = await self.llm_client.generate_answer(prompt)
@@ -356,11 +290,13 @@ class ConsistencyEvaluator:
             try:
                 result = json.loads(response)
             except json.JSONDecodeError:
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group(0))
                 else:
-                    logger.warning(f"Failed to parse conflict detection response for {entity_id}")
+                    logger.warning(
+                        f"Failed to parse conflict detection response for {entity_id}"
+                    )
                     return {"has_conflict": False}
 
             return result
@@ -382,12 +318,13 @@ class ConsistencyEvaluator:
             return {"has_conflict": False}
 
         try:
-            desc_list = [f"Chunk {chunk_id}: {description}"
-                         for chunk_id, description in valid_descriptions.items()]
+            desc_list = [
+                f"Chunk {chunk_id}: {description}"
+                for chunk_id, description in valid_descriptions.items()
+            ]
 
             prompt = ENTITY_DESCRIPTION_CONFLICT_PROMPT.format(
-                entity_name=entity_id,
-                descriptions="\n".join(desc_list)
+                entity_name=entity_id, descriptions="\n".join(desc_list)
             )
 
             response = await self.llm_client.generate_answer(prompt)
@@ -396,11 +333,13 @@ class ConsistencyEvaluator:
             try:
                 result = json.loads(response)
             except json.JSONDecodeError:
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group(0))
                 else:
-                    logger.warning(f"Failed to parse conflict detection response for {entity_id}")
+                    logger.warning(
+                        f"Failed to parse conflict detection response for {entity_id}"
+                    )
                     return {"has_conflict": False}
 
             return result
@@ -416,14 +355,16 @@ class ConsistencyEvaluator:
             return {"has_conflict": False}
 
         try:
-            rel_list = [f"Chunk {chunk_id}: {relation}"
-                       for chunk_id, relation in relation_extractions.items()
-                       if relation]
+            rel_list = [
+                f"Chunk {chunk_id}: {relation}"
+                for chunk_id, relation in relation_extractions.items()
+                if relation
+            ]
 
             prompt = RELATION_CONFLICT_PROMPT.format(
                 source_entity=src_id,
                 target_entity=dst_id,
-                relation_descriptions="\n".join(rel_list)
+                relation_descriptions="\n".join(rel_list),
             )
 
             response = await self.llm_client.generate_answer(prompt)
@@ -432,14 +373,18 @@ class ConsistencyEvaluator:
             try:
                 result = json.loads(response)
             except json.JSONDecodeError:
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
                     result = json.loads(json_match.group(0))
                 else:
-                    logger.warning(f"Failed to parse relation conflict response for {src_id}->{dst_id}")
+                    logger.warning(
+                        f"Failed to parse relation conflict response for {src_id}->{dst_id}"
+                    )
                     return {"has_conflict": False}
 
             return result
         except Exception as e:
-            logger.error(f"Error checking relation consistency for {src_id}->{dst_id}: {e}")
+            logger.error(
+                f"Error checking relation consistency for {src_id}->{dst_id}: {e}"
+            )
             return {"has_conflict": False}

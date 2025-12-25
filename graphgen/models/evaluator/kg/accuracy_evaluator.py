@@ -5,81 +5,8 @@ from typing import Any, Dict, List
 
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
-from graphgen.utils import create_event_loop, logger
-
-
-# LLM-as-a-Judge evaluation prompts
-ENTITY_EVALUATION_PROMPT = """你是一个知识图谱质量评估专家。你的任务是从给定的文本块和提取的实体列表，评估实体提取的质量。
-
-评估维度：
-1. ACCURACY (准确性, 权重: 40%): 提取的实体是否正确，是否有误提取或错误识别
-2. COMPLETENESS (完整性, 权重: 40%): 是否遗漏了文本中的重要实体
-3. PRECISION (精确性, 权重: 20%): 提取的实体是否精确，命名是否准确
-
-评分标准（每个维度 0-1 分）：
-- EXCELLENT (0.8-1.0): 高质量提取
-- GOOD (0.6-0.79): 良好质量，有少量问题
-- ACCEPTABLE (0.4-0.59): 可接受，有明显问题
-- POOR (0.0-0.39): 质量差，需要改进
-
-综合评分 = 0.4 × Accuracy + 0.4 × Completeness + 0.2 × Precision
-
-请评估以下内容：
-
-原始文本块：
-{chunk_content}
-
-提取的实体列表：
-{extracted_entities}
-
-请以 JSON 格式返回评估结果：
-{{
-    "accuracy": <0-1之间的浮点数>,
-    "completeness": <0-1之间的浮点数>,
-    "precision": <0-1之间的浮点数>,
-    "overall_score": <综合评分>,
-    "accuracy_reasoning": "<准确性评估理由>",
-    "completeness_reasoning": "<完整性评估理由，包括遗漏的重要实体>",
-    "precision_reasoning": "<精确性评估理由>",
-    "issues": ["<发现的问题列表>"]
-}}
-"""
-
-RELATION_EVALUATION_PROMPT = """你是一个知识图谱质量评估专家。你的任务是从给定的文本块和提取的关系列表，评估关系抽取的质量。
-
-评估维度：
-1. ACCURACY (准确性, 权重: 40%): 提取的关系是否正确，关系描述是否准确
-2. COMPLETENESS (完整性, 权重: 40%): 是否遗漏了文本中的重要关系
-3. PRECISION (精确性, 权重: 20%): 关系描述是否精确，是否过于宽泛
-
-评分标准（每个维度 0-1 分）：
-- EXCELLENT (0.8-1.0): 高质量提取
-- GOOD (0.6-0.79): 良好质量，有少量问题
-- ACCEPTABLE (0.4-0.59): 可接受，有明显问题
-- POOR (0.0-0.39): 质量差，需要改进
-
-综合评分 = 0.4 × Accuracy + 0.4 × Completeness + 0.2 × Precision
-
-请评估以下内容：
-
-原始文本块：
-{chunk_content}
-
-提取的关系列表：
-{extracted_relations}
-
-请以 JSON 格式返回评估结果：
-{{
-    "accuracy": <0-1之间的浮点数>,
-    "completeness": <0-1之间的浮点数>,
-    "precision": <0-1之间的浮点数>,
-    "overall_score": <综合评分>,
-    "accuracy_reasoning": "<准确性评估理由>",
-    "completeness_reasoning": "<完整性评估理由，包括遗漏的重要关系>",
-    "precision_reasoning": "<精确性评估理由>",
-    "issues": ["<发现的问题列表>"]
-}}
-"""
+from graphgen.templates import ACCURACY_EVALUATION_PROMPT
+from graphgen.utils import create_event_loop, detect_main_language, logger
 
 
 class AccuracyEvaluator:
@@ -95,12 +22,10 @@ class AccuracyEvaluator:
         graph_storage: BaseGraphStorage,
         chunk_storage: BaseKVStorage,
         llm_client: BaseLLMWrapper,
-        max_concurrent: int = 10,
     ):
         self.graph_storage = graph_storage
         self.chunk_storage = chunk_storage
         self.llm_client = llm_client
-        self.max_concurrent = max_concurrent
 
     def evaluate(self) -> Dict[str, Any]:
         """Evaluate entity and relation extraction quality using LLM-as-a-Judge.
@@ -124,7 +49,9 @@ class AccuracyEvaluator:
         )
 
         # 3. Aggregate results
-        return self._aggregate_evaluation_results(entity_evaluations, relation_evaluations)
+        return self._aggregate_evaluation_results(
+            entity_evaluations, relation_evaluations
+        )
 
     def _load_chunks_from_storage(self) -> List[Chunk]:
         """Load all chunks from chunk storage."""
@@ -152,11 +79,13 @@ class AccuracyEvaluator:
             source_ids = node_data.get("source_id", "").split("<SEP>")
             # Check if this chunk_id is in the source_ids
             if chunk_id in [sid.strip() for sid in source_ids if sid.strip()]:
-                entities.append({
-                    "entity_name": node_data.get("entity_name", node_id),
-                    "entity_type": node_data.get("entity_type", ""),
-                    "description": node_data.get("description", "")
-                })
+                entities.append(
+                    {
+                        "entity_name": node_data.get("entity_name", node_id),
+                        "entity_type": node_data.get("entity_type", ""),
+                        "description": node_data.get("description", ""),
+                    }
+                )
 
         return entities
 
@@ -173,11 +102,13 @@ class AccuracyEvaluator:
             if chunk_id in [sid.strip() for sid in source_ids if sid.strip()]:
                 src_node = self.graph_storage.get_node(src_id) or {}
                 dst_node = self.graph_storage.get_node(dst_id) or {}
-                relations.append({
-                    "source_entity": src_node.get("entity_name", src_id),
-                    "target_entity": dst_node.get("entity_name", dst_id),
-                    "relationship_summary": edge_data.get("description", "")
-                })
+                relations.append(
+                    {
+                        "source_entity": src_node.get("entity_name", src_id),
+                        "target_entity": dst_node.get("entity_name", dst_id),
+                        "relationship_summary": edge_data.get("description", ""),
+                    }
+                )
 
         return relations
 
@@ -193,7 +124,9 @@ class AccuracyEvaluator:
                 relations = self._get_extracted_relations_for_chunk(chunk.id)
 
                 entity_eval = await self._evaluate_entity_extraction(chunk, entities)
-                relation_eval = await self._evaluate_relation_extraction(chunk, relations)
+                relation_eval = await self._evaluate_relation_extraction(
+                    chunk, relations
+                )
 
                 return entity_eval, relation_eval
 
@@ -221,7 +154,9 @@ class AccuracyEvaluator:
         try:
             prompt = ENTITY_EVALUATION_PROMPT.format(
                 chunk_content=chunk.content,
-                extracted_entities=json.dumps(extracted_entities, ensure_ascii=False, indent=2)
+                extracted_entities=json.dumps(
+                    extracted_entities, ensure_ascii=False, indent=2
+                ),
             )
 
             response = await self.llm_client.generate_answer(prompt)
@@ -231,11 +166,13 @@ class AccuracyEvaluator:
                 evaluation_result = json.loads(response)
             except json.JSONDecodeError:
                 # Try to extract JSON from markdown code blocks or other formats
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
                     evaluation_result = json.loads(json_match.group(0))
                 else:
-                    logger.warning(f"Failed to parse LLM response for chunk {chunk.id}: {response[:200]}")
+                    logger.warning(
+                        f"Failed to parse LLM response for chunk {chunk.id}: {response[:200]}"
+                    )
                     # Return default evaluation
                     evaluation_result = {
                         "accuracy": 0.0,
@@ -245,7 +182,7 @@ class AccuracyEvaluator:
                         "accuracy_reasoning": "Failed to parse LLM response",
                         "completeness_reasoning": "",
                         "precision_reasoning": "",
-                        "issues": ["LLM response parsing failed"]
+                        "issues": ["LLM response parsing failed"],
                     }
 
             # Validate and calculate overall_score if not provided
@@ -253,16 +190,22 @@ class AccuracyEvaluator:
                 accuracy = float(evaluation_result.get("accuracy", 0.0))
                 completeness = float(evaluation_result.get("completeness", 0.0))
                 precision = float(evaluation_result.get("precision", 0.0))
-                evaluation_result["overall_score"] = 0.4 * accuracy + 0.4 * completeness + 0.2 * precision
+                evaluation_result["overall_score"] = (
+                    0.4 * accuracy + 0.4 * completeness + 0.2 * precision
+                )
 
             return {
                 "chunk_id": chunk.id,
-                "chunk_content": chunk.content[:200] if chunk.content else "",  # First 200 chars for debugging
+                "chunk_content": chunk.content[:200]
+                if chunk.content
+                else "",  # First 200 chars for debugging
                 "extracted_entities_count": len(extracted_entities),
-                **evaluation_result
+                **evaluation_result,
             }
         except Exception as e:
-            logger.error(f"Error evaluating entity extraction for chunk {chunk.id}: {e}")
+            logger.error(
+                f"Error evaluating entity extraction for chunk {chunk.id}: {e}"
+            )
             return {
                 "chunk_id": chunk.id,
                 "chunk_content": chunk.content[:200] if chunk.content else "",
@@ -274,7 +217,7 @@ class AccuracyEvaluator:
                 "accuracy_reasoning": f"Evaluation failed: {str(e)}",
                 "completeness_reasoning": "",
                 "precision_reasoning": "",
-                "issues": [f"Evaluation error: {str(e)}"]
+                "issues": [f"Evaluation error: {str(e)}"],
             }
 
     async def _evaluate_relation_extraction(
@@ -284,7 +227,9 @@ class AccuracyEvaluator:
         try:
             prompt = RELATION_EVALUATION_PROMPT.format(
                 chunk_content=chunk.content,
-                extracted_relations=json.dumps(extracted_relations, ensure_ascii=False, indent=2)
+                extracted_relations=json.dumps(
+                    extracted_relations, ensure_ascii=False, indent=2
+                ),
             )
 
             response = await self.llm_client.generate_answer(prompt)
@@ -294,11 +239,13 @@ class AccuracyEvaluator:
                 evaluation_result = json.loads(response)
             except json.JSONDecodeError:
                 # Try to extract JSON from markdown code blocks or other formats
-                json_match = re.search(r'\{.*\}', response, re.DOTALL)
+                json_match = re.search(r"\{.*\}", response, re.DOTALL)
                 if json_match:
                     evaluation_result = json.loads(json_match.group(0))
                 else:
-                    logger.warning(f"Failed to parse LLM response for chunk {chunk.id}: {response[:200]}")
+                    logger.warning(
+                        f"Failed to parse LLM response for chunk {chunk.id}: {response[:200]}"
+                    )
                     # Return default evaluation
                     evaluation_result = {
                         "accuracy": 0.0,
@@ -308,7 +255,7 @@ class AccuracyEvaluator:
                         "accuracy_reasoning": "Failed to parse LLM response",
                         "completeness_reasoning": "",
                         "precision_reasoning": "",
-                        "issues": ["LLM response parsing failed"]
+                        "issues": ["LLM response parsing failed"],
                     }
 
             # Validate and calculate overall_score if not provided
@@ -316,16 +263,20 @@ class AccuracyEvaluator:
                 accuracy = float(evaluation_result.get("accuracy", 0.0))
                 completeness = float(evaluation_result.get("completeness", 0.0))
                 precision = float(evaluation_result.get("precision", 0.0))
-                evaluation_result["overall_score"] = 0.4 * accuracy + 0.4 * completeness + 0.2 * precision
+                evaluation_result["overall_score"] = (
+                    0.4 * accuracy + 0.4 * completeness + 0.2 * precision
+                )
 
             return {
                 "chunk_id": chunk.id,
                 "chunk_content": chunk.content[:200] if chunk.content else "",
                 "extracted_relations_count": len(extracted_relations),
-                **evaluation_result
+                **evaluation_result,
             }
         except Exception as e:
-            logger.error(f"Error evaluating relation extraction for chunk {chunk.id}: {e}")
+            logger.error(
+                f"Error evaluating relation extraction for chunk {chunk.id}: {e}"
+            )
             return {
                 "chunk_id": chunk.id,
                 "chunk_content": chunk.content[:200] if chunk.content else "",
@@ -337,47 +288,58 @@ class AccuracyEvaluator:
                 "accuracy_reasoning": f"Evaluation failed: {str(e)}",
                 "completeness_reasoning": "",
                 "precision_reasoning": "",
-                "issues": [f"Evaluation error: {str(e)}"]
+                "issues": [f"Evaluation error: {str(e)}"],
             }
 
     def _aggregate_evaluation_results(
         self, entity_evaluations: List[Dict], relation_evaluations: List[Dict]
     ) -> Dict[str, Any]:
         """Aggregate evaluation results from all chunks."""
+
         def calculate_stats(scores: List[float]) -> Dict[str, float]:
             if not scores:
-                return {
-                    "mean": 0.0,
-                    "median": 0.0,
-                    "min": 0.0,
-                    "max": 0.0,
-                    "std": 0.0
-                }
+                return {"mean": 0.0, "median": 0.0, "min": 0.0, "max": 0.0, "std": 0.0}
             sorted_scores = sorted(scores)
             n = len(scores)
             mean = sum(scores) / n
-            median = sorted_scores[n // 2] if n % 2 == 1 else (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
+            median = (
+                sorted_scores[n // 2]
+                if n % 2 == 1
+                else (sorted_scores[n // 2 - 1] + sorted_scores[n // 2]) / 2
+            )
             variance = sum((x - mean) ** 2 for x in scores) / n
-            std = variance ** 0.5
+            std = variance**0.5
 
             return {
                 "mean": mean,
                 "median": median,
                 "min": min(scores),
                 "max": max(scores),
-                "std": std
+                "std": std,
             }
 
         # Extract scores
-        entity_overall_scores = [e.get("overall_score", 0.0) for e in entity_evaluations]
+        entity_overall_scores = [
+            e.get("overall_score", 0.0) for e in entity_evaluations
+        ]
         entity_accuracy_scores = [e.get("accuracy", 0.0) for e in entity_evaluations]
-        entity_completeness_scores = [e.get("completeness", 0.0) for e in entity_evaluations]
+        entity_completeness_scores = [
+            e.get("completeness", 0.0) for e in entity_evaluations
+        ]
         entity_precision_scores = [e.get("precision", 0.0) for e in entity_evaluations]
 
-        relation_overall_scores = [r.get("overall_score", 0.0) for r in relation_evaluations]
-        relation_accuracy_scores = [r.get("accuracy", 0.0) for r in relation_evaluations]
-        relation_completeness_scores = [r.get("completeness", 0.0) for r in relation_evaluations]
-        relation_precision_scores = [r.get("precision", 0.0) for r in relation_evaluations]
+        relation_overall_scores = [
+            r.get("overall_score", 0.0) for r in relation_evaluations
+        ]
+        relation_accuracy_scores = [
+            r.get("accuracy", 0.0) for r in relation_evaluations
+        ]
+        relation_completeness_scores = [
+            r.get("completeness", 0.0) for r in relation_evaluations
+        ]
+        relation_precision_scores = [
+            r.get("precision", 0.0) for r in relation_evaluations
+        ]
 
         return {
             "entity_accuracy": {
@@ -386,7 +348,7 @@ class AccuracyEvaluator:
                 "completeness": calculate_stats(entity_completeness_scores),
                 "precision": calculate_stats(entity_precision_scores),
                 "total_chunks": len(entity_evaluations),
-                "detailed_results": entity_evaluations
+                "detailed_results": entity_evaluations,
             },
             "relation_accuracy": {
                 "overall_score": calculate_stats(relation_overall_scores),
@@ -394,6 +356,6 @@ class AccuracyEvaluator:
                 "completeness": calculate_stats(relation_completeness_scores),
                 "precision": calculate_stats(relation_precision_scores),
                 "total_chunks": len(relation_evaluations),
-                "detailed_results": relation_evaluations
-            }
+                "detailed_results": relation_evaluations,
+            },
         }

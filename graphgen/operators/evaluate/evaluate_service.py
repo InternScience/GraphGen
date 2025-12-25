@@ -11,10 +11,9 @@ class EvaluateService(BaseOperator):
     """
 
     def __init__(self, working_dir: str = "cache", metrics: list[str] = None):
-        # optional 传入 graph
         super().__init__(working_dir=working_dir, op_name="evaluate_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
-        self.metrics = metrics or []
+        self.metrics = metrics
 
         self.evaluators = {
             "xxx": "xxxEvaluator"
@@ -23,6 +22,10 @@ class EvaluateService(BaseOperator):
         self.graph_storage = init_storage(
             xx, xx, xx
         )
+
+    def _init_evaluators(self):
+        for metric in self.metrics:
+
 
     def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         items = batch.to_dict(orient="records")
