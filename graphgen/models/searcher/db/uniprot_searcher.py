@@ -100,43 +100,38 @@ class UniProtSearch(BaseSearcher):
             logger.error("Keyword %s not found: %s", keyword, e)
         return None
 
-    def get_by_fasta(
-        self, fasta_sequence: str, threshold: float
-    ) -> Optional[Dict]:  # pylint: disable=too-many-return-statements
+
+    def _parse_fasta_sequence(self, fasta_sequence: str) -> Optional[str]:
         """
-        Search UniProt with a FASTA sequence and return the best hit.
+        Parse and extract sequence from FASTA format.
         :param fasta_sequence: The FASTA sequence.
-        :param threshold: E-value threshold for BLAST searcher.
-        :return: A dictionary containing the best hit information or None if not found.
+        :return: Extracted sequence string or None if invalid.
         """
         try:
             if fasta_sequence.startswith(">"):
                 seq = str(list(SeqIO.parse(StringIO(fasta_sequence), "fasta"))[0].seq)
             else:
                 seq = fasta_sequence.strip()
+            return seq if seq else None
         except Exception as e:  # pylint: disable=broad-except
             logger.error("Invalid FASTA sequence: %s", e)
             return None
 
-        if not seq:
-            logger.error("Empty FASTA sequence provided.")
-            return None
-
-        if self.use_local_blast:
-            accession = self._local_blast(seq, threshold)
-            if accession:
-                logger.debug("Local BLAST found accession: %s", accession)
-                return self.get_by_accession(accession)
+    def _search_with_local_blast(self, seq: str, threshold: float) -> Optional[Dict]:
+        """Search using local BLAST database."""
+        accession = self._local_blast(seq, threshold)
+        if not accession:
             logger.info(
                 "Local BLAST found no match for sequence. "
                 "API fallback disabled when using local database."
             )
             return None
+        logger.debug("Local BLAST found accession: %s", accession)
+        return self.get_by_accession(accession)
 
-        # Fall back to network BLAST only if local BLAST is not enabled
+    def _search_with_network_blast(self, seq: str, threshold: float) -> Optional[Dict]:
+        """Search using network BLAST (NCBIWWW)."""
         logger.debug("Falling back to NCBIWWW.qblast.")
-
-        # UniProtKB/Swiss-Prot BLAST API
         try:
             logger.debug("Performing BLAST searcher for the given sequence: %s", seq)
             result_handle = NCBIWWW.qblast(
@@ -167,6 +162,21 @@ class UniProtSearch(BaseSearcher):
         hit_id = best_alignment.hit_id
         accession = hit_id.split("|")[1].split(".")[0] if "|" in hit_id else hit_id
         return self.get_by_accession(accession)
+
+    def get_by_fasta(
+        self, fasta_sequence: str, threshold: float
+    ) -> Optional[Dict]:
+        """Search UniProt with a FASTA sequence and return the best hit."""
+        seq = self._parse_fasta_sequence(fasta_sequence)
+        if not seq:
+            logger.error("Empty FASTA sequence provided.")
+            return None
+
+        search_method = (
+            self._search_with_local_blast if self.use_local_blast
+            else self._search_with_network_blast
+        )
+        return search_method(seq, threshold)
 
     def _local_blast(self, seq: str, threshold: float) -> Optional[str]:
         """

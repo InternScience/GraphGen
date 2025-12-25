@@ -291,86 +291,83 @@ class RNACentralSearch(BaseSearcher):
                 pass
             return None
 
+    @staticmethod
+    def _extract_rna_sequence(sequence: str) -> Optional[str]:
+        """Extract and normalize RNA sequence from input."""
+        if sequence.startswith(">"):
+            seq_lines = sequence.strip().split("\n")
+            seq = "".join(seq_lines[1:])
+        else:
+            seq = sequence.strip().replace(" ", "").replace("\n", "")
+        # Accept both U (original RNA) and T
+        return seq if seq and re.fullmatch(r"[AUCGTN\s]+", seq, re.I) else None
+
+    def _search_with_local_blast(self, seq: str, threshold: float) -> Optional[dict]:
+        """Search using local BLAST database."""
+        accession = self._local_blast(seq, threshold)
+        if not accession:
+            logger.info(
+                "Local BLAST found no match for sequence. "
+                "API fallback disabled when using local database."
+            )
+            return None
+
+        logger.debug("Local BLAST found accession: %s", accession)
+        detailed = self.get_by_rna_id(accession)
+        if detailed:
+            return detailed
+        logger.info(
+            "Local BLAST found accession %s but could not retrieve metadata from API.",
+            accession,
+        )
+        return None
+
+    def _search_with_api(self, seq: str) -> Optional[dict]:
+        """Search using RNAcentral API with MD5 hash."""
+        logger.debug("Falling back to RNAcentral API.")
+        md5_hash = self._calculate_md5(seq)
+        search_url = f"{self.base_url}/rna"
+        params = {"md5": md5_hash, "format": "json"}
+
+        resp = requests.get(
+            search_url, params=params, headers=self.headers, timeout=60
+        )
+        resp.raise_for_status()
+
+        search_results = resp.json()
+        results = search_results.get("results", [])
+
+        if not results:
+            logger.info("No exact match found in RNAcentral for sequence")
+            return None
+
+        rna_id = results[0].get("rnacentral_id")
+        if not rna_id:
+            logger.error("No RNAcentral ID found in search results.")
+            return None
+
+        detailed = self.get_by_rna_id(rna_id)
+        if detailed:
+            return detailed
+        # Fallback: use search result data if get_by_rna_id returns None
+        logger.debug(
+            "Using search result data for %s (get_by_rna_id returned None)", rna_id
+        )
+        return self._rna_data_to_dict(rna_id, results[0])
+
     def get_by_fasta(
         self, sequence: str, threshold: float = 0.01
-    ) -> Optional[dict]:  # pylint: disable=too-many-return-statements
-        """
-        Search RNAcentral with an RNA sequence.
-        Tries local BLAST first if enabled, falls back to RNAcentral API.
-        Unified approach: Find RNA ID from sequence search, then call get_by_rna_id() for complete information.
-        :param sequence: RNA sequence (FASTA format or raw sequence).
-        :param threshold: E-value threshold for BLAST search.
-        :return: A dictionary containing complete RNA information or None if not found.
-        """
-
-        def _extract_sequence(sequence: str) -> Optional[str]:
-            """Extract and normalize RNA sequence from input."""
-            if sequence.startswith(">"):
-                seq_lines = sequence.strip().split("\n")
-                seq = "".join(seq_lines[1:])
-            else:
-                seq = sequence.strip().replace(" ", "").replace("\n", "")
-            # Accept both U (original RNA) and T
-            return seq if seq and re.fullmatch(r"[AUCGTN\s]+", seq, re.I) else None
-
+    ) -> Optional[dict]:
+        """Search RNAcentral with an RNA sequence."""
         try:
-            seq = _extract_sequence(sequence)
+            seq = self._extract_rna_sequence(sequence)
             if not seq:
                 logger.error("Empty or invalid RNA sequence provided.")
                 return None
 
-            # Try local BLAST first if enabled
             if self.use_local_blast:
-                accession = self._local_blast(seq, threshold)
-                if accession:
-                    logger.debug("Local BLAST found accession: %s", accession)
-                    detailed = self.get_by_rna_id(accession)
-                    if detailed:
-                        return detailed
-                    logger.info(
-                        "Local BLAST found accession %s but could not retrieve metadata from API.",
-                        accession,
-                    )
-                    return None
-                logger.info(
-                    "Local BLAST found no match for sequence. "
-                    "API fallback disabled when using local database."
-                )
-                return None
-
-            # Fall back to RNAcentral API only if local BLAST is not enabled
-            logger.debug("Falling back to RNAcentral API.")
-
-            md5_hash = self._calculate_md5(seq)
-            search_url = f"{self.base_url}/rna"
-            params = {"md5": md5_hash, "format": "json"}
-
-            resp = requests.get(
-                search_url, params=params, headers=self.headers, timeout=60
-            )
-            resp.raise_for_status()
-
-            search_results = resp.json()
-            results = search_results.get("results", [])
-
-            if not results:
-                logger.info("No exact match found in RNAcentral for sequence")
-                return None
-
-            rna_id = results[0].get("rnacentral_id")
-            if rna_id:
-                detailed = self.get_by_rna_id(rna_id)
-                if detailed:
-                    return detailed
-                # Fallback: use search result data if get_by_rna_id returns None
-                logger.debug(
-                    "Using search result data for %s (get_by_rna_id returned None)",
-                    rna_id,
-                )
-                return self._rna_data_to_dict(rna_id, results[0])
-
-            logger.error("No RNAcentral ID found in search results.")
-            return None
+                return self._search_with_local_blast(seq, threshold)
+            return self._search_with_api(seq)
         except Exception as e:
             logger.error("Sequence search failed: %s", e)
             return None
