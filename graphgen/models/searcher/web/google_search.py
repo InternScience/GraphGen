@@ -1,3 +1,9 @@
+"""
+To use Google Web Search API,
+follow the instructions [here](https://developers.google.com/custom-search/v1/overview)
+to get your Google searcher api key.
+"""
+
 import requests
 from fastapi import HTTPException
 

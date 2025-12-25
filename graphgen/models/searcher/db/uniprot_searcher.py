@@ -31,15 +31,19 @@ class UniProtSearch(BaseSearcher):
         use_local_blast: bool = False,
         local_blast_db: str = "sp_db",
         blast_num_threads: int = 4,
+        threshold: float = 0.01,
         working_dir: str = "cache",
     ):
         super().__init__(working_dir=working_dir)
         self.use_local_blast = use_local_blast
         self.local_blast_db = local_blast_db
         self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
+        self.threshold = threshold
 
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.phr"):
-            self.logger.error("Local BLAST database files not found. Please check the path.")
+            self.logger.error(
+                "Local BLAST database files not found. Please check the path."
+            )
             self.use_local_blast = False
 
     def get_by_accession(self, accession: str) -> Optional[dict]:
@@ -99,7 +103,9 @@ class UniProtSearch(BaseSearcher):
             self.logger.error("Keyword %s not found: %s", keyword, e)
         return None
 
-    def get_by_fasta(self, fasta_sequence: str, threshold: float) -> Optional[Dict]:  # pylint: disable=too-many-return-statements
+    def get_by_fasta(
+        self, fasta_sequence: str, threshold: float
+    ) -> Optional[Dict]:  # pylint: disable=too-many-return-statements
         """
         Search UniProt with a FASTA sequence and return the best hit.
         :param fasta_sequence: The FASTA sequence.
@@ -173,7 +179,9 @@ class UniProtSearch(BaseSearcher):
         Optimized with multi-threading and faster output format.
         """
         try:
-            with tempfile.NamedTemporaryFile(mode="w+", suffix=".fa", delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(
+                mode="w+", suffix=".fa", delete=False
+            ) as tmp:
                 tmp.write(f">query\n{seq}\n")
                 tmp_name = tmp.name
 
@@ -197,8 +205,11 @@ class UniProtSearch(BaseSearcher):
                 "-outfmt",
                 "6 sacc",  # Only accession, tab-separated
             ]
-            self.logger.debug("Running local blastp (threads=%d): %s",
-                        self.blast_num_threads, " ".join(cmd))
+            self.logger.debug(
+                "Running local blastp (threads=%d): %s",
+                self.blast_num_threads,
+                " ".join(cmd),
+            )
 
             # Run BLAST with timeout to avoid hanging
             try:
@@ -206,10 +217,12 @@ class UniProtSearch(BaseSearcher):
                     cmd,
                     text=True,
                     timeout=300,  # 5 minute timeout for BLAST search
-                    stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
+                    stderr=subprocess.DEVNULL,  # Suppress BLAST warnings to reduce I/O
                 ).strip()
             except subprocess.TimeoutExpired:
-                self.logger.warning("BLAST search timed out after 5 minutes for sequence")
+                self.logger.warning(
+                    "BLAST search timed out after 5 minutes for sequence"
+                )
                 os.remove(tmp_name)
                 return None
 
@@ -227,16 +240,14 @@ class UniProtSearch(BaseSearcher):
         retry=retry_if_exception_type(RequestException),
         reraise=True,
     )
-    def search(
-        self, query: str, threshold: float = 0.7, **kwargs
-    ) -> Optional[Dict]:
+    def search(self, query: str, threshold: float = None, **kwargs) -> Optional[Dict]:
         """
         Search UniProt with either an accession number, keyword, or FASTA sequence.
         :param query: The searcher query (accession number, keyword, or FASTA sequence).
         :param threshold: E-value threshold for BLAST searcher.
         :return: A dictionary containing the best hit information or None if not found.
         """
-
+        threshold = threshold or self.threshold
         # auto detect query type
         if not query or not isinstance(query, str):
             self.logger.error("Empty or non-string input.")

@@ -27,3 +27,4 @@ nodes:
         tool: GraphGen # tool name for NCBI API
         use_local_blast: true # whether to use local blast for DNA search
         local_blast_db: refseq_release/refseq_release # path to local BLAST database (without .nhr extension)
+        threshold: 0.01 # E-value threshold for BLAST search

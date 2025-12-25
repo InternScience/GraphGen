@@ -1,10 +1,10 @@
+import hashlib
 import os
 import re
 import subprocess
 import tempfile
-from typing import Dict, Optional, List, Any, Set
+from typing import Any, Dict, List, Optional, Set
 
-import hashlib
 import requests
 from tenacity import (
     retry,
@@ -14,6 +14,7 @@ from tenacity import (
 )
 
 from graphgen.bases import BaseSearcher
+
 
 class RNACentralSearch(BaseSearcher):
     """
@@ -31,6 +32,7 @@ class RNACentralSearch(BaseSearcher):
         local_blast_db: str = "rna_db",
         api_timeout: int = 30,
         blast_num_threads: int = 4,
+        threshold: float = 0.01,
         working_dir: str = "cache",
     ):
         super().__init__(working_dir=working_dir)
@@ -40,16 +42,19 @@ class RNACentralSearch(BaseSearcher):
         self.local_blast_db = local_blast_db
         self.api_timeout = api_timeout
         self.blast_num_threads = blast_num_threads  # Number of threads for BLAST search
+        self.threshold = threshold  # E-value threshold for BLAST search
 
         if self.use_local_blast and not os.path.isfile(f"{self.local_blast_db}.nhr"):
-            self.logger.error("Local BLAST database files not found. Please check the path.")
+            self.logger.error(
+                "Local BLAST database files not found. Please check the path."
+            )
             self.use_local_blast = False
 
     @staticmethod
     def _rna_data_to_dict(
         rna_id: str,
         rna_data: Dict[str, Any],
-        xrefs_data: Optional[List[Dict[str, Any]]] = None
+        xrefs_data: Optional[List[Dict[str, Any]]] = None,
     ) -> Dict[str, Any]:
         organisms, gene_names, so_terms = set(), set(), set()
         modifications: List[Any] = []
@@ -138,7 +143,9 @@ class RNACentralSearch(BaseSearcher):
         # Normalize sequence
         normalized_seq = sequence.replace("U", "T").replace("u", "t").upper()
         if not re.fullmatch(r"[ATCGN]+", normalized_seq):
-            raise ValueError(f"Invalid sequence characters after normalization: {normalized_seq[:50]}...")
+            raise ValueError(
+                f"Invalid sequence characters after normalization: {normalized_seq[:50]}..."
+            )
 
         return hashlib.md5(normalized_seq.encode("ascii")).hexdigest()
 
@@ -160,7 +167,12 @@ class RNACentralSearch(BaseSearcher):
             result = self._rna_data_to_dict(rna_id, rna_data, xrefs_data)
             return result
         except requests.Timeout as e:
-            self.logger.warning("Timeout getting RNA ID %s (timeout=%ds): %s", rna_id, self.api_timeout, e)
+            self.logger.warning(
+                "Timeout getting RNA ID %s (timeout=%ds): %s",
+                rna_id,
+                self.api_timeout,
+                e,
+            )
             return None
         except requests.RequestException as e:
             self.logger.error("Network error getting RNA ID %s: %s", rna_id, e)
@@ -189,7 +201,9 @@ class RNACentralSearch(BaseSearcher):
         try:
             url = f"{self.base_url}/rna"
             params = {"search": keyword, "format": "json"}
-            resp = requests.get(url, params=params, headers=self.headers, timeout=self.api_timeout)
+            resp = requests.get(
+                url, params=params, headers=self.headers, timeout=self.api_timeout
+            )
             resp.raise_for_status()
 
             data = resp.json()
@@ -223,7 +237,9 @@ class RNACentralSearch(BaseSearcher):
         """
         try:
             # Use temporary file for query sequence
-            with tempfile.NamedTemporaryFile(mode="w+", suffix=".fa", delete=False) as tmp:
+            with tempfile.NamedTemporaryFile(
+                mode="w+", suffix=".fa", delete=False
+            ) as tmp:
                 tmp.write(f">query\n{seq}\n")
                 tmp_name = tmp.name
 
@@ -233,14 +249,25 @@ class RNACentralSearch(BaseSearcher):
             # - max_target_seqs 1: Only need the best hit
             # - evalue: Threshold for significance
             cmd = [
-                "blastn", "-db", self.local_blast_db, "-query", tmp_name,
-                "-evalue", str(threshold),
-                "-max_target_seqs", "1",
-                "-num_threads", str(self.blast_num_threads),
-                "-outfmt", "6 sacc"  # Only accession, tab-separated
+                "blastn",
+                "-db",
+                self.local_blast_db,
+                "-query",
+                tmp_name,
+                "-evalue",
+                str(threshold),
+                "-max_target_seqs",
+                "1",
+                "-num_threads",
+                str(self.blast_num_threads),
+                "-outfmt",
+                "6 sacc",  # Only accession, tab-separated
             ]
-            self.logger.debug("Running local blastn for RNA (threads=%d): %s",
-                        self.blast_num_threads, " ".join(cmd))
+            self.logger.debug(
+                "Running local blastn for RNA (threads=%d): %s",
+                self.blast_num_threads,
+                " ".join(cmd),
+            )
 
             # Run BLAST with timeout to avoid hanging
             try:
@@ -248,10 +275,12 @@ class RNACentralSearch(BaseSearcher):
                     cmd,
                     text=True,
                     timeout=300,  # 5 minute timeout for BLAST search
-                    stderr=subprocess.DEVNULL  # Suppress BLAST warnings to reduce I/O
+                    stderr=subprocess.DEVNULL,  # Suppress BLAST warnings to reduce I/O
                 ).strip()
             except subprocess.TimeoutExpired:
-                self.logger.warning("BLAST search timed out after 5 minutes for sequence")
+                self.logger.warning(
+                    "BLAST search timed out after 5 minutes for sequence"
+                )
                 os.remove(tmp_name)
                 return None
 
@@ -261,13 +290,15 @@ class RNACentralSearch(BaseSearcher):
             self.logger.error("Local blastn failed: %s", exc)
             # Clean up temp file if it still exists
             try:
-                if 'tmp_name' in locals():
+                if "tmp_name" in locals():
                     os.remove(tmp_name)
             except Exception:
                 pass
             return None
 
-    def get_by_fasta(self, sequence: str, threshold: float = 0.01) -> Optional[dict]:  # pylint: disable=too-many-return-statements
+    def get_by_fasta(
+        self, sequence: str, threshold: float = 0.01
+    ) -> Optional[dict]:  # pylint: disable=too-many-return-statements
         """
         Search RNAcentral with an RNA sequence.
         Tries local BLAST first if enabled, falls back to RNAcentral API.
@@ -276,6 +307,7 @@ class RNACentralSearch(BaseSearcher):
         :param threshold: E-value threshold for BLAST search.
         :return: A dictionary containing complete RNA information or None if not found.
         """
+
         def _extract_sequence(sequence: str) -> Optional[str]:
             """Extract and normalize RNA sequence from input."""
             if sequence.startswith(">"):
@@ -302,7 +334,7 @@ class RNACentralSearch(BaseSearcher):
                         return detailed
                     self.logger.info(
                         "Local BLAST found accession %s but could not retrieve metadata from API.",
-                        accession
+                        accession,
                     )
                     return None
                 self.logger.info(
@@ -318,7 +350,9 @@ class RNACentralSearch(BaseSearcher):
             search_url = f"{self.base_url}/rna"
             params = {"md5": md5_hash, "format": "json"}
 
-            resp = requests.get(search_url, params=params, headers=self.headers, timeout=60)
+            resp = requests.get(
+                search_url, params=params, headers=self.headers, timeout=60
+            )
             resp.raise_for_status()
 
             search_results = resp.json()
@@ -334,7 +368,10 @@ class RNACentralSearch(BaseSearcher):
                 if detailed:
                     return detailed
                 # Fallback: use search result data if get_by_rna_id returns None
-                self.logger.debug("Using search result data for %s (get_by_rna_id returned None)", rna_id)
+                self.logger.debug(
+                    "Using search result data for %s (get_by_rna_id returned None)",
+                    rna_id,
+                )
                 return self._rna_data_to_dict(rna_id, results[0])
 
             self.logger.error("No RNAcentral ID found in search results.")
@@ -349,8 +386,9 @@ class RNACentralSearch(BaseSearcher):
         retry=retry_if_exception_type((requests.Timeout, requests.RequestException)),
         reraise=True,
     )
-    def search(self, query: str, threshold: float = 0.1, **kwargs) -> Optional[Dict]:
+    def search(self, query: str, threshold: float = None, **kwargs) -> Optional[Dict]:
         """Search RNAcentral with either an RNAcentral ID, keyword, or RNA sequence."""
+        threshold = threshold or self.threshold
         if not query or not isinstance(query, str):
             self.logger.error("Empty or non-string input.")
             return None
@@ -361,8 +399,8 @@ class RNACentralSearch(BaseSearcher):
         # check if RNA sequence (AUCG or ATCG characters, contains U or T)
         # Note: Sequences with T are also RNA sequences
         is_rna_sequence = query.startswith(">") or (
-            re.fullmatch(r"[AUCGTN\s]+", query, re.I) and
-            ("U" in query.upper() or "T" in query.upper())
+            re.fullmatch(r"[AUCGTN\s]+", query, re.I)
+            and ("U" in query.upper() or "T" in query.upper())
         )
         if is_rna_sequence:
             result = self.get_by_fasta(query, threshold)
