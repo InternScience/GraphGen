@@ -6,7 +6,7 @@ from typing import Any, Dict, List
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
 from graphgen.templates import ACCURACY_EVALUATION_PROMPT
-from graphgen.utils import create_event_loop, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class AccuracyEvaluator:
@@ -43,10 +43,7 @@ class AccuracyEvaluator:
         logger.info(f"Found {len(chunks)} chunks to evaluate")
 
         # 2. Evaluate each chunk
-        loop = create_event_loop()
-        entity_evaluations, relation_evaluations = loop.run_until_complete(
-            self._evaluate_all_chunks(chunks)
-        )
+        entity_evaluations, relation_evaluations = self._evaluate_all_chunks(chunks)
 
         # 3. Aggregate results
         return self._aggregate_evaluation_results(
@@ -112,54 +109,47 @@ class AccuracyEvaluator:
 
         return relations
 
-    async def _evaluate_all_chunks(
+    def _evaluate_all_chunks(
         self, chunks: List[Chunk]
     ) -> tuple[List[Dict], List[Dict]]:
-        """Evaluate all chunks concurrently."""
-        semaphore = asyncio.Semaphore(self.max_concurrent)
-
-        async def evaluate_chunk(chunk: Chunk):
-            async with semaphore:
-                entities = self._get_extracted_entities_for_chunk(chunk.id)
-                relations = self._get_extracted_relations_for_chunk(chunk.id)
-
-                entity_eval = await self._evaluate_entity_extraction(chunk, entities)
-                relation_eval = await self._evaluate_relation_extraction(
-                    chunk, relations
-                )
-
-                return entity_eval, relation_eval
-
-        tasks = [evaluate_chunk(chunk) for chunk in chunks]
-        results = await asyncio.gather(*tasks, return_exceptions=True)
-
+        """Evaluate all chunks sequentially."""
         entity_evaluations = []
         relation_evaluations = []
 
-        for i, result in enumerate(results):
-            if isinstance(result, Exception):
-                logger.error(f"Failed to evaluate chunk {chunks[i].id}: {result}")
-                continue
+        for chunk in chunks:
+            try:
+                entities = self._get_extracted_entities_for_chunk(chunk.id)
+                relations = self._get_extracted_relations_for_chunk(chunk.id)
 
-            entity_eval, relation_eval = result
-            entity_evaluations.append(entity_eval)
-            relation_evaluations.append(relation_eval)
+                entity_eval = self._evaluate_entity_extraction(chunk, entities)
+                relation_eval = self._evaluate_relation_extraction(chunk, relations)
+
+                entity_evaluations.append(entity_eval)
+                relation_evaluations.append(relation_eval)
+            except Exception as e:
+                logger.error(f"Failed to evaluate chunk {chunk.id}: {e}")
+                continue
 
         return entity_evaluations, relation_evaluations
 
-    async def _evaluate_entity_extraction(
+    def _evaluate_entity_extraction(
         self, chunk: Chunk, extracted_entities: List[Dict]
     ) -> Dict[str, Any]:
         """Use LLM to evaluate entity extraction quality."""
         try:
-            prompt = ENTITY_EVALUATION_PROMPT.format(
+            lang = detect_main_language(chunk.content)
+            prompt_template = ACCURACY_EVALUATION_PROMPT.get(lang, {}).get("ENTITY")
+            if not prompt_template:
+                prompt_template = ACCURACY_EVALUATION_PROMPT.get("en", {}).get("ENTITY")
+            
+            prompt = prompt_template.format(
                 chunk_content=chunk.content,
                 extracted_entities=json.dumps(
                     extracted_entities, ensure_ascii=False, indent=2
                 ),
             )
 
-            response = await self.llm_client.generate_answer(prompt)
+            response = asyncio.run(self.llm_client.generate_answer(prompt))
 
             # Try to parse JSON response
             try:
@@ -220,19 +210,24 @@ class AccuracyEvaluator:
                 "issues": [f"Evaluation error: {str(e)}"],
             }
 
-    async def _evaluate_relation_extraction(
+    def _evaluate_relation_extraction(
         self, chunk: Chunk, extracted_relations: List[Dict]
     ) -> Dict[str, Any]:
         """Use LLM to evaluate relation extraction quality."""
         try:
-            prompt = RELATION_EVALUATION_PROMPT.format(
+            lang = detect_main_language(chunk.content)
+            prompt_template = ACCURACY_EVALUATION_PROMPT.get(lang, {}).get("RELATION")
+            if not prompt_template:
+                prompt_template = ACCURACY_EVALUATION_PROMPT.get("en", {}).get("RELATION")
+            
+            prompt = prompt_template.format(
                 chunk_content=chunk.content,
                 extracted_relations=json.dumps(
                     extracted_relations, ensure_ascii=False, indent=2
                 ),
             )
 
-            response = await self.llm_client.generate_answer(prompt)
+            response = asyncio.run(self.llm_client.generate_answer(prompt))
 
             # Try to parse JSON response
             try:
