@@ -40,3 +40,6 @@ nodes:
       - build_kg
     params:
       metrics:
+        - kg_accuracy
+        - kg_consistency
+        - kg_structure

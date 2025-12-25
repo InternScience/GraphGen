@@ -1,5 +1,2 @@
-from .kg_quality_evaluator import KGQualityEvaluator
-from .length_evaluator import LengthEvaluator
-from .mtld_evaluator import MTLDEvaluator
-from .reward_evaluator import RewardEvaluator
-from .uni_evaluator import UniEvaluator
+from graphgen.models.evaluator.kg.kg_quality_evaluator import KGQualityEvaluator
+from graphgen.models.evaluator.qa.uni_evaluator import UniEvaluator

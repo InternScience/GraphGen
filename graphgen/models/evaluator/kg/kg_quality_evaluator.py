@@ -76,9 +76,7 @@ class KGQualityEvaluator:
 
         try:
             logger.info("Starting structural robustness evaluation...")
-            structure_evaluator = StructureEvaluator(
-                graph_storage=self.graph_storage
-            )
+            structure_evaluator = StructureEvaluator(graph_storage=self.graph_storage)
             results["structure"] = structure_evaluator.evaluate()
         except Exception as e:
             logger.error(f"Structural evaluation failed: {e}")
@@ -105,7 +103,5 @@ class KGQualityEvaluator:
         return consistency_evaluator.evaluate()
 
     def evaluate_structure(self) -> Dict[str, Any]:
-        structure_evaluator = StructureEvaluator(
-            graph_storage=self.graph_storage
-        )
+        structure_evaluator = StructureEvaluator(graph_storage=self.graph_storage)
         return structure_evaluator.evaluate()
