@@ -1,7 +1,8 @@
 import json
 import os
+from collections import defaultdict
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Dict, List, Set
 
 try:
     import kuzu
@@ -77,6 +78,94 @@ class KuzuStorage(BaseGraphStorage):
         except json.JSONDecodeError as e:
             print(f"Error decoding JSON: {e}")
             return {}
+
+    def is_directed(self) -> bool:
+        return True
+
+    def get_all_node_degrees(self) -> Dict[str, int]:
+        query = """
+            MATCH (n:Entity)
+            OPTIONAL MATCH (n)-[r]-()
+            RETURN n.id, count(r) as degree
+        """
+
+        result = self._conn.execute(query)
+        degree_map = {}
+        while result.has_next():
+            row = result.get_next()
+            if row and len(row) >= 2:
+                node_id, degree = row[0], row[1]
+                degree_map[node_id] = int(degree)
+
+        return degree_map
+
+    def get_isolated_nodes(self) -> List[str]:
+        query = """
+            MATCH (n:Entity)
+            WHERE NOT (n)--()
+            RETURN n.id
+        """
+
+        result = self._conn.execute(query)
+        return [row[0] for row in result if row]
+
+    def get_node_count(self) -> int:
+        result = self._conn.execute("MATCH (n:Entity) RETURN count(n)")
+        return result.get_next()[0]
+
+    def get_edge_count(self) -> int:
+        result = self._conn.execute("MATCH ()-[e:Relation]->() RETURN count(e)")
+        return result.get_next()[0]
+
+    def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
+        parent = {}
+        rank = {}
+
+        def find(x: str) -> str:
+            if parent[x] != x:
+                parent[x] = find(parent[x])
+            return parent[x]
+
+        def union(x: str, y: str):
+            root_x, root_y = find(x), find(y)
+            if root_x == root_y:
+                return
+            if rank[root_x] < rank[root_y]:
+                parent[root_x] = root_y
+            elif rank[root_x] > rank[root_y]:
+                parent[root_y] = root_x
+            else:
+                parent[root_y] = root_x
+                rank[root_x] += 1
+
+        all_nodes = self.get_all_node_degrees().keys()
+        for node_id in all_nodes:
+            parent[node_id] = node_id
+            rank[node_id] = 0
+
+        query = (
+            """
+            MATCH (a:Entity)-[e:Relation]-(b:Entity)
+            RETURN DISTINCT a.id, b.id
+        """
+            if undirected
+            else """
+            MATCH (a:Entity)-[e:Relation]->(b:Entity)
+            RETURN DISTINCT a.id, b.id
+        """
+        )
+
+        result = self._conn.execute(query)
+        for row in result:
+            if row and len(row) >= 2:
+                union(row[0], row[1])
+
+        components_dict = defaultdict(set)
+        for node_id in all_nodes:
+            root = find(node_id)
+            components_dict[root].add(node_id)
+
+        return list(components_dict.values())
 
     def has_node(self, node_id: str) -> bool:
         result = self._conn.execute(

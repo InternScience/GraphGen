@@ -27,7 +27,7 @@ nodes:
     op_name: build_kg
     type: map_batch
     dependencies:
-      - chunk_documents
+      - chunk
     execution_params:
       replicas: 1
       batch_size: 128
@@ -40,6 +40,6 @@ nodes:
       - build_kg
     params:
       metrics:
-        - kg_accuracy
-        - kg_consistency
         - kg_structure
+#        - kg_accuracy
+#        - kg_consistency

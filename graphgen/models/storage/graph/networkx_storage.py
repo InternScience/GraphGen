@@ -1,7 +1,7 @@
 import html
 import os
 from dataclasses import dataclass
-from typing import Any, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Set, Union, cast
 
 import networkx as nx
 
@@ -10,6 +10,31 @@ from graphgen.bases.base_storage import BaseGraphStorage
 
 @dataclass
 class NetworkXStorage(BaseGraphStorage):
+    def is_directed(self) -> bool:
+        return self._graph.is_directed()
+
+    def get_all_node_degrees(self) -> Dict[str, int]:
+        return {
+            str(node_id): int(self._graph.degree[node_id])
+            for node_id in self._graph.nodes()
+        }
+
+    def get_node_count(self) -> int:
+        return self._graph.number_of_nodes()
+
+    def get_edge_count(self) -> int:
+        return self._graph.number_of_edges()
+
+    def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
+        graph = self._graph
+
+        if undirected and graph.is_directed():
+            graph = graph.to_undirected()
+
+        return [
+            set(str(node) for node in comp) for comp in nx.connected_components(graph)
+        ]
+
     @staticmethod
     def load_nx_graph(file_name) -> Optional[nx.Graph]:
         if os.path.exists(file_name):

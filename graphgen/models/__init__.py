@@ -1,8 +1,10 @@
 from .evaluator import (
-    KGQualityEvaluator,
+    AccuracyEvaluator,
+    ConsistencyEvaluator,
     LengthEvaluator,
     MTLDEvaluator,
     RewardEvaluator,
+    StructureEvaluator,
     UniEvaluator,
 )
 from .generator import (

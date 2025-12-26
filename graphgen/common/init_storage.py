@@ -1,4 +1,4 @@
-from typing import Any, Dict, Union
+from typing import Any, Dict, List, Set, Union
 
 import ray
 
@@ -67,6 +67,21 @@ class GraphStorageActor:
 
     def index_done_callback(self):
         return self.graph.index_done_callback()
+
+    def is_directed(self) -> bool:
+        return self.graph.is_directed()
+
+    def get_all_node_degrees(self) -> Dict[str, int]:
+        return self.graph.get_all_node_degrees()
+
+    def get_node_count(self) -> int:
+        return self.graph.get_node_count()
+
+    def get_edge_count(self) -> int:
+        return self.graph.get_edge_count()
+
+    def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
+        return self.graph.get_connected_components(undirected)
 
     def has_node(self, node_id: str) -> bool:
         return self.graph.has_node(node_id)
@@ -165,6 +180,21 @@ class RemoteGraphStorageProxy(BaseGraphStorage):
     def index_done_callback(self):
         return ray.get(self.actor.index_done_callback.remote())
 
+    def is_directed(self) -> bool:
+        return ray.get(self.actor.is_directed.remote())
+
+    def get_all_node_degrees(self) -> Dict[str, int]:
+        return ray.get(self.actor.get_all_node_degrees.remote())
+
+    def get_node_count(self) -> int:
+        return ray.get(self.actor.get_node_count.remote())
+
+    def get_edge_count(self) -> int:
+        return ray.get(self.actor.get_edge_count.remote())
+
+    def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
+        return ray.get(self.actor.get_connected_components.remote(undirected))
+
     def has_node(self, node_id: str) -> bool:
         return ray.get(self.actor.has_node.remote(node_id))
 
@@ -239,10 +269,14 @@ class StorageFactory:
         try:
             actor_handle = ray.get_actor(actor_name)
         except ValueError:
-            actor_handle = ray.remote(actor_class).options(
-                name=actor_name,
-                get_if_exists=True,
-            ).remote(backend, working_dir, namespace)
+            actor_handle = (
+                ray.remote(actor_class)
+                .options(
+                    name=actor_name,
+                    get_if_exists=True,
+                )
+                .remote(backend, working_dir, namespace)
+            )
             ray.get(actor_handle.ready.remote())
         return proxy_class(actor_handle)
 
