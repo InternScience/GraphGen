@@ -1,4 +1,2 @@
-from .length_evaluator import LengthEvaluator
-from .mtld_evaluator import MTLDEvaluator
-from .reward_evaluator import RewardEvaluator
-from .uni_evaluator import UniEvaluator
+from .kg import AccuracyEvaluator, ConsistencyEvaluator, StructureEvaluator
+from .qa import LengthEvaluator, MTLDEvaluator, RewardEvaluator, UniEvaluator

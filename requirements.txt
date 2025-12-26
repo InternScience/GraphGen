@@ -23,7 +23,6 @@ aiohttp
 socksio
 pydantic
 ray==2.52.1
-kuzu
 pyarrow
 
 leidenalg
@@ -32,9 +31,11 @@ python-louvain
 
 # storage
 rocksdict
+kuzu
 
 # KG
 rdflib
+scipy
 
 # Bioinformatics
 biopython

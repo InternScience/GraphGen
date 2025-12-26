@@ -9,4 +9,5 @@ from .base_searcher import BaseSearcher
 from .base_splitter import BaseSplitter
 from .base_storage import BaseGraphStorage, BaseKVStorage, StorageNameSpace
 from .base_tokenizer import BaseTokenizer
+from .base_evaluator import BaseEvaluator
 from .datatypes import Chunk, Config, Node, QAPair, Token

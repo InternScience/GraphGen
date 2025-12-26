@@ -1,4 +1,12 @@
-from .evaluator import LengthEvaluator, MTLDEvaluator, RewardEvaluator, UniEvaluator
+from .evaluator import (
+    AccuracyEvaluator,
+    ConsistencyEvaluator,
+    LengthEvaluator,
+    MTLDEvaluator,
+    RewardEvaluator,
+    StructureEvaluator,
+    UniEvaluator,
+)
 from .generator import (
     AggregatedGenerator,
     AtomicGenerator,
