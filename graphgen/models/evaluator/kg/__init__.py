@@ -9,10 +9,12 @@ This module provides comprehensive quality evaluation for knowledge graphs,
 
 from .accuracy_evaluator import AccuracyEvaluator
 from .consistency_evaluator import ConsistencyEvaluator
+from .kg_quality_evaluator import KGQualityEvaluator
 from .structure_evaluator import StructureEvaluator
 
 __all__ = [
     "AccuracyEvaluator",
     "ConsistencyEvaluator",
+    "KGQualityEvaluator",
     "StructureEvaluator",
 ]
