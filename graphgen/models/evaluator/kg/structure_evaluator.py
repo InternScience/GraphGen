@@ -1,3 +1,4 @@
+from collections import Counter
 from typing import Any, Dict, Optional
 
 import numpy as np
@@ -81,14 +82,27 @@ class StructureEvaluator:
             return None
 
         try:
-            # Fit power law: log(y) = a * log(x) + b
-            log_degrees = np.log(degrees)
-            sorted_log_degrees = np.sort(log_degrees)
-            x = np.arange(1, len(sorted_log_degrees) + 1)
-            log_x = np.log(x)
-
+            degree_counts = Counter(degrees)
+            degree_values = []
+            frequencies = []
+            for deg, freq in sorted(degree_counts.items()):
+                if deg > 0 and freq > 0:
+                    degree_values.append(deg)
+                    frequencies.append(freq)
+            
+            if len(degree_values) < 3:
+                logger.warning(
+                    f"Insufficient unique degrees ({len(degree_values)}) for power law fitting. "
+                    f"Graph may be too uniform."
+                )
+                return None
+            
+            # Fit power law: log(frequency) = a * log(degree) + b
+            log_degrees = np.log(degree_values)
+            log_frequencies = np.log(frequencies)
+            
             # Linear regression on log-log scale
-            r_value, *_ = stats.linregress(log_x, sorted_log_degrees)
+            r_value, *_ = stats.linregress(log_degrees, log_frequencies)
             r2 = r_value**2
 
             return float(r2)
