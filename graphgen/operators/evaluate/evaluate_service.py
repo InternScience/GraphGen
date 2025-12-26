@@ -32,15 +32,15 @@ class EvaluateService(BaseOperator):
         self.kwargs = kwargs
         self.graph_backend = graph_backend
         self.kv_backend = kv_backend
-        
+
         # Separate QA and KG metrics
         self.qa_metrics = [m for m in self.metrics if m.startswith("qa_")]
         self.kg_metrics = [m for m in self.metrics if m.startswith("kg_")]
-        
+
         # Initialize evaluators
         self.qa_evaluators = {}
         self.kg_evaluators: Optional[KGEvaluators] = None
-        
+
         self._init_evaluators()
 
     def _init_evaluators(self):
@@ -68,7 +68,7 @@ class EvaluateService(BaseOperator):
                 )
             else:
                 raise ValueError(f"Unknown QA metric: {metric}")
-        
+
         # Initialize KG evaluators if KG metrics are specified
         if self.kg_metrics:
             kg_params = self.kwargs.get("kg_params", {})
@@ -148,14 +148,14 @@ class EvaluateService(BaseOperator):
             return {}
 
         results = {}
-        
+
         # Map metric names to evaluation functions
         kg_metric_map = {
             "kg_accuracy": evaluate_accuracy,
             "kg_consistency": evaluate_consistency,
             "kg_structure": evaluate_structure,
         }
-        
+
         # Run KG evaluations based on metrics
         for metric in self.kg_metrics:
             if metric in kg_metric_map:
@@ -168,12 +168,12 @@ class EvaluateService(BaseOperator):
                     results[metric_key] = {"error": str(e)}
             else:
                 logger.warning("Unknown KG metric: %s, skipping", metric)
-        
+
         # If no valid metrics were found, run all evaluations
         if not results:
             logger.info("No valid KG metrics found, running all evaluations")
             results = evaluate_all(self.kg_evaluators)
-        
+
         return results
 
     def evaluate(
@@ -182,39 +182,38 @@ class EvaluateService(BaseOperator):
         # Determine evaluation type
         has_qa_metrics = len(self.qa_metrics) > 0
         has_kg_metrics = len(self.kg_metrics) > 0
-        
+
         # If items provided and QA metrics exist, do QA evaluation
         if items is not None and has_qa_metrics:
             return self._evaluate_qa(items)
-        
+
         # If KG metrics exist, do KG evaluation
         if has_kg_metrics:
             return self._evaluate_kg()
-        
+
         # If no metrics specified, try to infer from context
         if items is not None:
             logger.warning("No QA metrics specified but items provided, skipping evaluation")
             return []
-        else:
-            logger.warning("No metrics specified, skipping evaluation")
-            return {}
+        logger.warning("No metrics specified, skipping evaluation")
+        return {}
 
     def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         has_qa_metrics = len(self.qa_metrics) > 0
         has_kg_metrics = len(self.kg_metrics) > 0
-        
+
         # QA evaluation: process batch items
         if has_qa_metrics:
             items = batch.to_dict(orient="records")
             results = self._evaluate_qa(items)
             return pd.DataFrame(results)
-        
+
         # KG evaluation: evaluate from storage
         if has_kg_metrics:
             results = self._evaluate_kg()
             # Convert dict to DataFrame (single row)
             return pd.DataFrame([results])
-        
+
         # No metrics specified
         logger.warning("No metrics specified, returning empty DataFrame")
         return pd.DataFrame()

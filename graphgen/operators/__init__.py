@@ -8,7 +8,6 @@ from .partition import PartitionService
 from .quiz import QuizService
 from .read import read
 from .search import SearchService
-from .evaluate import EvaluateService
 
 
 operators = {

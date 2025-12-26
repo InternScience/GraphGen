@@ -55,9 +55,9 @@ class UniEvaluator(BaseEvaluator):
         """Construct input text for specified dimension."""
         if dimension == "naturalness":
             return f"question: Is this a natural response? </s> response: {answer}"
-        elif dimension == "coherence":
+        if dimension == "coherence":
             return f"question: Is this a coherent response? </s> response: {answer} </s> history: {question}"
-        elif dimension == "understandability":
+        if dimension == "understandability":
             return f"question: Is this an understandable response? </s> response: {answer}"
         raise NotImplementedError(f"Unsupported dimension '{dimension}'")
 

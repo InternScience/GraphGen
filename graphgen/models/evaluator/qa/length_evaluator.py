@@ -5,8 +5,9 @@ from graphgen.models.tokenizer import Tokenizer
 
 
 class LengthEvaluator(BaseEvaluator):
-    def __init__(self):
-        self.tokenizer: Tokenizer = Tokenizer(os.environ["TOKENIZER_MODEL"] or "cl100k_base")
+    def __init__(self, tokenizer_name: str = None):
+        tokenizer_model = tokenizer_name or os.environ.get("TOKENIZER_MODEL", "cl100k_base")
+        self.tokenizer: Tokenizer = Tokenizer(tokenizer_model)
 
     def evaluate(self, pair: QAPair) -> float:
         """

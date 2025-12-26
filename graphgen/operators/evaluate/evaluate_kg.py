@@ -28,30 +28,30 @@ class KGEvaluators:
         self.chunk_storage: BaseKVStorage = init_storage(
             backend=kv_backend, working_dir=working_dir, namespace="chunk"
         )
-        
+
         # Initialize LLM client
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
-        
+
         # Initialize individual evaluators
         self.accuracy_evaluator = AccuracyEvaluator(
             graph_storage=self.graph_storage,
             chunk_storage=self.chunk_storage,
             llm_client=self.llm_client,
         )
-        
+
         self.consistency_evaluator = ConsistencyEvaluator(
             graph_storage=self.graph_storage,
             chunk_storage=self.chunk_storage,
             llm_client=self.llm_client,
         )
-        
+
         # Structure evaluator doesn't need chunk_storage or llm_client
         structure_params = kwargs.get("structure_params", {})
         self.structure_evaluator = StructureEvaluator(
             graph_storage=self.graph_storage,
             **structure_params
         )
-        
+
         logger.info("KG evaluators initialized")
 
 

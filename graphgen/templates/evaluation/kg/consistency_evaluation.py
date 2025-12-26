@@ -100,4 +100,3 @@ CONSISTENCY_EVALUATION_PROMPT = {
     "en": "",
     "zh": ""
 }
-
