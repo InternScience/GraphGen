@@ -279,8 +279,9 @@ class AccuracyEvaluator:
                 "issues": [f"Evaluation error: {str(e)}"],
             }
 
+    @staticmethod
     def _aggregate_evaluation_results(
-        self, entity_evaluations: List[Dict], relation_evaluations: List[Dict]
+        entity_evaluations: List[Dict], relation_evaluations: List[Dict]
     ) -> Dict[str, Any]:
         """Aggregate evaluation results from all chunks."""
 

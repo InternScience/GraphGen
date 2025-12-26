@@ -41,5 +41,5 @@ nodes:
     params:
       metrics:
         - kg_structure
-#        - kg_accuracy
-#        - kg_consistency
+        - kg_accuracy
+        - kg_consistency

@@ -18,14 +18,18 @@ class EvaluateService(BaseOperator):
         working_dir: str = "cache",
         metrics: list[str] = None,
         graph_backend: str = "kuzu",
+        kv_backend: str = "rocksdb",
         **kwargs,
     ):
         super().__init__(working_dir=working_dir, op_name="evaluate_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.metrics = metrics or []
         self.kwargs = kwargs
-        self.graph_backend = init_storage(
+        self.graph_storage = init_storage(
             backend=graph_backend, working_dir=working_dir, namespace="graph"
+        )
+        self.chunk_storage = init_storage(
+            backend=kv_backend, working_dir=working_dir, namespace="chunk"
         )
 
         # Initialize evaluators
@@ -62,21 +66,23 @@ class EvaluateService(BaseOperator):
                 from graphgen.models import AccuracyEvaluator
 
                 self.kg_evaluators[metric] = AccuracyEvaluator(
-                    graph_storage=self.graph_backend,
-                    **self.kwargs.get("accuracy_params", {}),
+                    graph_storage=self.graph_storage,
+                    chunk_storage=self.chunk_storage,
+                    llm_client=self.llm_client,
                 )
             elif metric == "kg_consistency":
                 from graphgen.models import ConsistencyEvaluator
 
                 self.kg_evaluators[metric] = ConsistencyEvaluator(
-                    graph_storage=self.graph_backend,
-                    **self.kwargs.get("consistency_params", {}),
+                    graph_storage=self.graph_storage,
+                    chunk_storage=self.chunk_storage,
+                    llm_client=self.llm_client,
                 )
             elif metric == "kg_structure":
                 from graphgen.models import StructureEvaluator
 
                 self.kg_evaluators[metric] = StructureEvaluator(
-                    graph_storage=self.graph_backend,
+                    graph_storage=self.graph_storage,
                     **self.kwargs.get("structure_params", {}),
                 )
             else:
