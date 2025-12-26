@@ -1,5 +1,6 @@
 from .build_kg import BuildKGService
 from .chunk import ChunkService
+from .evaluate import EvaluateService
 from .extract import ExtractService
 from .generate import GenerateService
 from .judge import JudgeService

@@ -48,10 +48,6 @@ class EvaluateService(BaseOperator):
             else:
                 raise ValueError(f"Unknown metric: {metric}")
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        items = batch.to_dict(orient="records")
-        return pd.DataFrame(self.evaluate(items))
-
     async def _process_single(self, item: dict[str, Any]) -> dict[str, Any]:
         try:
             qa_pair = QAPair(
