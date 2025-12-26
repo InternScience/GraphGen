@@ -84,18 +84,18 @@ class StructureEvaluator:
         try:
             degree_counts = Counter(degrees)
             degree_values, frequencies = zip(*sorted(degree_counts.items()))
-            
+
             if len(degree_values) < 3:
                 logger.warning(
                     f"Insufficient unique degrees ({len(degree_values)}) for power law fitting. "
                     f"Graph may be too uniform."
                 )
                 return None
-            
+
             # Fit power law: log(frequency) = a * log(degree) + b
             log_degrees = np.log(degree_values)
             log_frequencies = np.log(frequencies)
-            
+
             # Linear regression on log-log scale
             r_value, *_ = stats.linregress(log_degrees, log_frequencies)
             r2 = r_value**2
