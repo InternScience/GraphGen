@@ -1,4 +1,5 @@
 from typing import Any
+
 import pandas as pd
 
 from graphgen.bases import BaseLLMWrapper, BaseOperator, QAPair
@@ -18,21 +19,32 @@ class EvaluateService(BaseOperator):
         self.metrics = metrics
         self.kwargs = kwargs
         self.evaluators = {}
+        self._init_evaluators()
 
     def _init_evaluators(self):
         for metric in self.metrics:
             if metric == "qa_length":
                 from graphgen.models import LengthEvaluator
+
                 self.evaluators[metric] = LengthEvaluator()
             elif metric == "qa_mtld":
                 from graphgen.models import MTLDEvaluator
-                self.evaluators[metric] = MTLDEvaluator(self.kwargs.get("mtld_params", {}))
+
+                self.evaluators[metric] = MTLDEvaluator(
+                    **self.kwargs.get("mtld_params", {})
+                )
             elif metric == "qa_reward_score":
                 from graphgen.models import RewardEvaluator
-                self.evaluators[metric] = RewardEvaluator(self.kwargs.get("reward_params", {}))
+
+                self.evaluators[metric] = RewardEvaluator(
+                    **self.kwargs.get("reward_params", {})
+                )
             elif metric == "qa_uni_score":
                 from graphgen.models import UniEvaluator
-                self.evaluators[metric] = UniEvaluator(self.kwargs.get("uni_params", {}))
+
+                self.evaluators[metric] = UniEvaluator(
+                    **self.kwargs.get("uni_params", {})
+                )
             else:
                 raise ValueError(f"Unknown metric: {metric}")
 
@@ -44,16 +56,13 @@ class EvaluateService(BaseOperator):
         try:
             qa_pair = QAPair(
                 question=str(item.get("question", "")),
-                answer=str(item.get("answer", ""))
+                answer=str(item.get("answer", "")),
             )
             if not qa_pair.question or not qa_pair.answer:
                 self.logger.error("Empty question or answer, skipping.")
                 return {}
         except Exception as e:
-            self.logger.error(
-                "Error in QAPair creation: %s",
-                str(e)
-            )
+            self.logger.error("Error in QAPair creation: %s", str(e))
             return {}
 
         for metric, evaluator in self.evaluators.items():
@@ -65,17 +74,33 @@ class EvaluateService(BaseOperator):
                 else:
                     item[metric] = float(score)
             except Exception as e:
-                self.logger.error(
-                    "Error in %s evaluation: %s",
-                    metric,
-                    str(e)
-                )
+                self.logger.error("Error in %s evaluation: %s", metric, str(e))
                 item[metric] = None
+        return item
+
+    @staticmethod
+    def transform_messages_format(items: list[dict]) -> list[dict]:
+        """
+        Transform from [{'messages': [...]}, ...] to [{'question': '...', 'answer': '...'}, ...]
+        """
+        transformed = []
+        for item in items:
+            messages = item.get("messages", [])
+            question = next(
+                (m["content"] for m in messages if m.get("role") == "user"), ""
+            )
+            answer = next(
+                (m["content"] for m in messages if m.get("role") == "assistant"), ""
+            )
+
+            transformed.append({"question": question, "answer": answer})
+        return transformed
 
     def evaluate(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
         if not items:
             return []
 
+        items = self.transform_messages_format(items)
         results = run_concurrent(
             self._process_single,
             items,

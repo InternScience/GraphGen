@@ -11,8 +11,8 @@ class MTLDEvaluator(BaseEvaluator):
 
     def __init__(self, threshold: float = 0.72):
         self.nltk_helper = NLTKHelper()
-        self.stopwords_en: Set[str] = set(self.nltk_helper.get_stopwords("english"))
-        self.stopwords_zh: Set[str] = set(self.nltk_helper.get_stopwords("chinese"))
+        self.stopwords_en: Set[str] = set(self.nltk_helper.get_stopwords("en"))
+        self.stopwords_zh: Set[str] = set(self.nltk_helper.get_stopwords("zh"))
         self.threshold = threshold
 
     def evaluate(self, pair: QAPair) -> float:
