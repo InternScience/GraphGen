@@ -62,6 +62,7 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 
 ## 📌 Latest Updates
 
+- **2025.12.26**: Added comprehensive knowledge graph evaluation metrics including accuracy assessment (entity/relation extraction quality), consistency assessment (conflict detection), and structural robustness assessment (noise ratio, connectivity, degree distribution).
 - **2025.12.16**: Added [rocksdb](https://github.com/facebook/rocksdb) for key-value storage backend and [kuzudb](https://github.com/kuzudb/kuzu) for graph database backend support.
 - **2025.12.16**: Added [vllm](https://github.com/vllm-project/vllm) for local inference backend support.
 - **2025.12.16**: Refactored the data generation pipeline using [ray](https://github.com/ray-project/ray) to improve the efficiency of distributed execution and resource management.
