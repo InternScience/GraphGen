@@ -1,5 +1,4 @@
 from .evaluator import (
-    KGQualityEvaluator,
     LengthEvaluator,
     MTLDEvaluator,
     RewardEvaluator,

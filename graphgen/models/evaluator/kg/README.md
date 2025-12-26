@@ -4,12 +4,13 @@ This module provides comprehensive quality evaluation for knowledge graphs built
 
 ## Module Structure
 
-The evaluation functionality has been split into modular components:
+The evaluation functionality is organized into modular components:
 
 - **`accuracy_evaluator.py`**: Entity/relation extraction quality evaluation using LLM-as-a-Judge
 - **`consistency_evaluator.py`**: Attribute value conflict detection
 - **`structure_evaluator.py`**: Graph structural robustness metrics
-- **`kg_quality_evaluator.py`**: Main evaluator class that integrates all modules
+
+The evaluation components are integrated in `graphgen/operators/evaluate/evaluate_kg.py`, which provides functions to create and use these evaluators.
 
 ## Features
 

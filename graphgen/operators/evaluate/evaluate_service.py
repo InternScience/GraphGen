@@ -1,10 +1,15 @@
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Optional, Union
 
 import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper, BaseOperator, QAPair
-from graphgen.common import init_llm
-from graphgen.models import KGQualityEvaluator
+from graphgen.bases import BaseOperator, QAPair
+from graphgen.operators.evaluate.evaluate_kg import (
+    KGEvaluators,
+    evaluate_accuracy,
+    evaluate_all,
+    evaluate_consistency,
+    evaluate_structure,
+)
 from graphgen.utils import logger, run_concurrent
 
 
@@ -23,7 +28,6 @@ class EvaluateService(BaseOperator):
         **kwargs
     ):
         super().__init__(working_dir=working_dir, op_name="evaluate_service")
-        self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.metrics = metrics or []
         self.kwargs = kwargs
         self.graph_backend = graph_backend
@@ -35,7 +39,7 @@ class EvaluateService(BaseOperator):
         
         # Initialize evaluators
         self.qa_evaluators = {}
-        self.kg_evaluator = None
+        self.kg_evaluators: Optional[KGEvaluators] = None
         
         self._init_evaluators()
 
@@ -65,16 +69,15 @@ class EvaluateService(BaseOperator):
             else:
                 raise ValueError(f"Unknown QA metric: {metric}")
         
-        # Initialize KG evaluator if KG metrics are specified
+        # Initialize KG evaluators if KG metrics are specified
         if self.kg_metrics:
             kg_params = self.kwargs.get("kg_params", {})
-            self.kg_evaluator = KGQualityEvaluator(
+            self.kg_evaluators = KGEvaluators(
                 working_dir=self.working_dir,
                 graph_backend=self.graph_backend,
                 kv_backend=self.kv_backend,
                 **kg_params
             )
-            logger.info("KG evaluator initialized")
 
     async def _process_single(self, item: dict[str, Any]) -> dict[str, Any]:
         try:
@@ -140,17 +143,17 @@ class EvaluateService(BaseOperator):
         return results
 
     def _evaluate_kg(self) -> Dict[str, Any]:
-        if not self.kg_evaluator:
-            logger.warning("No KG evaluator initialized, skipping KG evaluation")
+        if not self.kg_evaluators:
+            logger.warning("No KG evaluators initialized, skipping KG evaluation")
             return {}
 
         results = {}
         
         # Map metric names to evaluation functions
         kg_metric_map = {
-            "kg_accuracy": self.kg_evaluator.evaluate_accuracy,
-            "kg_consistency": self.kg_evaluator.evaluate_consistency,
-            "kg_structure": self.kg_evaluator.evaluate_structure,
+            "kg_accuracy": evaluate_accuracy,
+            "kg_consistency": evaluate_consistency,
+            "kg_structure": evaluate_structure,
         }
         
         # Run KG evaluations based on metrics
@@ -159,7 +162,7 @@ class EvaluateService(BaseOperator):
                 logger.info("Running %s evaluation...", metric)
                 metric_key = metric.replace("kg_", "")  # Remove "kg_" prefix
                 try:
-                    results[metric_key] = kg_metric_map[metric]()
+                    results[metric_key] = kg_metric_map[metric](self.kg_evaluators)
                 except Exception as e:
                     logger.error("Error in %s evaluation: %s", metric, str(e))
                     results[metric_key] = {"error": str(e)}
@@ -169,7 +172,7 @@ class EvaluateService(BaseOperator):
         # If no valid metrics were found, run all evaluations
         if not results:
             logger.info("No valid KG metrics found, running all evaluations")
-            results = self.kg_evaluator.evaluate_all()
+            results = evaluate_all(self.kg_evaluators)
         
         return results
 
