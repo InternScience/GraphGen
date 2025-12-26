@@ -83,12 +83,7 @@ class StructureEvaluator:
 
         try:
             degree_counts = Counter(degrees)
-            degree_values = []
-            frequencies = []
-            for deg, freq in sorted(degree_counts.items()):
-                if deg > 0 and freq > 0:
-                    degree_values.append(deg)
-                    frequencies.append(freq)
+            degree_values, frequencies = zip(*sorted(degree_counts.items()))
             
             if len(degree_values) < 3:
                 logger.warning(
