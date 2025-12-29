@@ -160,6 +160,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
             "op_name": "generate",
             "type": "map_batch",
             "dependencies": ["partition"],
+            "save_output": True,
             "execution_params": {"replicas": 1, "batch_size": 128},
             "params": {
                 "method": params.mode,
@@ -168,14 +169,17 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         }
     )
 
-    config = {"global_params": {"working_dir": working_dir}, "nodes": nodes}
+    config = {
+        "global_params": {
+            "working_dir": working_dir,
+            "graph_backend": "kuzu",
+            "kv_backend": "rocksdb",
+        },
+        "nodes": nodes,
+    }
 
     try:
         # 4. Initialize and Run Engine
-        # Initialize Ray if not already running (Engine handles this mostly, but good for safety)
-        if not ray.is_initialized():
-            ray.init(ignore_reinit_error=True, log_to_driver=True)
-
         engine = Engine(config, operators)
 
         # Start with an empty dataset to kick off the pipeline
