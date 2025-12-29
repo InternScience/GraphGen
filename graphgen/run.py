@@ -6,12 +6,15 @@ from typing import Any, Dict
 
 import ray
 import yaml
+from dotenv import load_dotenv
 from ray.data.block import Block
 from ray.data.datasource.filename_provider import FilenameProvider
 
 from graphgen.engine import Engine
 from graphgen.operators import operators
 from graphgen.utils import CURRENT_LOGGER_VAR, logger, set_logger
+
+load_dotenv()
 
 sys_path = os.path.abspath(os.path.dirname(__file__))
 
