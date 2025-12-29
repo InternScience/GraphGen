@@ -53,6 +53,7 @@ def read(
     working_dir: Optional[str] = "cache",
     parallelism: int = 4,
     recursive: bool = True,
+    read_num: Optional[int] = None,
     **reader_kwargs: Any,
 ) -> ray.data.Dataset:
     """
@@ -119,6 +120,9 @@ def read(
                 "_doc_id": compute_mm_hash(record, prefix="doc-"),
             }
         )
+
+        if read_num is not None:
+            combined_ds = combined_ds.limit(read_num)
 
         logger.info("[READ] Successfully read files from %s", input_path)
         return combined_ds
