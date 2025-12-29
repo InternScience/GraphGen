@@ -6,12 +6,9 @@ from typing import Any, Dict, List
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper
 from graphgen.bases.datatypes import Chunk
 from graphgen.templates.evaluation.kg.consistency_evaluation import (
-    ENTITY_DESCRIPTION_CONFLICT_PROMPT,
-    ENTITY_EXTRACTION_PROMPT,
-    ENTITY_TYPE_CONFLICT_PROMPT,
-    RELATION_CONFLICT_PROMPT,
+    CONSISTENCY_EVALUATION_PROMPT,
 )
-from graphgen.utils import logger
+from graphgen.utils import detect_main_language, logger
 
 
 class ConsistencyEvaluator:
@@ -194,7 +191,9 @@ class ConsistencyEvaluator:
             # Clean entity_id: remove surrounding quotes if present
             clean_entity_id = self._clean_entity_id(entity_id)
 
-            prompt = ENTITY_EXTRACTION_PROMPT.format(
+            # Detect language and get appropriate prompt
+            lang = detect_main_language(chunk.content)
+            prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["ENTITY_EXTRACTION"].format(
                 entity_name=clean_entity_id,
                 chunk_content=chunk.content[:2000]
                 if chunk.content
@@ -270,7 +269,10 @@ class ConsistencyEvaluator:
                 if entity_type
             ]
 
-            prompt = ENTITY_TYPE_CONFLICT_PROMPT.format(
+            # Use default language (zh) for conflict detection prompts
+            # as they compare multiple chunks which may have different languages
+            lang = "zh"  # Default to Chinese, can be made configurable
+            prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["ENTITY_TYPE_CONFLICT"].format(
                 entity_name=entity_id, type_extractions="\n".join(type_list)
             )
 
@@ -313,7 +315,9 @@ class ConsistencyEvaluator:
                 for chunk_id, description in valid_descriptions.items()
             ]
 
-            prompt = ENTITY_DESCRIPTION_CONFLICT_PROMPT.format(
+            # Use default language (zh) for conflict detection prompts
+            lang = "zh"  # Default to Chinese, can be made configurable
+            prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["ENTITY_DESCRIPTION_CONFLICT"].format(
                 entity_name=entity_id, descriptions="\n".join(desc_list)
             )
 
@@ -351,7 +355,9 @@ class ConsistencyEvaluator:
                 if relation
             ]
 
-            prompt = RELATION_CONFLICT_PROMPT.format(
+            # Use default language (zh) for conflict detection prompts
+            lang = "zh"  # Default to Chinese, can be made configurable
+            prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["RELATION_CONFLICT"].format(
                 source_entity=src_id,
                 target_entity=dst_id,
                 relation_descriptions="\n".join(rel_list),
