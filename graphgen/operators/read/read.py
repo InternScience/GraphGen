@@ -53,7 +53,7 @@ def read(
     working_dir: Optional[str] = "cache",
     parallelism: int = 4,
     recursive: bool = True,
-    read_num: Optional[int] = None,
+    read_nums: Optional[int] = None,
     **reader_kwargs: Any,
 ) -> ray.data.Dataset:
     """
@@ -64,6 +64,7 @@ def read(
     :param working_dir: Directory to cache intermediate files (PDF processing)
     :param parallelism: Number of parallel workers
     :param recursive: Whether to scan directories recursively
+    :param read_nums: Limit the number of documents to read
     :param reader_kwargs: Additional kwargs passed to readers
     :return: Ray Dataset containing all documents
     """
@@ -121,8 +122,8 @@ def read(
             }
         )
 
-        if read_num is not None:
-            combined_ds = combined_ds.limit(read_num)
+        if read_nums is not None:
+            combined_ds = combined_ds.limit(read_nums)
 
         logger.info("[READ] Successfully read files from %s", input_path)
         return combined_ds
