@@ -32,10 +32,14 @@ Type extraction results from different text blocks:
 {type_extractions}
 
 Preset entity type list (for reference):
-concept, date, location, keyword, organization, person, event, work, nature, artificial, science, technology, mission, gene
+concept, date, location, keyword, organization, person, event, work, nature, """
+    """artificial, science, technology, mission, gene
 
-Please determine whether these types have semantic conflicts (i.e., whether they describe the same category of things, or if there are contradictions).
-Note: If types are just different expressions of the same concept (such as concept and keyword), it may not be considered a serious conflict.
+Please determine whether these types have semantic conflicts """
+    """(i.e., whether they describe the same category of things, """
+    """or if there are contradictions).
+Note: If types are just different expressions of the same concept """
+    """(such as concept and keyword), it may not be considered a serious conflict.
 
 Please return in JSON format:
 {{
@@ -77,7 +81,9 @@ Entity Name: {entity_name}
 Descriptions from different text blocks:
 {descriptions}
 
-Please determine whether these descriptions have semantic conflicts (i.e., whether they describe the same entity, or if there is contradictory information).
+Please determine whether these descriptions have semantic conflicts """
+    """(i.e., whether they describe the same entity, """
+    """or if there is contradictory information).
 
 Please return in JSON format:
 {{
