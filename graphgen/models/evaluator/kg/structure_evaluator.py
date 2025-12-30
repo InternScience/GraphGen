@@ -97,8 +97,8 @@ class StructureEvaluator:
             log_frequencies = np.log(frequencies)
 
             # Linear regression on log-log scale
-            r_value, *_ = stats.linregress(log_degrees, log_frequencies)
-            r2 = r_value**2
+            result = stats.linregress(log_degrees, log_frequencies)
+            r2 = result.rvalue**2
 
             return float(r2)
         except Exception as e:
