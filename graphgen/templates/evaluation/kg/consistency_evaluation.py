@@ -21,7 +21,10 @@ concept, date, location, keyword, organization, person, event, work, nature, art
 }}
 """
 
-ENTITY_TYPE_CONFLICT_PROMPT_EN = """You are a Knowledge Graph Consistency Assessment Expert. Your task is to determine whether there are semantic conflicts when the same entity is extracted as different types in different text blocks.
+ENTITY_TYPE_CONFLICT_PROMPT_EN = (
+    """You are a Knowledge Graph Consistency Assessment Expert. """
+    """Your task is to determine whether there are semantic conflicts """
+    """when the same entity is extracted as different types in different text blocks.
 
 Entity Name: {entity_name}
 
@@ -43,6 +46,7 @@ Please return in JSON format:
     "recommended_type": "<if there is a conflict, the recommended correct type (must be one of the preset types)>"
 }}
 """
+)
 
 ENTITY_DESCRIPTION_CONFLICT_PROMPT_ZH = """你是一个知识图谱一致性评估专家。你的任务是判断同一个实体在不同文本块中的描述是否存在语义冲突。
 
@@ -63,7 +67,10 @@ ENTITY_DESCRIPTION_CONFLICT_PROMPT_ZH = """你是一个知识图谱一致性评�
 }}
 """
 
-ENTITY_DESCRIPTION_CONFLICT_PROMPT_EN = """You are a Knowledge Graph Consistency Assessment Expert. Your task is to determine whether there are semantic conflicts in the descriptions of the same entity across different text blocks.
+ENTITY_DESCRIPTION_CONFLICT_PROMPT_EN = (
+    """You are a Knowledge Graph Consistency Assessment Expert. """
+    """Your task is to determine whether there are semantic conflicts """
+    """in the descriptions of the same entity across different text blocks.
 
 Entity Name: {entity_name}
 
@@ -81,6 +88,7 @@ Please return in JSON format:
     "conflict_details": "<specific conflict content>"
 }}
 """
+)
 
 RELATION_CONFLICT_PROMPT_ZH = """你是一个知识图谱一致性评估专家。你的任务是判断同一对实体在不同文本块中的关系描述是否存在语义冲突。
 
@@ -100,7 +108,10 @@ RELATION_CONFLICT_PROMPT_ZH = """你是一个知识图谱一致性评估专家�
 }}
 """
 
-RELATION_CONFLICT_PROMPT_EN = """You are a Knowledge Graph Consistency Assessment Expert. Your task is to determine whether there are semantic conflicts in the relation descriptions of the same entity pair across different text blocks.
+RELATION_CONFLICT_PROMPT_EN = (
+    """You are a Knowledge Graph Consistency Assessment Expert. """
+    """Your task is to determine whether there are semantic conflicts """
+    """in the relation descriptions of the same entity pair across different text blocks.
 
 Entity Pair: {source_entity} -> {target_entity}
 
@@ -117,6 +128,7 @@ Please return in JSON format:
     "conflicting_relations": ["<pairs of conflicting relation descriptions>"]
 }}
 """
+)
 
 ENTITY_EXTRACTION_PROMPT_ZH = """从以下文本块中提取指定实体的类型和描述。
 
