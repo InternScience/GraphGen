@@ -269,11 +269,11 @@ class ConsistencyEvaluator:
                 if entity_type
             ]
 
-            # Use default language (zh) for conflict detection prompts
-            # as they compare multiple chunks which may have different languages
-            lang = "zh"  # Default to Chinese, can be made configurable
+            # Detect language from type extraction text
+            type_text = "\n".join(type_list)
+            lang = detect_main_language(type_text)
             prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["ENTITY_TYPE_CONFLICT"].format(
-                entity_name=entity_id, type_extractions="\n".join(type_list)
+                entity_name=entity_id, type_extractions=type_text
             )
 
             response = asyncio.run(self.llm_client.generate_answer(prompt))
@@ -315,10 +315,11 @@ class ConsistencyEvaluator:
                 for chunk_id, description in valid_descriptions.items()
             ]
 
-            # Use default language (zh) for conflict detection prompts
-            lang = "zh"  # Default to Chinese, can be made configurable
+            # Detect language from description text
+            desc_text = "\n".join(desc_list)
+            lang = detect_main_language(desc_text)
             prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["ENTITY_DESCRIPTION_CONFLICT"].format(
-                entity_name=entity_id, descriptions="\n".join(desc_list)
+                entity_name=entity_id, descriptions=desc_text
             )
 
             response = asyncio.run(self.llm_client.generate_answer(prompt))
@@ -355,12 +356,13 @@ class ConsistencyEvaluator:
                 if relation
             ]
 
-            # Use default language (zh) for conflict detection prompts
-            lang = "zh"  # Default to Chinese, can be made configurable
+            # Detect language from relation description text
+            rel_text = "\n".join(rel_list)
+            lang = detect_main_language(rel_text)
             prompt = CONSISTENCY_EVALUATION_PROMPT[lang]["RELATION_CONFLICT"].format(
                 source_entity=src_id,
                 target_entity=dst_id,
-                relation_descriptions="\n".join(rel_list),
+                relation_descriptions=rel_text,
             )
 
             response = asyncio.run(self.llm_client.generate_answer(prompt))
