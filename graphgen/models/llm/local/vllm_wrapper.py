@@ -39,9 +39,9 @@ class VLLMWrapper(BaseLLMWrapper):
             disable_log_stats=False,
         )
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
-        self.temperature = temperature
-        self.top_p = top_p
-        self.topk = topk
+        self.temperature = float(temperature)
+        self.top_p = float(top_p)
+        self.topk = int(topk)
 
     @staticmethod
     def _build_inputs(prompt: str, history: Optional[List[str]] = None) -> str:
