@@ -39,7 +39,12 @@ class BasePartitioner(ABC):
             if node_data:
                 nodes_data.append((node, node_data))
         edges_data = []
-        for u, v in edges:
+        for edge in edges:
+            # Filter out self-loops and invalid edges
+            if isinstance(edge, (tuple, list)) and len(edge) == 2:
+                u, v = edge[0], edge[1]
+            else:
+                continue
             edge_data = g.get_edge(u, v)
             if edge_data:
                 edges_data.append((u, v, edge_data))

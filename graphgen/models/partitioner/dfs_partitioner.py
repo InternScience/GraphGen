@@ -42,7 +42,8 @@ class DFSPartitioner(BasePartitioner):
             ):
                 continue
 
-            comm_n, comm_e = [], []
+            comm_n: List[str] = []
+            comm_e: List[frozenset[str]] = []
             stack = [(kind, seed)]
             cnt = 0
 
@@ -63,7 +64,7 @@ class DFSPartitioner(BasePartitioner):
                     if it in used_e:
                         continue
                     used_e.add(it)
-                    comm_e.append(tuple(it))
+                    comm_e.append(it)
                     cnt += 1
                     # push neighboring nodes
                     for n in it:
@@ -71,4 +72,9 @@ class DFSPartitioner(BasePartitioner):
                             stack.append((NODE_UNIT, n))
 
             if comm_n or comm_e:
-                yield Community(id=seed, nodes=comm_n, edges=comm_e)
+                # Filter out self-loops and invalid edges
+                valid_edges = [
+                    tuple(edge) for edge in comm_e
+                    if isinstance(edge, frozenset) and len(edge) == 2
+                ]
+                yield Community(id=seed, nodes=comm_n, edges=valid_edges)
