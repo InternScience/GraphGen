@@ -71,9 +71,5 @@ class BFSPartitioner(BasePartitioner):
                             queue.append((NODE_UNIT, n))
 
             if comm_n or comm_e:
-                # Filter out self-loops and invalid edges
-                valid_edges = [
-                    tuple(edge) for edge in comm_e
-                    if isinstance(edge, frozenset) and len(edge) == 2
-                ]
+                valid_edges = self._filter_valid_edges(comm_e)
                 yield Community(id=seed, nodes=comm_n, edges=valid_edges)

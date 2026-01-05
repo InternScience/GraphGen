@@ -20,6 +20,13 @@ class BasePartitioner(ABC):
         """
 
     @staticmethod
+    def _filter_valid_edges(edges: List[Any]) -> List[tuple[str, str]]:
+        return [
+            tuple(edge) for edge in edges
+            if isinstance(edge, frozenset) and len(edge) == 2
+        ]
+
+    @staticmethod
     def community2batch(
         comm: Community, g: BaseGraphStorage
     ) -> tuple[
@@ -44,6 +51,7 @@ class BasePartitioner(ABC):
             if isinstance(edge, (tuple, list)) and len(edge) == 2:
                 u, v = edge[0], edge[1]
             else:
+                # Skip invalid edge format (e.g., self-loops or malformed edges)
                 continue
             edge_data = g.get_edge(u, v)
             if edge_data:
