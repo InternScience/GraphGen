@@ -24,7 +24,7 @@ class VLLMWrapper(BaseLLMWrapper):
         temperature = float(temperature)
         top_p = float(top_p)
         top_k = int(top_k)
-        
+
         super().__init__(temperature=temperature, top_p=top_p, top_k=top_k, **kwargs)
         try:
             from vllm import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
