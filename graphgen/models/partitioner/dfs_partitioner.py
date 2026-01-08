@@ -1,6 +1,6 @@
 import random
 from collections.abc import Iterable
-from typing import Any
+from typing import Any, List
 
 from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community
@@ -42,7 +42,8 @@ class DFSPartitioner(BasePartitioner):
             ):
                 continue
 
-            comm_n, comm_e = [], []
+            comm_n: List[str] = []
+            comm_e: List[tuple[str, str]] = []
             stack = [(kind, seed)]
             cnt = 0
 
@@ -63,7 +64,7 @@ class DFSPartitioner(BasePartitioner):
                     if it in used_e:
                         continue
                     used_e.add(it)
-                    comm_e.append(tuple(it))
+                    comm_e.append(tuple(sorted(it)))
                     cnt += 1
                     # push neighboring nodes
                     for n in it:
