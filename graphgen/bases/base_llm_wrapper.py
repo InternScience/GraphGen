@@ -26,11 +26,11 @@ class BaseLLMWrapper(abc.ABC):
         **kwargs: Any,
     ):
         self.system_prompt = system_prompt
-        self.temperature = temperature
-        self.max_tokens = max_tokens
-        self.repetition_penalty = repetition_penalty
-        self.top_p = top_p
-        self.top_k = top_k
+        self.temperature = float(temperature)
+        self.max_tokens = int(max_tokens)
+        self.repetition_penalty = float(repetition_penalty)
+        self.top_p = float(top_p)
+        self.top_k = int(top_k)
         self.tokenizer = tokenizer
 
         for k, v in kwargs.items():

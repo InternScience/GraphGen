@@ -20,13 +20,9 @@ class VLLMWrapper(BaseLLMWrapper):
         temperature: float = 0.6,
         top_p: float = 1.0,
         top_k: int = 5,
-        timeout: float = 300
+        timeout: float = 300,
         **kwargs: Any,
     ):
-        temperature = float(temperature)
-        top_p = float(top_p)
-        top_k = int(top_k)
-
         super().__init__(temperature=temperature, top_p=top_p, top_k=top_k, **kwargs)
         try:
             from vllm import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
@@ -45,10 +41,7 @@ class VLLMWrapper(BaseLLMWrapper):
             disable_log_stats=False,
         )
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
-        self.temperature = temperature
-        self.top_p = top_p
-        self.top_k = top_k
-        self.timeout = timeout
+        self.timeout = float(timeout)
 
     @staticmethod
     def _build_inputs(prompt: str, history: Optional[List[str]] = None) -> str:
@@ -89,20 +82,15 @@ class VLLMWrapper(BaseLLMWrapper):
                 self._consume_generator(result_generator),
                 timeout=self.timeout
             )
-            
+
             if not final_output or not final_output.outputs:
                 return ""
 
             result_text = final_output.outputs[0].text
             return result_text
-            
-        except asyncio.TimeoutError:
-            await self.engine.abort(request_id)
-            raise
-        except asyncio.CancelledError:
-            await self.engine.abort(request_id)
-            raise
+
         except Exception as e:
+            print(f"Error in generate_answer: {e}")
             await self.engine.abort(request_id)
             raise
 
@@ -116,7 +104,6 @@ class VLLMWrapper(BaseLLMWrapper):
             temperature=0,
             max_tokens=1,
             logprobs=self.top_k,
-            prompt_logprobs=1,
         )
 
         result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
@@ -126,7 +113,7 @@ class VLLMWrapper(BaseLLMWrapper):
                 self._consume_generator(result_generator),
                 timeout=self.timeout
             )
-            
+
             if (
                 not final_output
                 or not final_output.outputs
@@ -154,14 +141,9 @@ class VLLMWrapper(BaseLLMWrapper):
                 )
                 return [main_token]
             return []
-            
-        except asyncio.TimeoutError:
-            await self.engine.abort(request_id)
-            raise
-        except asyncio.CancelledError:
-            await self.engine.abort(request_id)
-            raise
+
         except Exception as e:
+            print(f"Error in generate_topk_per_token: {e}")
             await self.engine.abort(request_id)
             raise
 
@@ -171,4 +153,3 @@ class VLLMWrapper(BaseLLMWrapper):
         raise NotImplementedError(
             "VLLMWrapper does not support per-token logprobs yet."
         )
-
