@@ -89,8 +89,7 @@ class VLLMWrapper(BaseLLMWrapper):
             result_text = final_output.outputs[0].text
             return result_text
 
-        except Exception as e:
-            print(f"Error in generate_answer: {e}")
+        except (Exception, asyncio.CancelledError):
             await self.engine.abort(request_id)
             raise
 
@@ -142,8 +141,7 @@ class VLLMWrapper(BaseLLMWrapper):
                 return [main_token]
             return []
 
-        except Exception as e:
-            print(f"Error in generate_topk_per_token: {e}")
+        except (Exception, asyncio.CancelledError):
             await self.engine.abort(request_id)
             raise
 
