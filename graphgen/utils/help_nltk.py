@@ -3,13 +3,13 @@ import os
 from typing import Dict, List, Final, Optional
 import warnings
 import nltk
-import jieba
-
 warnings.filterwarnings(
     "ignore",
     category=UserWarning,
     module=r"jieba\._compat"
 )
+import jieba # pylint: disable=import-error
+
 
 class NLTKHelper:
     """

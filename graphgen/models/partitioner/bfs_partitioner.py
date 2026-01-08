@@ -43,7 +43,7 @@ class BFSPartitioner(BasePartitioner):
                 continue
 
             comm_n: List[str] = []
-            comm_e: List[frozenset[str]] = []
+            comm_e: List[tuple[str, str]] = []
             queue: deque[tuple[str, Any]] = deque([(kind, seed)])
             cnt = 0
 
@@ -63,7 +63,7 @@ class BFSPartitioner(BasePartitioner):
                     if it in used_e:
                         continue
                     used_e.add(it)
-                    comm_e.append(it)
+                    comm_e.append(tuple(sorted(it)))
                     cnt += 1
                     # push nodes that are not visited
                     for n in it:
@@ -71,5 +71,4 @@ class BFSPartitioner(BasePartitioner):
                             queue.append((NODE_UNIT, n))
 
             if comm_n or comm_e:
-                valid_edges = self._filter_valid_edges(comm_e)
-                yield Community(id=seed, nodes=comm_n, edges=valid_edges)
+                yield Community(id=seed, nodes=comm_n, edges=comm_e)
