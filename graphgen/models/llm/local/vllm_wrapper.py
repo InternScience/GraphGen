@@ -19,11 +19,15 @@ class VLLMWrapper(BaseLLMWrapper):
         gpu_memory_utilization: float = 0.9,
         temperature: float = 0.6,
         top_p: float = 1.0,
-        topk: int = 5,
-        timeout: float = 300.0,
+        top_k: int = 5,
+        timeout: float = 300
         **kwargs: Any,
     ):
-        super().__init__(temperature=temperature, top_p=top_p, **kwargs)
+        temperature = float(temperature)
+        top_p = float(top_p)
+        top_k = int(top_k)
+
+        super().__init__(temperature=temperature, top_p=top_p, top_k=top_k, **kwargs)
         try:
             from vllm import AsyncEngineArgs, AsyncLLMEngine, SamplingParams
         except ImportError as exc:
@@ -43,7 +47,7 @@ class VLLMWrapper(BaseLLMWrapper):
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         self.temperature = temperature
         self.top_p = top_p
-        self.topk = topk
+        self.top_k = top_k
         self.timeout = timeout
 
     @staticmethod
@@ -111,7 +115,7 @@ class VLLMWrapper(BaseLLMWrapper):
         sp = self.SamplingParams(
             temperature=0,
             max_tokens=1,
-            logprobs=self.topk,
+            logprobs=self.top_k,
             prompt_logprobs=1,
         )
 

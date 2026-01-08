@@ -7,14 +7,11 @@ from typing import Any, Callable, Dict, List, Set
 
 import ray
 import ray.data
-from dotenv import load_dotenv
 from ray.data import DataContext
 
 from graphgen.bases import Config, Node
 from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger
-
-load_dotenv()
 
 
 class Engine:

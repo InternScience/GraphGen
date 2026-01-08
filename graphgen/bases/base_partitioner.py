@@ -39,14 +39,17 @@ class BasePartitioner(ABC):
             if node_data:
                 nodes_data.append((node, node_data))
         edges_data = []
-        for u, v in edges:
-            edge_data = g.get_edge(u, v)
+        for edge in edges:
+            # Filter out self-loops and invalid edges
+            if not isinstance(edge, tuple) or len(edge) != 2:
+                continue
+            u, v = edge
+            if u == v:
+                continue
+
+            edge_data = g.get_edge(u, v) or g.get_edge(v, u)
             if edge_data:
                 edges_data.append((u, v, edge_data))
-            else:
-                edge_data = g.get_edge(v, u)
-                if edge_data:
-                    edges_data.append((v, u, edge_data))
         return nodes_data, edges_data
 
     @staticmethod
@@ -61,9 +64,11 @@ class BasePartitioner(ABC):
         """
         adj: dict[str, List[str]] = {n[0]: [] for n in nodes}
         edge_set: set[tuple[str, str]] = set()
-        for e in edges:
-            adj[e[0]].append(e[1])
-            adj[e[1]].append(e[0])
-            edge_set.add((e[0], e[1]))
-            edge_set.add((e[1], e[0]))
+        for u, v, _ in edges:
+            if u == v:
+                continue
+            adj[u].append(v)
+            adj[v].append(u)
+            edge_set.add((u, v))
+            edge_set.add((v, u))
         return adj, edge_set

@@ -62,6 +62,7 @@ After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LL
 
 ## 📌 Latest Updates
 
+- **2025.12.26**: Added comprehensive knowledge graph evaluation metrics including accuracy assessment (entity/relation extraction quality), consistency assessment (conflict detection), and structural robustness assessment (noise ratio, connectivity, degree distribution).
 - **2025.12.16**: Added [rocksdb](https://github.com/facebook/rocksdb) for key-value storage backend and [kuzudb](https://github.com/kuzudb/kuzu) for graph database backend support.
 - **2025.12.16**: Added [vllm](https://github.com/vllm-project/vllm) for local inference backend support.
 - **2025.12.16**: Refactored the data generation pipeline using [ray](https://github.com/ray-project/ray) to improve the efficiency of distributed execution and resource management.
@@ -265,9 +266,9 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
     ```yaml
       # examples/generate/generate_aggregated_qa/aggregated_config.yaml
       global_params:
-      working_dir: cache
-      graph_backend: kuzu # graph database backend, support: kuzu, networkx
-      kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+        working_dir: cache
+        graph_backend: kuzu # graph database backend, support: kuzu, networkx
+        kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
    
       nodes:
         - id: read_files # id is unique in the pipeline, and can be referenced by other steps

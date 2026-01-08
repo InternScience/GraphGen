@@ -62,6 +62,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 在数据生成后，您可以使用[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) 和 [xtuner](https://github.com/InternLM/xtuner)对大语言模型进行微调。
 
 ## 📌 最新更新
+- **2025.12.26**: 新增知识图谱评估指标，包括准确度评估（实体/关系抽取质量）、一致性评估（冲突检测）和结构鲁棒性评估（噪声比、连通性、度分布）。
 - **2025.12.16**:新增 [rocksdb](https://github.com/facebook/rocksdb) 作为键值存储后端, [kuzudb](https://github.com/kuzudb/kuzu) 作为图数据库后端的支持。
 - **2025.12.16**:新增 [vllm](https://github.com/vllm-project/vllm) 作为本地推理后端的支持。
 - **2025.12.16**:使用 [ray](https://github.com/ray-project/ray) 重构了数据生成 pipeline，提升了分布式执行和资源管理的效率。
@@ -255,16 +256,16 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
       # TRAINEE_MODEL=Qwen/Qwen2.5-0.5B-Instruct
       # TRAINEE_NUM_GPUS=1
      ```
-2. （可选）如需修改默认生成配置，可编辑 `graphgen/configs/` 文件夹中的 YAML 文件.
+2. （可选）如需修改默认生成配置，可编辑 `config.yaml` 文件。
 
    例如：
 
     ```yaml
       # examples/generate/generate_aggregated_qa/aggregated_config.yaml
       global_params:
-      working_dir: cache
-      graph_backend: kuzu # graph database backend, support: kuzu, networkx
-      kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+        working_dir: cache
+        graph_backend: kuzu # graph database backend, support: kuzu, networkx
+        kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
    
       nodes:
         - id: read_files # id is unique in the pipeline, and can be referenced by other steps
