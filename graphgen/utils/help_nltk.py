@@ -8,7 +8,8 @@ warnings.filterwarnings(
     category=UserWarning,
     module=r"jieba\._compat"
 )
-import jieba # pylint: disable=import-error
+# pylint: disable=wrong-import-position
+import jieba
 
 
 class NLTKHelper:
