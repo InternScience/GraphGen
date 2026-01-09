@@ -15,6 +15,7 @@ workflows:
   - .github/workflows/*.yaml
 
 config:
-  - .github/labeler.yml
+  - .github/pr-labeler.yml
+  - .github/issue-labeler.yml
   - .pre-commit-config.yaml
   - .pylintrc
