@@ -1,0 +1,10 @@
+bug:
+  - '\b(bug|error|fail|crash|defect|broken)\b'
+  - 'Bug report'
+
+enhancement:
+  - '\b(feature|request|idea|proposal|improve|add)\b'
+  - 'Feature request'
+
+question:
+  - '\b(question|help|how to|support|query)\b'
