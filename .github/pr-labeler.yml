@@ -1,19 +1,20 @@
 core:
-- graphgen/**/*
+  - graphgen/**/*
 
 examples:
-- examples/**/*
+  - examples/**/*
 
 baselines:
-- baselines/**/*
+  - baselines/**/*
 
 documentation:
-- "**/*.md"
+  - "**/*.md"
 
 workflows:
-- .github/workflows/*.yml
+  - .github/workflows/*.yml
+  - .github/workflows/*.yaml
 
 config:
-- .github/labeler.yml
-- .pre-commit-config.yaml
-- .pylintrc
+  - .github/labeler.yml
+  - .pre-commit-config.yaml
+  - .pylintrc
