@@ -28,10 +28,10 @@ class BuildKGService(BaseOperator):
         docs = [Chunk.from_dict(doc["_chunk_id"], doc) for doc in docs]
 
         # consume the chunks and build kg
-        self.build_kg(docs)
-        return pd.DataFrame([{"status": "kg_building_completed"}])
+        nodes, edges = self.build_kg(docs)
+        return pd.DataFrame([{"nodes": nodes, "edges": edges}])
 
-    def build_kg(self, chunks: List[Chunk]) -> None:
+    def build_kg(self, chunks: List[Chunk]) -> tuple:
         """
         Build knowledge graph (KG) and merge into kg_instance
         """
@@ -42,24 +42,34 @@ class BuildKGService(BaseOperator):
             if chunk.type in ("image", "video", "table", "formula")
         ]
 
+        nodes = {}
+        edges = {}
+
         if len(text_chunks) == 0:
             logger.info("All text chunks are already in the storage")
         else:
             logger.info("[Text Entity and Relation Extraction] processing ...")
-            build_text_kg(
+            text_nodes, text_edges = build_text_kg(
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,
                 chunks=text_chunks,
                 max_loop=self.max_loop,
             )
+            nodes.update(text_nodes)
+            edges.update(text_edges)
         if len(mm_chunks) == 0:
             logger.info("All multi-modal chunks are already in the storage")
         else:
             logger.info("[Multi-modal Entity and Relation Extraction] processing ...")
-            build_mm_kg(
+            mm_nodes, mm_edges = build_mm_kg(
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,
                 chunks=mm_chunks,
             )
+            nodes.update(mm_nodes)
+            edges.update(mm_edges)
 
         self.graph_storage.index_done_callback()
+        logger.info("Knowledge graph building completed.")
+
+        return nodes, edges

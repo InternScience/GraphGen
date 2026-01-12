@@ -34,7 +34,7 @@ nodes:
 
   - id: quiz
     op_name: quiz
-    type: aggregate
+    type: map_batch
     dependencies:
       - build_kg
     execution_params:
@@ -42,7 +42,6 @@ nodes:
       batch_size: 128
     params:
       quiz_samples: 2 # number of quiz samples to generate
-      concurrency_limit: 200
 
   - id: judge
     op_name: judge

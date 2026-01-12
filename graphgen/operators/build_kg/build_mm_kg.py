@@ -12,7 +12,7 @@ def build_mm_kg(
     llm_client: BaseLLMWrapper,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
-):
+) -> tuple:
     """
     Build multi-modal KG and merge into kg_instance
     :param llm_client: Synthesizer LLM model to extract entities and relationships
@@ -48,3 +48,5 @@ def build_mm_kg(
         list(edges.items()),
         desc="Inserting relationships into storage",
     )
+
+    return nodes, edges
