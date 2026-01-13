@@ -1,5 +1,4 @@
 import math
-from tracemalloc import stop
 import uuid
 from typing import Any, List, Optional
 import asyncio
@@ -55,12 +54,6 @@ class VLLMWrapper(BaseLLMWrapper):
             add_generation_prompt=True
         )
 
-    async def _consume_generator(self, generator):
-        final_output = None
-        async for request_output in generator:
-            final_output = request_output
-        return final_output
-
     async def generate_answer(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
     ) -> str:
@@ -76,10 +69,12 @@ class VLLMWrapper(BaseLLMWrapper):
 
         try:
             result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
-            final_output = await asyncio.wait_for(
-                self._consume_generator(result_generator),
-                timeout=self.timeout
-            )
+            final_output = None
+            async with asyncio.timeout(self.timeout):
+                async for request_output in result_generator:
+                    if request_output.finished:
+                        final_output = request_output
+                        break
 
             if not final_output or not final_output.outputs:
                 return ""
@@ -87,7 +82,7 @@ class VLLMWrapper(BaseLLMWrapper):
             result_text = final_output.outputs[0].text
             return result_text
 
-        except (Exception, asyncio.CancelledError):
+        except (Exception, asyncio.CancelledError, asyncio.TimeoutError):
             await self.engine.abort(request_id)
             raise
 
@@ -105,10 +100,12 @@ class VLLMWrapper(BaseLLMWrapper):
 
         try:
             result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
-            final_output = await asyncio.wait_for(
-                self._consume_generator(result_generator),
-                timeout=self.timeout
-            )
+            final_output = None
+            async with asyncio.timeout(self.timeout):
+                async for request_output in result_generator:
+                    if request_output.finished:
+                        final_output = request_output
+                        break
 
             if (
                 not final_output
@@ -138,7 +135,7 @@ class VLLMWrapper(BaseLLMWrapper):
                 return [main_token]
             return []
 
-        except (Exception, asyncio.CancelledError):
+        except (Exception, asyncio.CancelledError, asyncio.TimeoutError):
             await self.engine.abort(request_id)
             raise
 
