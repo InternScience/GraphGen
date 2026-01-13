@@ -79,9 +79,13 @@ class PartitionService(BaseOperator):
         else:
             raise ValueError(f"Unsupported partition method: {method}")
 
-        communities = partitioner.partition(g=self.kg_instance, **method_params)
+        communities: Iterable = partitioner.partition(
+            g=self.kg_instance, **method_params
+        )
 
+        count = 0
         for community in communities:
+            count += 1
             batch = partitioner.community2batch(community, g=self.kg_instance)
             batch = self._attach_additional_data_to_node(batch)
 
@@ -91,6 +95,7 @@ class PartitionService(BaseOperator):
                     "edges": [batch[1]],
                 }
             )
+        logger.info("Total communities partitioned: %d", count)
 
     def _pre_tokenize(self) -> None:
         """Pre-tokenize all nodes and edges to add token length information."""

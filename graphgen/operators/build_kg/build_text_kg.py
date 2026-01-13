@@ -13,7 +13,7 @@ def build_text_kg(
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
     max_loop: int = 3,
-):
+) -> tuple:
     """
     :param llm_client: Synthesizer LLM model to extract entities and relationships
     :param kg_instance
@@ -39,14 +39,16 @@ def build_text_kg(
         for k, v in e.items():
             edges[tuple(sorted(k))].extend(v)
 
-    run_concurrent(
+    nodes = run_concurrent(
         lambda kv: kg_builder.merge_nodes(kv, kg_instance=kg_instance),
         list(nodes.items()),
         desc="Inserting entities into storage",
     )
 
-    run_concurrent(
+    edges = run_concurrent(
         lambda kv: kg_builder.merge_edges(kv, kg_instance=kg_instance),
         list(edges.items()),
         desc="Inserting relationships into storage",
     )
+
+    return nodes, edges

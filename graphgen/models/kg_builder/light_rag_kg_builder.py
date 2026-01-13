@@ -99,7 +99,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
         self,
         node_data: tuple[str, List[dict]],
         kg_instance: BaseGraphStorage,
-    ) -> None:
+    ) -> dict:
         entity_name, node_data = node_data
         entity_types = []
         source_ids = []
@@ -131,16 +131,18 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
         node_data = {
             "entity_type": entity_type,
+            "entity_name": entity_name,
             "description": description,
             "source_id": source_id,
         }
         kg_instance.upsert_node(entity_name, node_data=node_data)
+        return node_data
 
     async def merge_edges(
         self,
         edges_data: tuple[Tuple[str, str], List[dict]],
         kg_instance: BaseGraphStorage,
-    ) -> None:
+    ) -> dict:
         (src_id, tgt_id), edge_data = edges_data
 
         source_ids = []
@@ -175,11 +177,19 @@ class LightRAGKGBuilder(BaseKGBuilder):
             f"({src_id}, {tgt_id})", description
         )
 
+        edge_data = {
+            "src_id": src_id,
+            "tgt_id": tgt_id,
+            "description": description,
+            "source_id": source_id,  # for traceability
+        }
+
         kg_instance.upsert_edge(
             src_id,
             tgt_id,
             edge_data={"source_id": source_id, "description": description},
         )
+        return edge_data
 
     async def _handle_kg_summary(
         self,

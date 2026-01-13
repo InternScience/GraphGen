@@ -1,5 +1,3 @@
-from collections.abc import Iterable
-
 import pandas as pd
 
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper, BaseOperator
@@ -15,7 +13,6 @@ class QuizService(BaseOperator):
         graph_backend: str = "kuzu",
         kv_backend: str = "rocksdb",
         quiz_samples: int = 1,
-        concurrency_limit: int = 200,
     ):
         super().__init__(working_dir=working_dir, op_name="quiz_service")
         self.quiz_samples = quiz_samples
@@ -28,21 +25,16 @@ class QuizService(BaseOperator):
             backend=kv_backend, working_dir=working_dir, namespace="quiz"
         )
         self.generator = QuizGenerator(self.llm_client)
-        self.concurrency_limit = concurrency_limit
 
-    def process(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
-        # this operator does not consume any batch data
-        # but for compatibility we keep the interface
-        _ = batch.to_dict(orient="records")
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
+        data = batch.to_dict(orient="records")
         self.graph_storage.reload()
-        yield from self.quiz()
+        return self.quiz(data)
 
     async def _process_single_quiz(self, item: tuple) -> dict | None:
         # if quiz in quiz_storage exists already, directly get it
         index, desc = item
         _quiz_id = compute_dict_hash({"index": index, "description": desc})
-        if self.quiz_storage.get_by_id(_quiz_id):
-            return None
 
         tasks = []
         for i in range(self.quiz_samples):
@@ -68,47 +60,43 @@ class QuizService(BaseOperator):
             logger.error("Error when quizzing description %s: %s", item, e)
             return None
 
-    def quiz(self) -> Iterable[pd.DataFrame]:
+    def quiz(self, batch) -> pd.DataFrame:
         """
         Get all nodes and edges and quiz their descriptions using QuizGenerator.
         """
-        edges = self.graph_storage.get_all_edges()
-        nodes = self.graph_storage.get_all_nodes()
-
         items = []
 
-        for edge in edges:
-            edge_data = edge[2]
-            desc = edge_data["description"]
-            items.append(((edge[0], edge[1]), desc))
+        for item in batch:
+            node_data = item.get("node", [])
+            edge_data = item.get("edge", [])
 
-        for node in nodes:
-            node_data = node[1]
-            desc = node_data["description"]
-            items.append((node[0], desc))
+            if node_data:
+                node_id = node_data["entity_name"]
+                desc = node_data["description"]
+                items.append((node_id, desc))
+            if edge_data:
+                edge_key = (edge_data["src_id"], edge_data["tgt_id"])
+                desc = edge_data["description"]
+                items.append((edge_key, desc))
 
         logger.info("Total descriptions to quiz: %d", len(items))
 
-        for i in range(0, len(items), self.concurrency_limit):
-            batch_items = items[i : i + self.concurrency_limit]
-            batch_results = run_concurrent(
-                self._process_single_quiz,
-                batch_items,
-                desc=f"Quizzing descriptions ({i} / {i + len(batch_items)})",
-                unit="description",
-            )
+        results = run_concurrent(
+            self._process_single_quiz,
+            items,
+            desc=f"Quizzing batch of {len(items)} descriptions",
+            unit="description",
+        )
+        valid_results = [res for res in results if res]
 
-            final_results = []
-            for new_result in batch_results:
-                if new_result:
-                    self.quiz_storage.upsert(
-                        {
-                            new_result["_quiz_id"]: {
-                                "description": new_result["description"],
-                                "quizzes": new_result["quizzes"],
-                            }
-                        }
-                    )
-                    final_results.append(new_result)
-            self.quiz_storage.index_done_callback()
-            yield pd.DataFrame(final_results)
+        for res in valid_results:
+            self.quiz_storage.upsert(
+                {
+                    res["_quiz_id"]: {
+                        "description": res["description"],
+                        "quizzes": res["quizzes"],
+                    }
+                }
+            )
+        self.quiz_storage.index_done_callback()
+        return pd.DataFrame(valid_results)

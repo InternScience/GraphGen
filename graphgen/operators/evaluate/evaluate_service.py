@@ -95,10 +95,10 @@ class EvaluateService(BaseOperator):
                 answer=str(item.get("answer", "")),
             )
             if not qa_pair.question or not qa_pair.answer:
-                self.logger.error("Empty question or answer, skipping.")
+                logger.error("Empty question or answer, skipping.")
                 return {}
         except Exception as e:
-            self.logger.error("Error in QAPair creation: %s", str(e))
+            logger.error("Error in QAPair creation: %s", str(e))
             return {}
 
         for metric, evaluator in self.qa_evaluators.items():
@@ -110,7 +110,7 @@ class EvaluateService(BaseOperator):
                 else:
                     item[metric] = float(score)
             except Exception as e:
-                self.logger.error("Error in %s evaluation: %s", metric, str(e))
+                logger.error("Error in %s evaluation: %s", metric, str(e))
                 item[metric] = None
         return item
 
@@ -136,7 +136,7 @@ class EvaluateService(BaseOperator):
             return []
 
         if not self.qa_evaluators:
-            self.logger.warning("No QA evaluators initialized, skipping QA evaluation")
+            logger.warning("No QA evaluators initialized, skipping QA evaluation")
             return []
 
         items = transform_messages_format(items)
@@ -155,11 +155,11 @@ class EvaluateService(BaseOperator):
 
         for metric, evaluator in self.kg_evaluators.items():
             try:
-                self.logger.info("Running %s evaluation...", metric)
+                logger.info("Running %s evaluation...", metric)
                 score = evaluator.evaluate()
                 results[metric] = score
             except Exception as e:
-                self.logger.error("Error in %s evaluation: %s", metric, str(e))
+                logger.error("Error in %s evaluation: %s", metric, str(e))
                 results[metric] = {"error": str(e)}
         return results
 

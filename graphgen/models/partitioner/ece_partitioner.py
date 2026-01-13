@@ -1,3 +1,4 @@
+import math
 import random
 from collections import deque
 from typing import Any, Dict, Iterable, List, Optional, Set, Tuple
@@ -34,17 +35,18 @@ class ECEPartitioner(BFSPartitioner):
         :param edge_sampling: edge sampling strategy (random, min_loss, max_loss)
         :return: sorted units
         """
+        default_loss = -math.log(0.1)
         if edge_sampling == "random":
             random.shuffle(units)
         elif edge_sampling == "min_loss":
             units = sorted(
                 units,
-                key=lambda x: x[-1]["loss"],
+                key=lambda x: x[-1].get("loss", default_loss),
             )
         elif edge_sampling == "max_loss":
             units = sorted(
                 units,
-                key=lambda x: x[-1]["loss"],
+                key=lambda x: x[-1].get("loss", default_loss),
                 reverse=True,
             )
         else:
@@ -142,7 +144,7 @@ class ECEPartitioner(BFSPartitioner):
             return Community(
                 id=seed_unit[1],
                 nodes=list(community_nodes.keys()),
-                edges=[tuple(sorted(e)) for e in community_edges]
+                edges=[tuple(sorted(e)) for e in community_edges],
             )
 
         for unit in tqdm(all_units, desc="ECE partition"):
