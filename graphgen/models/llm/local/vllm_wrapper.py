@@ -1,4 +1,5 @@
 import math
+from tracemalloc import stop
 import uuid
 from typing import Any, List, Optional
 import asyncio
@@ -42,20 +43,17 @@ class VLLMWrapper(BaseLLMWrapper):
         )
         self.engine = AsyncLLMEngine.from_engine_args(engine_args)
         self.timeout = float(timeout)
+        self.tokenizer = self.engine.engine.tokenizer.tokenizer
 
-    @staticmethod
-    def _build_inputs(prompt: str, history: Optional[List[str]] = None) -> str:
-        msgs = history or []
-        lines = []
-        for m in msgs:
-            if isinstance(m, dict):
-                role = m.get("role", "")
-                content = m.get("content", "")
-                lines.append(f"{role}: {content}")
-            else:
-                lines.append(str(m))
-        lines.append(prompt)
-        return "\n".join(lines)
+    def _build_inputs(self, prompt: str, history: Optional[List[dict]] = None) -> Any:
+        messages = history or []
+        messages.append({"role": "user", "content": prompt})
+
+        return self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=True
+        )
 
     async def _consume_generator(self, generator):
         final_output = None
@@ -70,14 +68,14 @@ class VLLMWrapper(BaseLLMWrapper):
         request_id = f"graphgen_req_{uuid.uuid4()}"
 
         sp = self.SamplingParams(
-            temperature=self.temperature if self.temperature > 0 else 1.0,
-            top_p=self.top_p if self.temperature > 0 else 1.0,
+            temperature=self.temperature if self.temperature >= 0 else 1.0,
+            top_p=self.top_p if self.top_p >= 0 else 1.0,
             max_tokens=extra.get("max_new_tokens", 2048),
+            repetition_penalty=extra.get("repetition_penalty", 1.05),
         )
 
-        result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
-
         try:
+            result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
             final_output = await asyncio.wait_for(
                 self._consume_generator(result_generator),
                 timeout=self.timeout
@@ -105,9 +103,8 @@ class VLLMWrapper(BaseLLMWrapper):
             logprobs=self.top_k,
         )
 
-        result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
-
         try:
+            result_generator = self.engine.generate(full_prompt, sp, request_id=request_id)
             final_output = await asyncio.wait_for(
                 self._consume_generator(result_generator),
                 timeout=self.timeout
