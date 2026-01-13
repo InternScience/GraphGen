@@ -29,7 +29,10 @@ class BuildKGService(BaseOperator):
 
         # consume the chunks and build kg
         nodes, edges = self.build_kg(docs)
-        return pd.DataFrame([{"nodes": nodes, "edges": edges}])
+        return pd.DataFrame(
+            [{"node": node, "edge": []} for node in nodes]
+            + [{"node": [], "edge": edge} for edge in edges]
+        )
 
     def build_kg(self, chunks: List[Chunk]) -> tuple:
         """
@@ -42,8 +45,8 @@ class BuildKGService(BaseOperator):
             if chunk.type in ("image", "video", "table", "formula")
         ]
 
-        nodes = {}
-        edges = {}
+        nodes = []
+        edges = []
 
         if len(text_chunks) == 0:
             logger.info("All text chunks are already in the storage")
@@ -55,8 +58,8 @@ class BuildKGService(BaseOperator):
                 chunks=text_chunks,
                 max_loop=self.max_loop,
             )
-            nodes.update(text_nodes)
-            edges.update(text_edges)
+            nodes += text_nodes
+            edges += text_edges
         if len(mm_chunks) == 0:
             logger.info("All multi-modal chunks are already in the storage")
         else:
@@ -66,8 +69,8 @@ class BuildKGService(BaseOperator):
                 kg_instance=self.graph_storage,
                 chunks=mm_chunks,
             )
-            nodes.update(mm_nodes)
-            edges.update(mm_edges)
+            nodes += mm_nodes
+            edges += mm_edges
 
         self.graph_storage.index_done_callback()
         logger.info("Knowledge graph building completed.")

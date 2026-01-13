@@ -1,5 +1,3 @@
-from collections.abc import Iterable
-
 import pandas as pd
 
 from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper, BaseOperator
@@ -28,7 +26,7 @@ class QuizService(BaseOperator):
         )
         self.generator = QuizGenerator(self.llm_client)
 
-    def process(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
+    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
         data = batch.to_dict(orient="records")
         self.graph_storage.reload()
         return self.quiz(data)
@@ -62,22 +60,22 @@ class QuizService(BaseOperator):
             logger.error("Error when quizzing description %s: %s", item, e)
             return None
 
-    def quiz(self, batch) -> Iterable[pd.DataFrame]:
+    def quiz(self, batch) -> pd.DataFrame:
         """
         Get all nodes and edges and quiz their descriptions using QuizGenerator.
         """
         items = []
 
         for item in batch:
-            nodes = item.get("nodes", [])
-            edges = item.get("edges", [])
+            node_data = item.get("node", [])
+            edge_data = item.get("edge", [])
 
-            for node_id, node_data in nodes.items():
-                node_data = node_data[0]
+            if node_data:
+                node_id = node_data["entity_name"]
                 desc = node_data["description"]
                 items.append((node_id, desc))
-            for edge_key, edge_data in edges.items():
-                edge_data = edge_data[0]
+            if edge_data:
+                edge_key = (edge_data["src_id"], edge_data["tgt_id"])
                 desc = edge_data["description"]
                 items.append((edge_key, desc))
 
