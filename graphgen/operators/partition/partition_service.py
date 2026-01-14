@@ -95,41 +95,6 @@ class PartitionService(BaseOperator):
             )
         logger.info("Total communities partitioned: %d", count)
 
-    # def _pre_tokenize(self) -> None:
-    #     """Pre-tokenize all nodes and edges to add token length information."""
-    #     logger.info("Starting pre-tokenization of nodes and edges...")
-    #
-    #     nodes = self.kg_instance.get_all_nodes()
-    #     edges = self.kg_instance.get_all_edges()
-    #
-    #     # Process nodes
-    #     for node_id, node_data in nodes:
-    #         if "length" not in node_data:
-    #             try:
-    #                 description = node_data.get("description", "")
-    #                 tokens = self.tokenizer_instance.encode(description)
-    #                 node_data["length"] = len(tokens)
-    #                 self.kg_instance.update_node(node_id, node_data)
-    #             except Exception as e:
-    #                 logger.warning("Failed to tokenize node %s: %s", node_id, e)
-    #                 node_data["length"] = 0
-    #
-    #     # Process edges
-    #     for u, v, edge_data in edges:
-    #         if "length" not in edge_data:
-    #             try:
-    #                 description = edge_data.get("description", "")
-    #                 tokens = self.tokenizer_instance.encode(description)
-    #                 edge_data["length"] = len(tokens)
-    #                 self.kg_instance.update_edge(u, v, edge_data)
-    #             except Exception as e:
-    #                 logger.warning("Failed to tokenize edge %s-%s: %s", u, v, e)
-    #                 edge_data["length"] = 0
-    #
-    #     # Persist changes
-    #     self.kg_instance.index_done_callback()
-    #     logger.info("Pre-tokenization completed.")
-
     def _attach_additional_data_to_node(self, batch: tuple) -> tuple:
         """
         Attach additional data from chunk_storage to nodes in the batch.
