@@ -20,7 +20,7 @@ class VLLMWrapper(BaseLLMWrapper):
         temperature: float = 0.6,
         top_p: float = 1.0,
         top_k: int = 5,
-        timeout: float = 300,
+        timeout: float = 600,
         **kwargs: Any,
     ):
         super().__init__(temperature=temperature, top_p=top_p, top_k=top_k, **kwargs)
