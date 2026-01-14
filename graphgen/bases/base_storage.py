@@ -79,7 +79,7 @@ class BaseGraphStorage(StorageNameSpace, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def update_node(self, node_id: str, node_data: dict[str, str]):
+    def update_node(self, node_id: str, node_data: dict[str, any]):
         raise NotImplementedError
 
     @abstractmethod
@@ -96,7 +96,7 @@ class BaseGraphStorage(StorageNameSpace, ABC):
 
     @abstractmethod
     def update_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
         raise NotImplementedError
 
@@ -113,12 +113,12 @@ class BaseGraphStorage(StorageNameSpace, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def upsert_node(self, node_id: str, node_data: dict[str, str]):
+    def upsert_node(self, node_id: str, node_data: dict[str, any]):
         raise NotImplementedError
 
     @abstractmethod
     def upsert_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
         raise NotImplementedError
 

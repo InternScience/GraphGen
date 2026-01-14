@@ -215,7 +215,7 @@ class KuzuStorage(BaseGraphStorage):
         data_str = result.get_next()[0]
         return self._safe_json_loads(data_str)
 
-    def update_node(self, node_id: str, node_data: dict[str, str]):
+    def update_node(self, node_id: str, node_data: dict[str, any]):
         current_data = self.get_node(node_id)
         if current_data is None:
             print(f"Node {node_id} not found for update.")
@@ -263,7 +263,7 @@ class KuzuStorage(BaseGraphStorage):
         return self._safe_json_loads(data_str)
 
     def update_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
         current_data = self.get_edge(source_node_id, target_node_id)
         if current_data is None:
@@ -318,7 +318,7 @@ class KuzuStorage(BaseGraphStorage):
             edges.append((src, dst, data))
         return edges
 
-    def upsert_node(self, node_id: str, node_data: dict[str, str]):
+    def upsert_node(self, node_id: str, node_data: dict[str, any]):
         """
         Insert or Update node.
         Kuzu supports MERGE clause (similar to Neo4j) to handle upserts.
@@ -336,7 +336,7 @@ class KuzuStorage(BaseGraphStorage):
         self._conn.execute(query, {"id": node_id, "data": json_data})
 
     def upsert_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
         """
         Insert or Update edge.

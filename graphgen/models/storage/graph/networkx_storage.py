@@ -144,22 +144,22 @@ class NetworkXStorage(BaseGraphStorage):
     def get_graph(self) -> nx.Graph:
         return self._graph
 
-    def upsert_node(self, node_id: str, node_data: dict[str, str]):
+    def upsert_node(self, node_id: str, node_data: dict[str, any]):
         self._graph.add_node(node_id, **node_data)
 
-    def update_node(self, node_id: str, node_data: dict[str, str]):
+    def update_node(self, node_id: str, node_data: dict[str, any]):
         if self._graph.has_node(node_id):
             self._graph.nodes[node_id].update(node_data)
         else:
             print(f"Node {node_id} not found in the graph for update.")
 
     def upsert_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
         self._graph.add_edge(source_node_id, target_node_id, **edge_data)
 
     def update_edge(
-        self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
+        self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
         if self._graph.has_edge(source_node_id, target_node_id):
             self._graph.edges[(source_node_id, target_node_id)].update(edge_data)
