@@ -18,6 +18,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
     def __init__(self, llm_client: BaseLLMWrapper, max_loop: int = 3):
         super().__init__(llm_client)
         self.max_loop = max_loop
+        self.tokenizer = llm_client.tokenizer
 
     async def extract(
         self, chunk: Chunk
@@ -134,6 +135,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
             "entity_name": entity_name,
             "description": description,
             "source_id": source_id,
+            "length": self.tokenizer.count_tokens(description),
         }
         kg_instance.upsert_node(entity_name, node_data=node_data)
         return node_data
@@ -167,9 +169,11 @@ class LightRAGKGBuilder(BaseKGBuilder):
                 kg_instance.upsert_node(
                     insert_id,
                     node_data={
-                        "source_id": source_id,
-                        "description": description,
                         "entity_type": "UNKNOWN",
+                        "entity_name": insert_id,
+                        "description": "",
+                        "source_id": source_id,
+                        "length": self.tokenizer.count_tokens(description),
                     },
                 )
 
@@ -182,12 +186,13 @@ class LightRAGKGBuilder(BaseKGBuilder):
             "tgt_id": tgt_id,
             "description": description,
             "source_id": source_id,  # for traceability
+            "length": self.tokenizer.count_tokens(description),
         }
 
         kg_instance.upsert_edge(
             src_id,
             tgt_id,
-            edge_data={"source_id": source_id, "description": description},
+            edge_data=edge_data,
         )
         return edge_data
 

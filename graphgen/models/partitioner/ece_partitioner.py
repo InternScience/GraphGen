@@ -99,7 +99,7 @@ class ECEPartitioner(BFSPartitioner):
                         return False
                     community_edges[i] = d
                     used_e.add(i)
-                token_sum += d.get("length", 0)
+                token_sum += int(d.get("length", 0))
                 return True
 
             _add_unit(seed_unit)
