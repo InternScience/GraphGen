@@ -156,6 +156,14 @@ class NetworkXStorage(BaseGraphStorage):
     def upsert_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, any]
     ):
+        # Ensure both nodes exist before adding the edge
+        if not self._graph.has_node(source_node_id) or not self._graph.has_node(
+            target_node_id
+        ):
+            print(
+                f"Cannot upsert edge {source_node_id} -> {target_node_id} because one or both nodes do not exist."
+            )
+            return
         self._graph.add_edge(source_node_id, target_node_id, **edge_data)
 
     def update_edge(
