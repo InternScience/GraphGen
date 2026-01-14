@@ -164,18 +164,22 @@ class LightRAGKGBuilder(BaseKGBuilder):
             set([dp["source_id"] for dp in edge_data] + source_ids)
         )
 
-        for insert_id in [src_id, tgt_id]:
-            if not kg_instance.has_node(insert_id):
-                kg_instance.upsert_node(
-                    insert_id,
-                    node_data={
-                        "entity_type": "UNKNOWN",
-                        "entity_name": insert_id,
-                        "description": "",
-                        "source_id": source_id,
-                        "length": self.tokenizer.count_tokens(description),
-                    },
-                )
+        if not kg_instance.has_node(src_id) or not kg_instance.has_node(tgt_id):
+            logger.warning("Edge (%s, %s) has missing nodes.", src_id, tgt_id)
+            return {}
+
+        # for insert_id in [src_id, tgt_id]:
+        #     if not kg_instance.has_node(insert_id):
+        #         kg_instance.upsert_node(
+        #             insert_id,
+        #             node_data={
+        #                 "entity_type": "UNKNOWN",
+        #                 "entity_name": insert_id,
+        #                 "description": "",
+        #                 "source_id": source_id,
+        #                 "length": self.tokenizer.count_tokens(description),
+        #             },
+        #         )
 
         description = await self._handle_kg_summary(
             f"({src_id}, {tgt_id})", description
