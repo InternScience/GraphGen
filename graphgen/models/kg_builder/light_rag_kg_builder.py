@@ -171,7 +171,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
                     node_data={
                         "entity_type": "UNKNOWN",
                         "entity_name": insert_id,
-                        "description": description,
+                        "description": "",
                         "source_id": source_id,
                         "length": self.tokenizer.count_tokens(description),
                     },
