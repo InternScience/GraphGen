@@ -343,12 +343,12 @@ class KuzuStorage(BaseGraphStorage):
         Note: We explicitly ensure nodes exist before merging the edge to avoid errors,
         although GraphGen generally creates nodes before edges.
         """
-        # Ensure source node exists
-        if not self.has_node(source_node_id):
-            self.upsert_node(source_node_id, {})
-        # Ensure target node exists
-        if not self.has_node(target_node_id):
-            self.upsert_node(target_node_id, {})
+        # Ensure source node exists and target node exists
+        if not self.has_node(source_node_id) or not self.has_node(target_node_id):
+            print(
+                f"Cannot upsert edge {source_node_id}->{target_node_id} as one or both nodes do not exist."
+            )
+            return
 
         try:
             json_data = json.dumps(edge_data, ensure_ascii=False)
