@@ -85,7 +85,7 @@ class MultiAnswerGenerator(BaseGenerator):
                 "answer": ", ".join(answers),
             }
 
-            logger.debug("Successfully parsed MCQ: %s", question[:50])
+            logger.debug("Successfully parsed MAQ: %s", question[:50])
 
         if not qa_pairs:
             logger.error("Failed to parse any valid MAQ pairs from response")
