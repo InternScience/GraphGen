@@ -57,6 +57,13 @@ class GenerateService(BaseOperator):
                 self.llm_client,
                 num_of_questions=generate_kwargs.get("num_of_questions", 3),
             )
+        elif self.method == "fill_in_blank":
+            from graphgen.models import FillInBlankGenerator
+
+            self.generator = FillInBlankGenerator(
+                self.llm_client,
+                num_of_questions=generate_kwargs.get("num_of_questions", 5),
+            )
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 

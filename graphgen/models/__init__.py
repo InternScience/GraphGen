@@ -11,6 +11,7 @@ from .generator import (
     AggregatedGenerator,
     AtomicGenerator,
     CoTGenerator,
+    FillInBlankGenerator,
     MultiAnswerGenerator,
     MultiChoiceGenerator,
     MultiHopGenerator,
