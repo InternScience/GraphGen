@@ -46,38 +46,47 @@ class BaseGenerator(ABC):
     def format_generation_results(
         results: list[dict], output_data_format: str
     ) -> list[dict[str, Any]]:
-        if output_data_format == "Alpaca":
-            results = [
-                {
-                    "instruction": v["question"],
-                    "input": "",
-                    "output": v["answer"],
-                }
-                for item in results
-                for k, v in item.items()
-            ]
-        elif output_data_format == "Sharegpt":
-            results = [
-                {
-                    "conversations": [
-                        {"from": "human", "value": v["question"]},
-                        {"from": "gpt", "value": v["answer"]},
-                    ]
-                }
-                for item in results
-                for k, v in item.items()
-            ]
-        elif output_data_format == "ChatML":
-            results = [
-                {
-                    "messages": [
-                        {"role": "user", "content": v["question"]},
-                        {"role": "assistant", "content": v["answer"]},
-                    ]
-                }
-                for item in results
-                for k, v in item.items()
-            ]
-        else:
-            raise ValueError(f"Unknown output data format: {output_data_format}")
-        return results
+
+        flat_results = []
+        for item in results:
+            for _, qa_data in item.items():
+                question = qa_data.get("question", "")
+                answer = qa_data.get("answer", "")
+                if "options" in qa_data and qa_data["options"]:
+                    options = qa_data["options"]
+                    options_str = "\n".join(
+                        [f"{key}. {options[key]}" for key in sorted(options.keys())]
+                    )
+                    question += f"\nOptions:\n{options_str}"
+
+                if output_data_format == "Alpaca":
+                    flat_results.append(
+                        {
+                            "instruction": question,
+                            "input": "",
+                            "output": answer,
+                        }
+                    )
+                elif output_data_format == "Sharegpt":
+                    flat_results.append(
+                        {
+                            "conversations": [
+                                {"from": "human", "value": question},
+                                {"from": "gpt", "value": answer},
+                            ]
+                        }
+                    )
+                elif output_data_format == "ChatML":
+                    flat_results.append(
+                        {
+                            "messages": [
+                                {"role": "user", "content": question},
+                                {"role": "assistant", "content": answer},
+                            ]
+                        }
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown output data format: {output_data_format}"
+                    )
+        return flat_results
