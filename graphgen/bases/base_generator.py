@@ -77,13 +77,14 @@ class BaseGenerator(ABC):
                         }
                     )
                 elif output_data_format == "ChatML":
-                    results.append(
+                    flat_results.append(
                         {
                             "messages": [
                                 {"role": "user", "content": question},
                                 {"role": "assistant", "content": answer},
                             ]
                         }
+                    )
                     )
                 else:
                     raise ValueError(
