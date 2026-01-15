@@ -2,13 +2,6 @@ import pandas as pd
 
 from graphgen.bases import BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm
-from graphgen.models import (
-    AggregatedGenerator,
-    AtomicGenerator,
-    CoTGenerator,
-    MultiHopGenerator,
-    VQAGenerator,
-)
 from graphgen.utils import logger, run_concurrent
 
 
@@ -22,6 +15,7 @@ class GenerateService(BaseOperator):
         working_dir: str = "cache",
         method: str = "aggregated",
         data_format: str = "ChatML",
+        **generate_kwargs,
     ):
         super().__init__(working_dir=working_dir, op_name="generate_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
@@ -30,15 +24,32 @@ class GenerateService(BaseOperator):
         self.data_format = data_format
 
         if self.method == "atomic":
+            from graphgen.models import AtomicGenerator
+
             self.generator = AtomicGenerator(self.llm_client)
         elif self.method == "aggregated":
+            from graphgen.models import AggregatedGenerator
+
             self.generator = AggregatedGenerator(self.llm_client)
         elif self.method == "multi_hop":
+            from graphgen.models import MultiHopGenerator
+
             self.generator = MultiHopGenerator(self.llm_client)
         elif self.method == "cot":
+            from graphgen.models import CoTGenerator
+
             self.generator = CoTGenerator(self.llm_client)
-        elif self.method in ["vqa"]:
+        elif self.method == "vqa":
+            from graphgen.models import VQAGenerator
+
             self.generator = VQAGenerator(self.llm_client)
+        elif self.method == "multi_choice":
+            from graphgen.models import MultiChoiceGenerator
+
+            self.generator = MultiChoiceGenerator(
+                self.llm_client,
+                num_of_questions=generate_kwargs.get("num_of_questions", 5),
+            )
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 

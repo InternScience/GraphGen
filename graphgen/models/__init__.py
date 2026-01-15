@@ -11,6 +11,7 @@ from .generator import (
     AggregatedGenerator,
     AtomicGenerator,
     CoTGenerator,
+    MultiChoiceGenerator,
     MultiHopGenerator,
     QuizGenerator,
     VQAGenerator,
