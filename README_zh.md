@@ -70,7 +70,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 <details>
 <summary>历史更新记录</summary>
 
-- **2025.12.16**：新增 [vllm](https://github.com/vllm-project/vllm) 作为本地推理后端的支持。
+- **2025.12.16**：支持 [vllm](https://github.com/vllm-project/vllm) 作为本地推理后端。
 - **2025.12.16**：使用 [ray](https://github.com/ray-project/ray) 重构了数据生成 pipeline，提升了分布式执行和资源管理的效率。
 - **2025.12.1**：新增对 [NCBI](https://www.ncbi.nlm.nih.gov/) 和 [RNAcentral](https://rnacentral.org/) 数据库的检索支持，现在可以从这些生物信息学数据库中提取DNA和RNA数据。
 - **2025.10.30**：我们支持多种新的 LLM 客户端和推理后端，包括 [Ollama_client]([Ollama_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/ollama_client.py), [http_client](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/api/http_client.py), [HuggingFace Transformers](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/hf_wrapper.py) 和 [SGLang](https://github.com/open-sciencelab/GraphGen/blob/main/graphgen/models/llm/local/sglang_wrapper.py)。
