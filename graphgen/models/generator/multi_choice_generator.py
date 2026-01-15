@@ -19,8 +19,7 @@ class MultiChoiceGenerator(BaseGenerator):
 
         :param response: The LLM response containing XML-formatted QA pairs
         :return: Dictionary mapping question hash to question data, where each
-                 value is a dict with "question", "options", "answer", and
-                 "correct_answer_text" keys
+                 value is a dict with "question", "options", and "answer" keys
         """
         qa_pairs = {}
 
