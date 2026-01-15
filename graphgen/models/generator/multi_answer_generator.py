@@ -62,9 +62,7 @@ class MultiAnswerGenerator(BaseGenerator):
                 logger.warning("Failed to parse answer from block: %s", block)
                 continue
             answer_text = ans_match.group(1).strip().strip('"').strip("'")
-            answers = [ans.strip().upper() for ans in answer_text.split(",")]
-
-            answers = [ans for ans in answers if ans]
+            answers = [ans.strip().upper() for ans in answer_text.split(",") if ans.strip()]
             invalid_answers = [ans for ans in answers if ans not in options]
             if invalid_answers:
                 logger.warning(
