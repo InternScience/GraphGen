@@ -29,7 +29,7 @@ TEMPLATE_ZH = """请根据上下文资料生成独立的知识问答填空题。
 
 
 上下文资料：
-{{context}}
+{context}
 
 请为以下资料生成{num_of_questions}个填空题：
 """
@@ -66,7 +66,7 @@ Example (2 questions):
 </qa_pairs>
 
 Context:
-{{context}}
+{context}
 
 Please generate {num_of_questions} fill-in-the-blank questions for the following context:
 """
