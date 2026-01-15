@@ -91,7 +91,7 @@ Context:
 {context}
 
 Please generate {num_of_questions} questions for the following context:
-Please generate {num_of_questions} questions for the following context:"""
+"""
 
 
 MCQ_GENERATION_PROMPT = {"zh": TEMPLATE_GENERATION_ZH, "en": TEMPLATE_GENERATION_EN}

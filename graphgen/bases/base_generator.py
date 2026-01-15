@@ -85,7 +85,6 @@ class BaseGenerator(ABC):
                             ]
                         }
                     )
-                    )
                 else:
                     raise ValueError(
                         f"Unknown output data format: {output_data_format}"
