@@ -2,11 +2,11 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import MCQ_GENERATION_PROMPT
+from graphgen.templates import MAQ_GENERATION_PROMPT
 from graphgen.utils import compute_content_hash, detect_main_language, logger
 
 
-class MultiChoiceGenerator(BaseGenerator):
+class MultiAnswerGenerator(BaseGenerator):
     def __init__(self, llm_client, num_of_questions) -> None:
         super().__init__(llm_client)
         self.num_of_questions = num_of_questions
@@ -14,8 +14,8 @@ class MultiChoiceGenerator(BaseGenerator):
     @staticmethod
     def parse_response(response: str) -> Any:
         """
-        Parse multiple choice QA pairs from the LLM response.
-        Each QA pair contains question text, four options, and the correct answer.
+        Parse multiple-answer QA pairs from the LLM response.
+        Each QA pair contains question text, four options, and the correct answers (one or more).
 
         :param response: The LLM response containing XML-formatted QA pairs
         :return: Dictionary mapping question hash to question data, where each
@@ -52,29 +52,31 @@ class MultiChoiceGenerator(BaseGenerator):
                 if not line:
                     continue
                 # Match patterns like "A. text" or "B. text"
-                if m := re.match(r"^([A-D])[.\s]\s*(.*)$", line):
+                if m := re.match(r"^([A-Z])[.\s]\s*(.*)$", line):
                     letter, text = m.groups()
                     options[letter] = text.strip()
-
-            # Validate options count
-            if len(options) != 4:
-                logger.warning(
-                    "Expected 4 options, found %d: %s", len(options), options_text
-                )
-                continue
 
             # Extract and validate answer
             ans_match = re.search(r"<answer>(.*?)</answer>", block, re.DOTALL)
             if not ans_match:
                 logger.warning("Failed to parse answer from block: %s", block)
                 continue
-            answer = ans_match.group(1).strip().strip('"').strip("'")
+            answer_text = ans_match.group(1).strip().strip('"').strip("'")
+            answers = [ans.strip().upper() for ans in answer_text.split(",")]
 
-            # Ensure answer exists in options
-            if answer not in options:
+            answers = [ans for ans in answers if ans]
+            invalid_answers = [ans for ans in answers if ans not in options]
+            if invalid_answers:
                 logger.warning(
-                    "Answer '%s' not found in options: %s", answer, list(options.keys())
+                    "Answers %s not found in options: %s",
+                    invalid_answers,
+                    list(options.keys()),
                 )
+                continue
+
+            # Ensure at least one valid answer
+            if len(answers) == 0:
+                logger.warning("No valid answers found in: %s", answer_text)
                 continue
 
             # Build result entry with question hash as key
@@ -82,13 +84,13 @@ class MultiChoiceGenerator(BaseGenerator):
             qa_pairs[question_hash] = {
                 "question": question,
                 "options": options,  # Dict like {"A": "text", "B": "text", ...}
-                "answer": answer,  # Single letter: "A", "B", "C", or "D"
+                "answer": ", ".join(answers),
             }
 
             logger.debug("Successfully parsed MCQ: %s", question[:50])
 
         if not qa_pairs:
-            logger.error("Failed to parse any valid MCQ pairs from response")
+            logger.error("Failed to parse any valid MAQ pairs from response")
 
         return qa_pairs
 
@@ -112,7 +114,7 @@ class MultiChoiceGenerator(BaseGenerator):
         )
         context = entities_str + "\n" + relationships_str
         language = detect_main_language(entities_str + relationships_str)
-        prompt = MCQ_GENERATION_PROMPT[language].format(
+        prompt = MAQ_GENERATION_PROMPT[language].format(
             context=context,
             num_of_questions=self.num_of_questions,
         )

@@ -50,6 +50,13 @@ class GenerateService(BaseOperator):
                 self.llm_client,
                 num_of_questions=generate_kwargs.get("num_of_questions", 5),
             )
+        elif self.method == "multi_answer":
+            from graphgen.models import MultiAnswerGenerator
+
+            self.generator = MultiAnswerGenerator(
+                self.llm_client,
+                num_of_questions=generate_kwargs.get("num_of_questions", 3),
+            )
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 
