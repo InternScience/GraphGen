@@ -20,7 +20,8 @@ def setup_workspace(folder):
 
 
 def on_rm_error(func, path, exc_info):
-    os.chmod(path, stat.S_IWRITE)
+    st = os.stat(path)
+    os.chmod(path, st.st_mode | stat.S_IWRITE)
 
     time.sleep(0.5)
     try:
