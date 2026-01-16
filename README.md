@@ -163,11 +163,6 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
    ```bash
    python -m webui.app
    ```
-   
-   For hot-reload during development, run
-   ```bash
-   PYTHONPATH=. gradio webui/app.py
-   ```
 
 
 ![ui](https://github.com/user-attachments/assets/3024e9bc-5d45-45f8-a4e6-b57bd2350d84)
