@@ -6,4 +6,5 @@ from .multi_answer_generator import MultiAnswerGenerator
 from .multi_choice_generator import MultiChoiceGenerator
 from .multi_hop_generator import MultiHopGenerator
 from .quiz_generator import QuizGenerator
+from .true_false_generator import TrueFalseGenerator
 from .vqa_generator import VQAGenerator

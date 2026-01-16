@@ -64,6 +64,13 @@ class GenerateService(BaseOperator):
                 self.llm_client,
                 num_of_questions=generate_kwargs.get("num_of_questions", 5),
             )
+        elif self.method == "true_false":
+            from graphgen.models import TrueFalseGenerator
+
+            self.generator = TrueFalseGenerator(
+                self.llm_client,
+                num_of_questions=generate_kwargs.get("num_of_questions", 5),
+            )
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 

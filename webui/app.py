@@ -524,6 +524,7 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
                     "multi_choice",
                     "multi_answer",
                     "fill_in_blank",
+                    "true_false",
                 ],
                 label=_("Mode"),
                 value="aggregated",

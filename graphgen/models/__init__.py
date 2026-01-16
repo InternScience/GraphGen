@@ -16,6 +16,7 @@ from .generator import (
     MultiChoiceGenerator,
     MultiHopGenerator,
     QuizGenerator,
+    TrueFalseGenerator,
     VQAGenerator,
 )
 from .kg_builder import LightRAGKGBuilder, MMKGBuilder

@@ -5,4 +5,5 @@ from .fill_in_blank_generation import FILL_IN_BLANK_GENERATION_PROMPT
 from .multi_answer_generation import MAQ_GENERATION_PROMPT
 from .multi_choice_generation import MCQ_GENERATION_PROMPT
 from .multi_hop_generation import MULTI_HOP_GENERATION_PROMPT
+from .true_false_generation import TF_GENERATION_PROMPT
 from .vqa_generation import VQA_GENERATION_PROMPT
