@@ -2,6 +2,7 @@ import time
 import uuid
 import shutil
 import os
+import sys
 import stat
 
 
@@ -30,5 +31,7 @@ def on_rm_error(func, path, exc_info):
         pass
 
 def cleanup_workspace(working_dir):
-    if os.path.exists(working_dir):
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(working_dir, onexc=on_rm_error)
+    else:
         shutil.rmtree(working_dir, onerror=on_rm_error)
