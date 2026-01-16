@@ -516,7 +516,15 @@ with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
         with gr.Accordion(label=_("Generation Config"), open=False):
             gr.Markdown(value=_("Generation Config Info"))
             mode = gr.Radio(
-                choices=["atomic", "multi_hop", "aggregated", "CoT"],
+                choices=[
+                    "atomic",
+                    "multi_hop",
+                    "aggregated",
+                    "CoT",
+                    "multi_choice",
+                    "multi_answer",
+                    "fill_in_blank",
+                ],
                 label=_("Mode"),
                 value="aggregated",
                 interactive=True,
