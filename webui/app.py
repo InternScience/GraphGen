@@ -217,6 +217,13 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
 
     finally:
         if engine:
+            # Explicitly terminate Ray actors to release resources
+            for actor in engine.llm_actors.values():
+                if actor:
+                    ray.kill(actor)
+            for actor in engine.storage_actors.values():
+                if actor:
+                    ray.kill(actor)
             del engine
         gc.collect()
 
