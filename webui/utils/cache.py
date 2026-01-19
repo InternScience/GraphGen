@@ -1,9 +1,8 @@
+import os
+import shutil
+import stat
 import time
 import uuid
-import shutil
-import os
-import sys
-import stat
 
 
 def setup_workspace(folder):
@@ -20,18 +19,14 @@ def setup_workspace(folder):
     return log_file, working_dir
 
 
-def on_rm_error(func, path, exc_info):
-    st = os.stat(path)
-    os.chmod(path, st.st_mode | stat.S_IWRITE)
+def cleanup_workspace(working_dir):
+    if not os.path.exists(working_dir):
+        return
+    st = os.stat(working_dir)
+    os.chmod(working_dir, st.st_mode | stat.S_IWRITE)
 
     time.sleep(0.5)
     try:
-        func(path)
+        shutil.rmtree(working_dir)
     except Exception:
         pass
-
-def cleanup_workspace(working_dir):
-    if sys.version_info >= (3, 12):
-        shutil.rmtree(working_dir, onexc=on_rm_error)
-    else:
-        shutil.rmtree(working_dir, onerror=on_rm_error)
