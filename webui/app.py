@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+import gc
 import tempfile
 from importlib.resources import files
 
@@ -178,6 +179,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         "nodes": nodes,
     }
 
+    engine = None
     try:
         # 4. Initialize and Run Engine
         engine = Engine(config, operators)
@@ -214,6 +216,10 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         raise gr.Error(f"Error occurred: {str(e)}")
 
     finally:
+        if engine:
+            del engine
+        gc.collect()
+
         # Clean up workspace
         cleanup_workspace(working_dir)  # Optional: keep for debugging or enable
 

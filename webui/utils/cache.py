@@ -1,5 +1,7 @@
 import os
 import shutil
+import stat
+import time
 import uuid
 
 
@@ -17,6 +19,14 @@ def setup_workspace(folder):
     return log_file, working_dir
 
 
-def cleanup_workspace(folder):
-    if os.path.exists(folder):
-        shutil.rmtree(folder)
+def cleanup_workspace(working_dir):
+    if not os.path.exists(working_dir):
+        return
+    st = os.stat(working_dir)
+    os.chmod(working_dir, st.st_mode | stat.S_IWRITE)
+
+    time.sleep(0.5)
+    try:
+        shutil.rmtree(working_dir)
+    except Exception:
+        pass
