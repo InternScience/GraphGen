@@ -1,0 +1,36 @@
+global_params:
+  working_dir: cache
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+
+nodes:
+  - id: read
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/json_demo.json
+
+  - id: chunk
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read
+    execution_params:
+      replicas: 4
+    params:
+      chunk_size: 20480 # larger chunk size for better context
+      chunk_overlap: 2000
+
+  - id: rephrase
+    op_name: rephrase
+    type: map_batch
+    dependencies:
+      - chunk
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    save_output: true
+    params:
+      method: style_controlled
+      style: critical_analysis
