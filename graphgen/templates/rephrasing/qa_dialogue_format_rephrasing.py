@@ -43,7 +43,7 @@ TEMPLATE_EN = """
 1. Question Design:
    - Each question must originate from original content knowledge points
    - Questions should be specific and clear, avoid vagueness
-   - Reflect real learning process疑惑 points
+   - Reflect points of confusion in the real learning process
 2. Answer Specification:
    - Answers must be accurate and complete, citing original facts
    - Maintain authoritative expert tone
