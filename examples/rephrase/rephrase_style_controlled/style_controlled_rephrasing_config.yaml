@@ -19,8 +19,8 @@ nodes:
     execution_params:
       replicas: 4
     params:
-      chunk_size: 20480 # larger chunk size for better context
-      chunk_overlap: 2000
+      chunk_size: 2048 # larger chunk size for better context
+      chunk_overlap: 200
 
   - id: rephrase
     op_name: rephrase
