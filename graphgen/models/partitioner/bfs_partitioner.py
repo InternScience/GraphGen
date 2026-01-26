@@ -61,7 +61,7 @@ class BFSPartitioner(BasePartitioner):
                     if it in used_e:
                         continue
                     used_e.add(it)
-                    u, v = tuple(it)
+                    u, v = sorted(it)
                     comm_e.append((u, v))
                     cnt += 1
                     # push nodes that are not visited
