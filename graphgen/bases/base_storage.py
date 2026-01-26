@@ -127,10 +127,6 @@ class BaseGraphStorage(StorageNameSpace, ABC):
         raise NotImplementedError
 
     @abstractmethod
-    def get_neighbors(self, node_id: str) -> List[str]:
-        raise NotImplementedError
-
-    @abstractmethod
     def reload(self):
         raise NotImplementedError
 

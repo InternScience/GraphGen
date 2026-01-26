@@ -129,9 +129,6 @@ class GraphStorageActor:
     def delete_node(self, node_id: str):
         return self.graph.delete_node(node_id)
 
-    def get_neighbors(self, node_id: str) -> List[str]:
-        return self.graph.get_neighbors(node_id)
-
     def reload(self):
         return self.graph.reload()
 
@@ -247,9 +244,6 @@ class RemoteGraphStorageProxy(BaseGraphStorage):
 
     def delete_node(self, node_id: str):
         return ray.get(self.actor.delete_node.remote(node_id))
-
-    def get_neighbors(self, node_id: str) -> List[str]:
-        return ray.get(self.actor.get_neighbors.remote(node_id))
 
     def reload(self):
         return ray.get(self.actor.reload.remote())
