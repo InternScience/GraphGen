@@ -188,6 +188,18 @@ class NetworkXStorage(BaseGraphStorage):
         else:
             print(f"Node {node_id} not found in the graph for deletion.")
 
+    def get_neighbors(self, node_id: str) -> List[str]:
+        """
+        Get the neighbors of a node based on the specified node_id.
+
+        :param node_id: The node_id to get neighbors for
+        :return: List of neighbor node IDs
+        """
+        if self._graph.has_node(node_id):
+            return list(self._graph.neighbors(node_id))
+        print(f"Node {node_id} not found in the graph.")
+        return []
+
     def clear(self):
         """
         Clear the graph by removing all nodes and edges.
