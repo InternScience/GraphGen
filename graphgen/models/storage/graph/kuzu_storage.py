@@ -373,6 +373,19 @@ class KuzuStorage(BaseGraphStorage):
         self._conn.execute(query, {"id": node_id})
         print(f"Node {node_id} deleted from KuzuDB.")
 
+    def get_neighbors(self, node_id: str) -> List[str]:
+        query = """
+            MATCH (a:Entity {id: $id})-[:Relation]->(b:Entity)
+            RETURN b.id
+        """
+        result = self._conn.execute(query, {"id": node_id})
+        neighbors = []
+        while result.has_next():
+            row = result.get_next()
+            if row and len(row) >= 1:
+                neighbors.append(row[0])
+        return neighbors
+
     def clear(self):
         """Clear all data but keep schema (or drop tables)."""
         self._conn.execute("MATCH (n) DETACH DELETE n")
