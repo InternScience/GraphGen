@@ -65,7 +65,6 @@ class ECEPartitioner(BFSPartitioner):
         nodes: List[Tuple[str, dict]] = g.get_all_nodes()
         edges: List[Tuple[str, str, dict]] = g.get_all_edges()
 
-        adj, _ = self._build_adjacency_list(nodes, edges)
         node_dict = dict(nodes)
         edge_dict = {frozenset((u, v)): d for u, v, d in edges}
 
@@ -118,7 +117,7 @@ class ECEPartitioner(BFSPartitioner):
 
                 neighbors: List[Tuple[str, Any, dict]] = []
                 if cur_type == NODE_UNIT:
-                    for nb_id in adj.get(cur_id, []):
+                    for nb_id in g.get_neighbors(cur_id):
                         e_key = frozenset((cur_id, nb_id))
                         if e_key not in used_e and e_key not in community_edges:
                             neighbors.append((EDGE_UNIT, e_key, edge_dict[e_key]))

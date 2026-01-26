@@ -26,8 +26,6 @@ class DFSPartitioner(BasePartitioner):
         nodes = g.get_all_nodes()
         edges = g.get_all_edges()
 
-        adj, _ = self._build_adjacency_list(nodes, edges)
-
         used_n: set[str] = set()
         used_e: set[frozenset[str]] = set()
 
@@ -55,7 +53,7 @@ class DFSPartitioner(BasePartitioner):
                     used_n.add(it)
                     comm_n.append(it)
                     cnt += 1
-                    for nei in adj[it]:
+                    for nei in g.get_neighbors(it):
                         e_key = frozenset((it, nei))
                         if e_key not in used_e:
                             stack.append((EDGE_UNIT, e_key))
@@ -64,7 +62,8 @@ class DFSPartitioner(BasePartitioner):
                     if it in used_e:
                         continue
                     used_e.add(it)
-                    comm_e.append(tuple(sorted(it)))
+                    u, v = sorted(it)
+                    comm_e.append((u, v))
                     cnt += 1
                     # push neighboring nodes
                     for n in it:

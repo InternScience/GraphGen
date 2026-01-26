@@ -51,24 +51,3 @@ class BasePartitioner(ABC):
             if edge_data:
                 edges_data.append((u, v, edge_data))
         return nodes_data, edges_data
-
-    @staticmethod
-    def _build_adjacency_list(
-        nodes: List[tuple[str, dict]], edges: List[tuple[str, str, dict]]
-    ) -> tuple[dict[str, List[str]], set[tuple[str, str]]]:
-        """
-        Build adjacency list and edge set from nodes and edges.
-        :param nodes
-        :param edges
-        :return: adjacency list, edge set
-        """
-        adj: dict[str, List[str]] = {n[0]: [] for n in nodes}
-        edge_set: set[tuple[str, str]] = set()
-        for u, v, _ in edges:
-            if u == v:
-                continue
-            adj[u].append(v)
-            adj[v].append(u)
-            edge_set.add((u, v))
-            edge_set.add((v, u))
-        return adj, edge_set
