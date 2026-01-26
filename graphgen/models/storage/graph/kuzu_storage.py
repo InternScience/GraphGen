@@ -375,16 +375,11 @@ class KuzuStorage(BaseGraphStorage):
 
     def get_neighbors(self, node_id: str) -> List[str]:
         query = """
-            MATCH (a:Entity {id: $id})-[:Relation]->(b:Entity)
-            RETURN b.id
+            MATCH (a:Entity {id: $id})-[:Relation]-(b:Entity)
+            RETURN DISTINCT b.id
         """
         result = self._conn.execute(query, {"id": node_id})
-        neighbors = []
-        while result.has_next():
-            row = result.get_next()
-            if row and len(row) >= 1:
-                neighbors.append(row[0])
-        return neighbors
+        return [row[0] for row in result if row]
 
     def clear(self):
         """Clear all data but keep schema (or drop tables)."""
