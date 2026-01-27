@@ -2,13 +2,10 @@ import argparse
 import os
 import time
 from importlib import resources
-from typing import Any, Dict
 
 import ray
 import yaml
 from dotenv import load_dotenv
-from ray.data.block import Block
-from ray.data.datasource.filename_provider import FilenameProvider
 
 from graphgen.engine import Engine
 from graphgen.operators import operators
@@ -29,30 +26,6 @@ def save_config(config_path, global_config):
     with open(config_path, "w", encoding="utf-8") as config_file:
         yaml.dump(
             global_config, config_file, default_flow_style=False, allow_unicode=True
-        )
-
-
-class NodeFilenameProvider(FilenameProvider):
-    def __init__(self, node_id: str):
-        self.node_id = node_id
-
-    def get_filename_for_block(
-        self, block: Block, write_uuid: str, task_index: int, block_index: int
-    ) -> str:
-        # format: {node_id}_{write_uuid}_{task_index:06}_{block_index:06}.json
-        return f"{self.node_id}_{write_uuid}_{task_index:06d}_{block_index:06d}.jsonl"
-
-    def get_filename_for_row(
-        self,
-        row: Dict[str, Any],
-        write_uuid: str,
-        task_index: int,
-        block_index: int,
-        row_index: int,
-    ) -> str:
-        raise NotImplementedError(
-            f"Row-based filenames are not supported by write_json. "
-            f"Node: {self.node_id}, write_uuid: {write_uuid}"
         )
 
 
@@ -91,22 +64,7 @@ def main():
 
     engine = Engine(config, operators)
     ds = ray.data.from_items([])
-    results = engine.execute(ds)
-
-    for node_id, dataset in results.items():
-        logger.info("Saving results for node %s", node_id)
-        node_output_path = os.path.join(output_path, f"{node_id}")
-        os.makedirs(node_output_path, exist_ok=True)
-        dataset.write_json(
-            node_output_path,
-            filename_provider=NodeFilenameProvider(node_id),
-            pandas_json_args_fn=lambda: {
-                "force_ascii": False,
-                "orient": "records",
-                "lines": True,
-            },
-        )
-        logger.info("Node %s results saved to %s", node_id, node_output_path)
+    engine.execute(ds, output_dir=output_path)
 
     save_config(os.path.join(output_path, "config.yaml"), config)
     logger.info("GraphGen completed successfully. Data saved to %s", output_path)

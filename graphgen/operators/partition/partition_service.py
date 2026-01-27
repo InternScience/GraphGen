@@ -89,9 +89,10 @@ class PartitionService(BaseOperator):
 
             yield pd.DataFrame(
                 {
-                    "nodes": [batch[0]],
-                    "edges": [batch[1]],
-                }
+                    "nodes": json.dumps(batch[0]),
+                    "edges": json.dumps(batch[1]),
+                },
+                index=[0],
             )
         logger.info("Total communities partitioned: %d", count)
 
