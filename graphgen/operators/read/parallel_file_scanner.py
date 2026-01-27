@@ -2,17 +2,22 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
-from typing import Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union
 
-from graphgen.models import RocksDBCache
+from graphgen.bases import BaseKVStorage
+from graphgen.utils import compute_content_hash, logger
 
 
 class ParallelFileScanner:
     def __init__(
-        self, cache_dir: str, allowed_suffix, rescan: bool = False, max_workers: int = 4
+        self,
+        read_cache: BaseKVStorage,
+        allowed_suffix: Optional[List[str]] = None,
+        rescan: bool = False,
+        max_workers: int = 4,
     ):
-        self.cache = RocksDBCache(os.path.join(cache_dir, "input_paths.db"))
-        self.allowed_suffix = set(allowed_suffix) if allowed_suffix else None
+        self.cache = read_cache
+        self.allowed_suffix = set(allowed_suffix) if allowed_suffix else set()
         self.rescan = rescan
         self.max_workers = max_workers
 
@@ -55,8 +60,10 @@ class ParallelFileScanner:
             return self._empty_result(path_str)
 
         # cache check
-        cache_key = f"scan::{path_str}::recursive::{recursive}"
-        cached = self.cache.get(cache_key)
+        cache_key = compute_content_hash(
+            f"scan::{path_str}::recursive::{recursive}", prefix="read-"
+        )
+        cached = self.cache.get_by_id(cache_key)
         if cached and not self.rescan:
             return cached["data"]
 
@@ -66,7 +73,9 @@ class ParallelFileScanner:
         try:
             path_stat = path.stat()
             if path.is_file():
-                return self._scan_single_file(path, path_str, path_stat)
+                result = self._scan_single_file(path, path_str, path_stat)
+                self._cache_result(cache_key, result, path)
+                return result
             if path.is_dir():
                 with os.scandir(path_str) as entries:
                     for entry in entries:
@@ -113,6 +122,12 @@ class ParallelFileScanner:
                 stats["file_count"] += sub_data["stats"].get("file_count", 0)
 
         result = {"path": path_str, "files": files, "dirs": dirs, "stats": stats}
+        logger.debug(
+            "Scanned %s: %d files, %d dirs",
+            path_str,
+            stats["file_count"],
+            stats["dir_count"],
+        )
         self._cache_result(cache_key, result, path)
         return result
 
@@ -174,31 +189,26 @@ class ParallelFileScanner:
 
     def _cache_result(self, key: str, result: Dict, path: Path):
         """Cache the scan result"""
-        self.cache.set(
-            key,
+        self.cache.upsert(
             {
-                "data": result,
-                "dir_mtime": path.stat().st_mtime,
-                "cached_at": time.time(),
-            },
+                key: {
+                    "data": result,
+                    "dir_mtime": path.stat().st_mtime,
+                    "cached_at": time.time(),
+                },
+            }
         )
 
     def _is_allowed_file(self, path: Path) -> bool:
         """Check if the file has an allowed suffix"""
-        if self.allowed_suffix is None:
+        if not self.allowed_suffix or len(self.allowed_suffix) == 0:
             return True
         suffix = path.suffix.lower().lstrip(".")
         return suffix in self.allowed_suffix
 
-    def invalidate(self, path: str):
-        """Invalidate cache for a specific path"""
-        path = Path(path).resolve()
-        keys = [k for k in self.cache if k.startswith(f"scan::{path}")]
-        for k in keys:
-            self.cache.delete(k)
-
     def close(self):
-        self.cache.close()
+        self.cache.index_done_callback()
+        del self.cache
 
     def __enter__(self):
         return self

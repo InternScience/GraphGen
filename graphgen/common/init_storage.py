@@ -42,6 +42,12 @@ class KVStorageActor:
     def upsert(self, data: dict) -> dict:
         return self.kv.upsert(data)
 
+    def update(self, data: dict):
+        return self.kv.update(data)
+
+    def delete(self, ids: list[str]):
+        return self.kv.delete(ids)
+
     def drop(self):
         return self.kv.drop()
 
@@ -167,6 +173,12 @@ class RemoteKVStorageProxy(BaseKVStorage):
 
     def upsert(self, data: Dict[str, Any]):
         return ray.get(self.actor.upsert.remote(data))
+
+    def update(self, data: Dict[str, Any]):
+        return ray.get(self.actor.update.remote(data))
+
+    def delete(self, ids: list[str]):
+        return ray.get(self.actor.delete.remote(ids))
 
     def drop(self):
         return ray.get(self.actor.drop.remote())
