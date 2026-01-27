@@ -23,7 +23,7 @@ class NodeFilenameProvider(FilenameProvider):
     def get_filename_for_block(
         self, block: Block, write_uuid: str, task_index: int, block_index: int
     ) -> str:
-        # format: {node_id}_{write_uuid}_{task_index:06}_{block_index:06}.json
+        # format: {node_id}_{write_uuid}_{task_index:06}_{block_index:06}.jsonl
         return f"{self.node_id}_{write_uuid}_{task_index:06d}_{block_index:06d}.jsonl"
 
     def get_filename_for_row(
