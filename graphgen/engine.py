@@ -289,7 +289,9 @@ class Engine:
                     f"Unsupported node type {node.type} for node {node.id}"
                 )
 
-    def execute(self, initial_ds: ray.data.Dataset, output_dir: str):
+    def execute(
+        self, initial_ds: ray.data.Dataset, output_dir: str
+    ) -> Dict[str, ray.data.Dataset]:
         sorted_nodes = self._topo_sort(self.config.nodes)
 
         for node in sorted_nodes:
@@ -314,3 +316,5 @@ class Engine:
 
                 # ray will lazy read the dataset
                 self.datasets[node.id] = ray.data.read_json(node_output_path)
+
+        return self.datasets
