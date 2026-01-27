@@ -121,15 +121,15 @@ def read(
             else:
                 combined_ds = read_tasks[0].union(*read_tasks[1:])
 
+            if read_nums is not None:
+                combined_ds = combined_ds.limit(read_nums)
+
             combined_ds = combined_ds.map(
                 lambda record: {
                     **record,
                     "_trace_id": compute_mm_hash(record, prefix="doc-"),
                 }
             )
-
-            if read_nums is not None:
-                combined_ds = combined_ds.limit(read_nums)
 
             # sample record
             for i, item in enumerate(combined_ds.take(1)):
