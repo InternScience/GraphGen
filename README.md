@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/images/logo.png"/>
+  <img src="assets/logo.png"/>
 </p>
 
 <!-- icon -->
@@ -315,7 +315,7 @@ See [analysis](https://deepwiki.com/open-sciencelab/GraphGen) by deepwiki for a 
 
 
 ### Workflow
-![workflow](resources/images/flow.png)
+![workflow](assets/flow.png)
 
 
 ## 🍀 Acknowledgements

@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="resources/images/logo.png"/>
+  <img src="assets/logo.png"/>
 </p>
 
 <!-- icon -->
@@ -313,7 +313,7 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 
 ### 工作流程
-![workflow](resources/images/flow.png)
+![workflow](assets/flow.png)
 
 
 ## 🍀 致谢
