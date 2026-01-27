@@ -106,7 +106,7 @@ class VQAGenerator(BaseGenerator):
                                 {"text": v["question"], "image": v.get("img_path", "")}
                             ],
                         },
-                        {"from": "gpt", "value": v["answer"]},
+                        {"from": "gpt", "value": [{"text": v["answer"]}]},
                     ]
                 }
                 for item in results
@@ -122,7 +122,10 @@ class VQAGenerator(BaseGenerator):
                                 {"text": v["question"], "image": v.get("img_path", "")}
                             ],
                         },
-                        {"role": "assistant", "content": v["answer"]},
+                        {
+                            "role": "assistant",
+                            "content": [{"type": "text", "text": v["answer"]}],
+                        },
                     ]
                 }
                 for item in results
