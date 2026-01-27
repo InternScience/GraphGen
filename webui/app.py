@@ -1,7 +1,7 @@
+import gc
 import json
 import os
 import sys
-import gc
 import tempfile
 from importlib.resources import files
 
@@ -188,7 +188,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
         ds = ray.data.from_items([])
 
         # Execute pipeline
-        results = engine.execute(ds)
+        results = engine.execute(ds, output_dir=working_dir)
 
         # 5. Process Output
         # Extract the result from the 'generate' node
