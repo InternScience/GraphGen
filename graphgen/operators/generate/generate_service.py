@@ -87,7 +87,6 @@ class GenerateService(BaseOperator):
         :return: QA pairs
         """
         logger.info("[Generation] mode: %s, batches: %d", self.method, len(items))
-        # items = [(item["nodes"], item["edges"]) for item in items]
         items = [
             (json.loads(item["nodes"]), json.loads(item["edges"])) for item in items
         ]
