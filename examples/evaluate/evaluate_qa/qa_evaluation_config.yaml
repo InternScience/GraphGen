@@ -92,7 +92,7 @@ nodes:
       metrics:
         - qa_length
         - qa_mtld
-        - qa_reward_score
-        - qa_uni_score
+        # - qa_reward_score
+        # - qa_uni_score
       mtld_params:
         threshold: 0.7

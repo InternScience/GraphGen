@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from .conftest import run_generate_test
+from tests.e2e_tests.conftest import run_generate_test
 
 
 def test_generate_multi_hop(tmp_path: Path):
