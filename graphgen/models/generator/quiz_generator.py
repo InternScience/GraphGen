@@ -10,9 +10,8 @@ class QuizGenerator(BaseGenerator):
     Quiz Generator rephrases given descriptions to create quiz questions.
     """
 
-    @staticmethod
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
         """
         Build prompt for rephrasing the description.
@@ -31,12 +30,16 @@ class QuizGenerator(BaseGenerator):
             description = edges[0][2].get("description", "")
             template_type = edges[0][2].get("template_type", "TEMPLATE")
         else:
-            raise ValueError("Batch must contain at least one node or edge with description")
+            raise ValueError(
+                "Batch must contain at least one node or edge with description"
+            )
 
-        return QuizGenerator.build_prompt_for_description(description, template_type)
+        return self.build_prompt_for_description(description, template_type)
 
     @staticmethod
-    def build_prompt_for_description(description: str, template_type: str = "TEMPLATE") -> str:
+    def build_prompt_for_description(
+        description: str, template_type: str = "TEMPLATE"
+    ) -> str:
         """
         Build prompt for rephrasing a single description.
         :param description: The description to rephrase
@@ -60,11 +63,10 @@ class QuizGenerator(BaseGenerator):
         logger.debug("Rephrased Text: %s", rephrased_text)
         return rephrased_text
 
-    @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(self, response: str) -> Any:
         """
         Parse the LLM response. For quiz generator, this returns the rephrased text.
         :param response: LLM response
         :return: Rephrased text
         """
-        return QuizGenerator.parse_rephrased_text(response)
+        return self.parse_rephrased_text(response)

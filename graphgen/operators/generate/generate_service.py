@@ -2,8 +2,8 @@ import json
 
 import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper, BaseOperator
-from graphgen.common import init_llm
+from graphgen.bases import BaseKVStorage, BaseLLMWrapper, BaseOperator
+from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger, run_concurrent
 
 
@@ -15,12 +15,16 @@ class GenerateService(BaseOperator):
     def __init__(
         self,
         working_dir: str = "cache",
+        kv_backend: str = "rocksdb",
         method: str = "aggregated",
         data_format: str = "ChatML",
         **generate_kwargs,
     ):
         super().__init__(working_dir=working_dir, op_name="generate_service")
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
+        self.generate_storage: BaseKVStorage = init_storage(
+            backend=kv_backend, working_dir=working_dir, namespace="generate"
+        )
 
         self.method = method
         self.data_format = data_format
@@ -99,7 +103,7 @@ class GenerateService(BaseOperator):
 
         # Filter out empty results
         results = [res for res in results if res]
-
+        results = [item for sublist in results for item in sublist]
         results = self.generator.format_generation_results(
             results, output_data_format=self.data_format
         )

@@ -12,7 +12,7 @@ class MultiAnswerGenerator(BaseGenerator):
         self.num_of_questions = num_of_questions
 
     @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(response: str) -> list[dict]:
         """
         Parse multiple-answer QA pairs from the LLM response.
         Each QA pair contains question text, four options, and the correct answers (one or more).
@@ -21,14 +21,14 @@ class MultiAnswerGenerator(BaseGenerator):
         :return: Dictionary mapping question hash to question data, where each
                  value is a dict with "question", "options", and "answer" keys
         """
-        qa_pairs = {}
+        qa_pairs = []
 
         # Extract all QA pair blocks
         qa_blocks = re.findall(r"<qa_pair>(.*?)</qa_pair>", response, re.DOTALL)
 
         if not qa_blocks:
             logger.warning("No QA pairs found in response: %s", response)
-            return {}
+            return qa_pairs
 
         for block in qa_blocks:
             # Extract and clean question text
@@ -61,7 +61,9 @@ class MultiAnswerGenerator(BaseGenerator):
                 logger.warning("Failed to parse answer from block: %s", block)
                 continue
             answer_text = ans_match.group(1).strip().strip('"').strip("'")
-            answers = [ans.strip().upper() for ans in answer_text.split(",") if ans.strip()]
+            answers = [
+                ans.strip().upper() for ans in answer_text.split(",") if ans.strip()
+            ]
             invalid_answers = [ans for ans in answers if ans not in options]
             if invalid_answers:
                 logger.warning(
@@ -76,13 +78,13 @@ class MultiAnswerGenerator(BaseGenerator):
                 logger.warning("No valid answers found in: %s", answer_text)
                 continue
 
-            # Build result entry with question hash as key
-            question_hash = compute_content_hash(question)
-            qa_pairs[question_hash] = {
-                "question": question,
-                "options": options,  # Dict like {"A": "text", "B": "text", ...}
-                "answer": ", ".join(answers),
-            }
+            qa_pairs.append(
+                {
+                    "question": question,
+                    "options": options,  # Dict like {"A": "text", "B": "text", ...}
+                    "answers": answers,  # List of correct answers: ["A", "C"]
+                }
+            )
 
             logger.debug("Successfully parsed MAQ: %s", question[:50])
 

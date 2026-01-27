@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import TF_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class TrueFalseGenerator(BaseGenerator):
@@ -12,7 +12,7 @@ class TrueFalseGenerator(BaseGenerator):
         self.num_of_questions = num_of_questions
 
     @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(response: str) -> list[dict]:
         """
         Parse true/false QA pairs from the LLM response.
         Each QA pair contains a statement question and True/False answer.
@@ -21,14 +21,14 @@ class TrueFalseGenerator(BaseGenerator):
         :return: Dictionary mapping question hash to question data, where each
                  value is a dict with "question", "options", and "answer" keys
         """
-        qa_pairs: dict[str, dict[str, Any]] = {}
+        qa_pairs: list[dict[str, str]] = []
 
         # Extract all QA pair blocks
         qa_blocks = re.findall(r"<qa_pair>(.*?)</qa_pair>", response, re.DOTALL)
 
         if not qa_blocks:
             logger.warning("No QA pairs found in response: %s", response)
-            return {}
+            return qa_pairs
 
         for block in qa_blocks:
             # Extract and clean question text
@@ -50,12 +50,12 @@ class TrueFalseGenerator(BaseGenerator):
                 logger.warning("Invalid answer '%s' in block: %s", answer, block)
                 continue
 
-            # Build result entry with question hash as key
-            question_hash = compute_content_hash(question)
-            qa_pairs[question_hash] = {
-                "question": question,
-                "answer": answer,  # "True" or "False"
-            }
+            qa_pairs.append(
+                {
+                    "question": question,
+                    "answer": answer,  # "True" or "False"
+                }
+            )
 
             logger.debug("Successfully parsed TF question: %s", question[:50])
 

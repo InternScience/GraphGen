@@ -32,13 +32,13 @@ class VQAGenerator(BaseGenerator):
         return prompt
 
     @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(response: str) -> list[dict]:
         """
         Parse the LLM response and return the generated QAs
         :param response
         :return: QA pairs
         """
-        qa_pairs = {}
+        qa_pairs = []
         pattern = r"<question>(.*?)</question>\s*<answer>(.*?)</answer>"
         matches = re.findall(pattern, response, re.DOTALL)
 
@@ -48,10 +48,12 @@ class VQAGenerator(BaseGenerator):
                 answer = answer.strip().strip('"').strip("'")
                 logger.debug("Question: %s", question)
                 logger.debug("Answer: %s", answer)
-                qa_pairs[compute_content_hash(question)] = {
-                    "question": question,
-                    "answer": answer,
-                }
+                qa_pairs.append(
+                    {
+                        "question": question,
+                        "answer": answer,
+                    }
+                )
         else:
             logger.warning("Error parsing the response %s", response)
         return qa_pairs
@@ -61,13 +63,12 @@ class VQAGenerator(BaseGenerator):
         batch: tuple[
             list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
         ],
-    ) -> dict[str, Any]:
+    ) -> list[dict]:
         """
         Generate QAs based on a given batch.
         :param batch
         :return: QA pairs
         """
-        result = {}
         prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(prompt)
         qa_pairs = self.parse_response(response)  # generate one or more QA pairs
@@ -76,10 +77,9 @@ class VQAGenerator(BaseGenerator):
             node_data = node[1]
             if "image_data" in node_data and node_data["image_data"]:
                 img_path = node_data["image_data"]["img_path"]
-                for qa in qa_pairs.values():
+                for qa in qa_pairs:
                     qa["img_path"] = img_path
-        result.update(qa_pairs)
-        return result
+        return qa_pairs
 
     @staticmethod
     def format_generation_results(
