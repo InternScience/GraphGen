@@ -227,7 +227,7 @@ def run_graphgen(params: WebuiParams, progress=gr.Progress()):
 with gr.Blocks(title="GraphGen Demo", theme=gr.themes.Glass(), css=css) as demo:
     # Header
     gr.Image(
-        value=os.path.join(root_dir, "resources", "images", "logo.png"),
+        value=os.path.join(root_dir, "assets", "logo.png"),
         label="GraphGen Banner",
         elem_id="banner",
         interactive=False,
