@@ -5,13 +5,12 @@ from typing import Union
 import pandas as pd
 
 from graphgen.bases import BaseOperator
-from graphgen.common import init_storage
 from graphgen.models import (
     ChineseRecursiveTextSplitter,
     RecursiveCharacterSplitter,
     Tokenizer,
 )
-from graphgen.utils import compute_content_hash, detect_main_language
+from graphgen.utils import detect_main_language
 
 _MAPPING = {
     "en": RecursiveCharacterSplitter,
@@ -45,26 +44,18 @@ class ChunkService(BaseOperator):
     def __init__(
         self, working_dir: str = "cache", kv_backend: str = "rocksdb", **chunk_kwargs
     ):
-        super().__init__(working_dir=working_dir, op_name="chunk_service")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="chunk"
+        )
         tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
         self.tokenizer_instance: Tokenizer = Tokenizer(model_name=tokenizer_model)
-        self.chunk_storage = init_storage(
-            backend=kv_backend,
-            working_dir=working_dir,
-            namespace="chunk",
-        )
         self.chunk_kwargs = chunk_kwargs
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        docs = batch.to_dict(orient="records")
-        return pd.DataFrame(self.chunk_documents(docs))
-
-    def chunk_documents(self, new_docs: list) -> list:
-        chunks = []
-        for doc in new_docs:
-            doc_id = doc.get("_doc_id")
+    def process(self, batch: list) -> pd.DataFrame:
+        results = []
+        meta_updates = {}
+        for doc in batch:
             doc_type = doc.get("type")
-
             if doc_type == "text":
                 doc_language = detect_main_language(doc["content"])
                 text_chunks = split_chunks(
@@ -72,32 +63,26 @@ class ChunkService(BaseOperator):
                     language=doc_language,
                     **self.chunk_kwargs,
                 )
-
-                chunks.extend(
-                    [
-                        {
-                            "_chunk_id": compute_content_hash(
-                                chunk_text, prefix="chunk-"
-                            ),
-                            "content": chunk_text,
-                            "type": "text",
-                            "_doc_id": doc_id,
-                            "length": len(self.tokenizer_instance.encode(chunk_text))
-                            if self.tokenizer_instance
-                            else len(chunk_text),
-                            "language": doc_language,
-                        }
-                        for chunk_text in text_chunks
-                    ]
-                )
+                for text_chunk in text_chunks:
+                    chunk = {
+                        "content": text_chunk,
+                        "type": "text",
+                        "length": len(self.tokenizer_instance.encode(text_chunk))
+                        if self.tokenizer_instance
+                        else len(text_chunk),
+                        "language": doc_language,
+                    }
+                    chunk["_trace_id"] = self.generate_trace_id(chunk)
+                    results.append(chunk)
+                    meta_updates.setdefault(doc["_trace_id"], []).append(
+                        chunk["_trace_id"]
+                    )
             else:
                 # other types of documents(images, sequences) are not chunked
-                chunks.append(
-                    {
-                        "_chunk_id": doc_id.replace("doc-", f"{doc_type}-"),
-                        **doc,
-                    }
-                )
-        self.chunk_storage.upsert({chunk["_chunk_id"]: chunk for chunk in chunks})
-        self.chunk_storage.index_done_callback()
-        return chunks
+                doc["_trace_id"] = self.generate_trace_id(doc)
+                results.append(doc)
+        self.store(
+            results,
+            meta_updates,
+        )
+        return pd.DataFrame(results)

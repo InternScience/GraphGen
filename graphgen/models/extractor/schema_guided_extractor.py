@@ -1,7 +1,7 @@
 import json
 from typing import Dict, List
 
-from graphgen.bases import BaseExtractor, BaseLLMWrapper
+from graphgen.bases import BaseExtractor, BaseLLMWrapper, Chunk
 from graphgen.templates import SCHEMA_GUIDED_EXTRACTION_PROMPT
 from graphgen.utils import compute_dict_hash, detect_main_language, logger
 
@@ -59,9 +59,9 @@ class SchemaGuidedExtractor(BaseExtractor):
         )
         return prompt
 
-    async def extract(self, chunk: dict) -> dict:
+    async def extract(self, chunk: Chunk) -> dict:
         _chunk_id = chunk.get("_chunk_id", "")
-        text = chunk.get("content", "")
+        text = chunk.content
 
         prompt = self.build_prompt(text)
         response = await self.llm_client.generate_answer(prompt)

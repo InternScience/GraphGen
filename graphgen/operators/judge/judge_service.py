@@ -11,20 +11,21 @@ from graphgen.utils import logger, run_concurrent, yes_no_loss_entropy
 class JudgeService(BaseOperator):
     """Service for judging graph edges and nodes using a trainee LLM."""
 
-    def __init__(self, working_dir: str = "cache", graph_backend: str = "kuzu"):
-        super().__init__(working_dir=working_dir, op_name="judge_service")
+    def __init__(
+        self,
+        working_dir: str = "cache",
+        kv_backend: str = "rocksdb",
+        graph_backend: str = "kuzu",
+    ):
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="judge"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("trainee")
         self.graph_storage: BaseGraphStorage = init_storage(
             backend=graph_backend,
             working_dir=working_dir,
             namespace="graph",
         )
-
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        items = batch.to_dict(orient="records")
-        self.graph_storage.reload()
-        self.judge(items)
-        return pd.DataFrame([{"status": "judging_completed"}])
 
     async def _process_single_judge(self, item: dict) -> dict:
         description = item["description"]
@@ -43,20 +44,29 @@ class JudgeService(BaseOperator):
             item["loss"] = -math.log(0.1)
         return item
 
-    def judge(self, items: list[dict]) -> None:
+    def process(self, batch: list) -> pd.DataFrame:
         """
         Judge the description in the item and compute the loss.
         """
+        self.graph_storage.reload()
+
         results = run_concurrent(
             self._process_single_judge,
-            items,
+            batch,
             desc="Judging descriptions",
             unit="description",
         )
-        # Update the graph storage with the computed losses
-        for item in results:
-            index = item["index"]
-            loss = item["loss"]
+
+        to_store = []
+        meta_update = {}
+
+        for input_trace_id, result in zip(
+            [item["_trace_id"] for item in batch], results
+        ):
+            if not result:
+                continue
+            index = result["index"]
+            loss = result["loss"]
             if isinstance(index, str):
                 node_id = index
                 node_data = self.graph_storage.get_node(node_id)
@@ -67,4 +77,11 @@ class JudgeService(BaseOperator):
                 edge_data = self.graph_storage.get_edge(edge_source, edge_target)
                 edge_data["loss"] = loss
                 self.graph_storage.update_edge(edge_source, edge_target, edge_data)
+
+            result["_trace_id"] = self.generate_trace_id(result)
+            to_store.append(result)
+            meta_update.setdefault(input_trace_id, []).append(result["_trace_id"])
         self.graph_storage.index_done_callback()
+        self.store(to_store, meta_update)
+
+        return pd.DataFrame(results)

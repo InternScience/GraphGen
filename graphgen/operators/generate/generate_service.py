@@ -1,5 +1,3 @@
-import json
-
 import pandas as pd
 
 from graphgen.bases import BaseKVStorage, BaseLLMWrapper, BaseOperator
@@ -20,7 +18,9 @@ class GenerateService(BaseOperator):
         data_format: str = "ChatML",
         **generate_kwargs,
     ):
-        super().__init__(working_dir=working_dir, op_name="generate_service")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="generate"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.generate_storage: BaseKVStorage = init_storage(
             backend=kv_backend, working_dir=working_dir, namespace="generate"
@@ -80,32 +80,37 @@ class GenerateService(BaseOperator):
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        items = batch.to_dict(orient="records")
-        return pd.DataFrame(self.generate(items))
-
-    def generate(self, items: list[dict]) -> list[dict]:
+    def process(self, batch: list[dict]) -> pd.DataFrame:
         """
         Generate question-answer pairs based on nodes and edges.
-        :param items
+        :param batch
         :return: QA pairs
         """
-        logger.info("[Generation] mode: %s, batches: %d", self.method, len(items))
-        items = [
-            (json.loads(item["nodes"]), json.loads(item["edges"])) for item in items
-        ]
+        logger.info("[Generation] mode: %s, batches: %d", self.method, len(batch))
+        triples = [(item["nodes"], item["edges"]) for item in batch]
         results = run_concurrent(
             self.generator.generate,
-            items,
-            desc="[4/4]Generating QAs",
+            triples,
+            desc="Generating QAs",
             unit="batch",
         )
 
-        # Filter out empty results
-        results = [res for res in results if res]
-        results = [item for sublist in results for item in sublist]
-        results = self.generator.format_generation_results(
-            results, output_data_format=self.data_format
+        meta_updates = {}
+        final_results = []
+        for input_trace_id, qa_pairs in zip(
+            [item["_trace_id"] for item in batch], results
+        ):
+            if not qa_pairs:
+                continue
+            for qa_pair in qa_pairs:
+                res = self.generator.format_generation_results(
+                    qa_pair, output_data_format=self.data_format
+                )
+                res["_trace_id"] = self.generate_trace_id(res)
+                final_results.append(res)
+                meta_updates.setdefault(input_trace_id, []).append(res["_trace_id"])
+        self.store(
+            final_results,
+            meta_updates,
         )
-
-        return results
+        return pd.DataFrame(final_results)

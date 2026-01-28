@@ -2,15 +2,19 @@ import json
 
 import pandas as pd
 
-from graphgen.bases import BaseLLMWrapper, BaseOperator
+from graphgen.bases import BaseLLMWrapper, BaseOperator, Chunk
 from graphgen.common import init_llm
 from graphgen.models.extractor import SchemaGuidedExtractor
 from graphgen.utils import logger, run_concurrent
 
 
 class ExtractService(BaseOperator):
-    def __init__(self, working_dir: str = "cache", **extract_kwargs):
-        super().__init__(working_dir=working_dir, op_name="extract_service")
+    def __init__(
+        self, working_dir: str = "cache", kv_backend: str = "rocksdb", **extract_kwargs
+    ):
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="extract_service"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.extract_kwargs = extract_kwargs
         self.method = self.extract_kwargs.get("method")
@@ -22,17 +26,12 @@ class ExtractService(BaseOperator):
         else:
             raise ValueError(f"Unsupported extraction method: {self.method}")
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        items = batch.to_dict(orient="records")
-        return pd.DataFrame(self.extract(items))
-
-    def extract(self, items: list[dict]) -> list[dict]:
-
-        logger.info("Start extracting information from %d items", len(items))
-
+    def process(self, batch: list) -> pd.DataFrame:
+        logger.info("Start extracting information from %d items", len(batch))
+        chunks = [Chunk.from_dict(item["_trace_id"], item) for item in batch]
         results = run_concurrent(
             self.extractor.extract,
-            items,
+            chunks,
             desc="Extracting information",
             unit="item",
         )

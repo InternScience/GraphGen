@@ -19,23 +19,37 @@ def run_concurrent(
     unit: str = "item",
 ) -> List[R]:
     async def _run_all():
-        tasks = [asyncio.create_task(coro_fn(item)) for item in items]
+        # Wrapper to return the index alongside the result
+        # This eliminates the need to map task IDs
+        async def _worker(index: int, item: T):
+            try:
+                res = await coro_fn(item)
+                return index, res, None
+            except Exception as e:
+                return index, None, e
 
-        results = []
+        # Create tasks using the wrapper
+        tasks_list = [
+            asyncio.create_task(_worker(i, item)) for i, item in enumerate(items)
+        ]
+
+        results: List[Exception | R] = [None] * len(items)
         pbar = tqdm_async(total=len(items), desc=desc, unit=unit)
 
-        for future in asyncio.as_completed(tasks):
-            try:
-                result = await future
-                results.append(result)
-            except Exception as e:
-                logger.exception("Task failed: %s", e)
-                results.append(e)
+        # Iterate over completed tasks
+        for future in asyncio.as_completed(tasks_list):
+            # We await the wrapper, which guarantees we get the index back
+            idx, result, error = await future
+
+            if error:
+                logger.exception(f"Task failed at index {idx}: {error}")
+            else:
+                results[idx] = result
 
             pbar.update(1)
 
         pbar.close()
-        return [res for res in results if not isinstance(res, Exception)]
+        return results
 
     loop = create_event_loop()
     try:

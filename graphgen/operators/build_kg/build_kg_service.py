@@ -1,5 +1,3 @@
-from typing import List
-
 import pandas as pd
 
 from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
@@ -13,9 +11,15 @@ from .build_text_kg import build_text_kg
 
 class BuildKGService(BaseOperator):
     def __init__(
-        self, working_dir: str = "cache", graph_backend: str = "kuzu", **build_kwargs
+        self,
+        working_dir: str = "cache",
+        kv_backend: str = "rocksdb",
+        graph_backend: str = "kuzu",
+        **build_kwargs
     ):
-        super().__init__(working_dir=working_dir, op_name="build_kg_service")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="build_kg"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
             backend=graph_backend, working_dir=working_dir, namespace="graph"
@@ -23,21 +27,11 @@ class BuildKGService(BaseOperator):
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        docs = batch.to_dict(orient="records")
-        docs = [Chunk.from_dict(doc["_chunk_id"], doc) for doc in docs]
-
-        # consume the chunks and build kg
-        nodes, edges = self.build_kg(docs)
-        return pd.DataFrame(
-            [{"node": node, "edge": []} for node in nodes]
-            + [{"node": [], "edge": edge} for edge in edges]
-        )
-
-    def build_kg(self, chunks: List[Chunk]) -> tuple:
+    def process(self, batch: list) -> pd.DataFrame:
         """
         Build knowledge graph (KG) and merge into kg_instance
         """
+        chunks = [Chunk.from_dict(doc["_trace_id"], doc) for doc in batch]
         text_chunks = [chunk for chunk in chunks if chunk.type == "text"]
         mm_chunks = [
             chunk
@@ -75,4 +69,38 @@ class BuildKGService(BaseOperator):
         self.graph_storage.index_done_callback()
         logger.info("Knowledge graph building completed.")
 
-        return nodes, edges
+        meta_updates = {}
+        results = []
+        for node in nodes:
+            if not node:
+                continue
+            trace_id = node["entity_name"]
+            results.append(
+                {
+                    "_trace_id": trace_id,
+                    "node": node,
+                    "edge": {},
+                }
+            )
+            source_ids = node.get("source_id", "").split("<SEP>")
+            for source_id in source_ids:
+                meta_updates.setdefault(source_id, []).append(trace_id)
+        for edge in edges:
+            if not edge:
+                continue
+            trace_id = frozenset((edge["src_id"], edge["tgt_id"]))
+            results.append(
+                {
+                    "_trace_id": str(trace_id),
+                    "node": {},
+                    "edge": edge,
+                }
+            )
+            source_ids = edge.get("source_id", "").split("<SEP>")
+            for source_id in source_ids:
+                meta_updates.setdefault(source_id, []).append(str(trace_id))
+        self.store(
+            results,
+            meta_updates,
+        )
+        return pd.DataFrame(results)

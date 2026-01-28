@@ -42,46 +42,36 @@ class BaseGenerator(ABC):
 
     @staticmethod
     def format_generation_results(
-        results: list[dict], output_data_format: str
-    ) -> list[dict[str, Any]]:
+        result: dict, output_data_format: str
+    ) -> dict[str, Any]:
+        question = result.get("question", "")
+        answer = result.get("answer", "")
+        if "options" in result and result["options"]:
+            options = result["options"]
+            options_str = "\n".join(
+                [f"{key}. {options[key]}" for key in sorted(options.keys())]
+            )
+            question += f"\nOptions:\n{options_str}"
 
-        flat_results = []
-        for qa_data in results:
-            question = qa_data.get("question", "")
-            answer = qa_data.get("answer", "")
-            if "options" in qa_data and qa_data["options"]:
-                options = qa_data["options"]
-                options_str = "\n".join(
-                    [f"{key}. {options[key]}" for key in sorted(options.keys())]
-                )
-                question += f"\nOptions:\n{options_str}"
+        if output_data_format == "Alpaca":
+            return {
+                "instruction": question,
+                "input": "",
+                "output": answer,
+            }
 
-            if output_data_format == "Alpaca":
-                flat_results.append(
-                    {
-                        "instruction": question,
-                        "input": "",
-                        "output": answer,
-                    }
-                )
-            elif output_data_format == "Sharegpt":
-                flat_results.append(
-                    {
-                        "conversations": [
-                            {"from": "human", "value": question},
-                            {"from": "gpt", "value": answer},
-                        ]
-                    }
-                )
-            elif output_data_format == "ChatML":
-                flat_results.append(
-                    {
-                        "messages": [
-                            {"role": "user", "content": question},
-                            {"role": "assistant", "content": answer},
-                        ]
-                    }
-                )
-            else:
-                raise ValueError(f"Unknown output data format: {output_data_format}")
-        return flat_results
+        if output_data_format == "Sharegpt":
+            return {
+                "conversations": [
+                    {"from": "human", "value": question},
+                    {"from": "gpt", "value": answer},
+                ]
+            }
+        if output_data_format == "ChatML":
+            return {
+                "messages": [
+                    {"role": "user", "content": question},
+                    {"role": "assistant", "content": answer},
+                ]
+            }
+        raise ValueError(f"Unknown output data format: {output_data_format}")
