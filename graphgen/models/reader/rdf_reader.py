@@ -118,7 +118,7 @@ class RDFReader(BaseReader):
                 "id": str(subj),
                 self.text_column: text,
                 "properties": props,
-                "source_file": str(file_path),
+                "path": str(file_path),
             }
             docs.append(doc)
 

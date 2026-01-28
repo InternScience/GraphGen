@@ -13,7 +13,7 @@ from graphgen.models import (
     RDFReader,
     TXTReader,
 )
-from graphgen.utils import compute_mm_hash, logger
+from graphgen.utils import compute_dict_hash, logger
 
 from .parallel_file_scanner import ParallelFileScanner
 
@@ -71,15 +71,17 @@ def read(
     :param reader_kwargs: Additional kwargs passed to readers
     :return: Ray Dataset containing all documents
     """
-
-    read_cache = init_storage(
+    input_path_cache = init_storage(
+        backend=kv_backend, working_dir=working_dir, namespace="input_path"
+    )
+    read_storage = init_storage(
         backend=kv_backend, working_dir=working_dir, namespace="read"
     )
     try:
         # 1. Scan all paths to discover files
         logger.info("[READ] Scanning paths: %s", input_path)
         with ParallelFileScanner(
-            read_cache=read_cache,
+            input_path_cache=input_path_cache,
             allowed_suffix=allowed_suffix,
             rescan=False,
             max_workers=parallelism if parallelism > 0 else 1,
@@ -124,12 +126,17 @@ def read(
             if read_nums is not None:
                 combined_ds = combined_ds.limit(read_nums)
 
-            combined_ds = combined_ds.map(
-                lambda record: {
-                    **record,
-                    "_trace_id": compute_mm_hash(record, prefix="doc-"),
-                }
-            )
+            def add_trace_id(batch):
+                batch["_trace_id"] = batch.apply(
+                    lambda row: compute_dict_hash(row, prefix="read-"), axis=1
+                )
+                records = batch.to_dict(orient="records")
+                data_to_upsert = {record["_trace_id"]: record for record in records}
+                read_storage.upsert(data_to_upsert)
+                read_storage.index_done_callback()
+                return batch
+
+            combined_ds = combined_ds.map_batches(add_trace_id, batch_format="pandas")
 
             # sample record
             for i, item in enumerate(combined_ds.take(1)):

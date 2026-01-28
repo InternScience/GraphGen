@@ -34,10 +34,13 @@ class JSONReader(BaseReader):
                     with open(file, "r", encoding="utf-8") as f:
                         data = json.load(f)
                         data = self._unify_schema(data)
+                # add path
+                for item in data:
+                    item["path"] = file
                 file_ds: ray.data.Dataset = ray.data.from_items(data)
                 ds = ds.union(file_ds)  # type: ignore
         else:
-            ds = ray.data.read_json(input_path)
+            ds = ray.data.read_json(input_path, include_paths=True)
         ds = ds.map_batches(self._validate_batch, batch_format="pandas")
         ds = ds.filter(self._should_keep_item)
         return ds

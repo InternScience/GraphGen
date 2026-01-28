@@ -18,13 +18,14 @@ class TXTReader(BaseReader):
         """
         docs_ds = ray.data.read_binary_files(
             input_path,
-            include_paths=False,
+            include_paths=True,
         )
 
         docs_ds = docs_ds.map(
             lambda row: {
                 "type": "text",
                 self.text_column: row["bytes"].decode("utf-8"),
+                "path": row["path"],
             }
         )
 

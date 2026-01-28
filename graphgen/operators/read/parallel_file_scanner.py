@@ -11,12 +11,12 @@ from graphgen.utils import compute_content_hash, logger
 class ParallelFileScanner:
     def __init__(
         self,
-        read_cache: BaseKVStorage,
+        input_path_cache: BaseKVStorage,
         allowed_suffix: Optional[List[str]] = None,
         rescan: bool = False,
         max_workers: int = 4,
     ):
-        self.cache = read_cache
+        self.cache = input_path_cache
         self.allowed_suffix = set(allowed_suffix) if allowed_suffix else set()
         self.rescan = rescan
         self.max_workers = max_workers
@@ -61,7 +61,7 @@ class ParallelFileScanner:
 
         # cache check
         cache_key = compute_content_hash(
-            f"scan::{path_str}::recursive::{recursive}", prefix="read-"
+            f"scan::{path_str}::recursive::{recursive}", prefix="path-"
         )
         cached = self.cache.get_by_id(cache_key)
         if cached and not self.rescan:
