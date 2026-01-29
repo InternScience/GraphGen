@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import FILL_IN_BLANK_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class FillInBlankGenerator(BaseGenerator):
@@ -12,7 +12,7 @@ class FillInBlankGenerator(BaseGenerator):
         self.num_of_questions = num_of_questions
 
     @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(response: str) -> list[dict]:
         """
         Parse fill-in-the-blank QA pairs from the LLM response.
         Each QA pair contains question text with placeholders and the correct answer(s).
@@ -21,14 +21,14 @@ class FillInBlankGenerator(BaseGenerator):
         :return: Dictionary mapping question hash to question data, where each
                  value is a dict with "question", "answer", and "answers" keys
         """
-        qa_pairs = {}
+        qa_pairs = []
 
         # Extract all QA pair blocks
         qa_blocks = re.findall(r"<qa_pair>(.*?)</qa_pair>", response, re.DOTALL)
 
         if not qa_blocks:
             logger.warning("No QA pairs found in response: %s", response)
-            return {}
+            return qa_pairs
 
         for block in qa_blocks:
             # Extract and clean question text
@@ -55,13 +55,13 @@ class FillInBlankGenerator(BaseGenerator):
                 logger.warning("No valid answers found in: %s", answer_text)
                 continue
 
-            # Build result entry with question hash as key
-            question_hash = compute_content_hash(question)
-            qa_pairs[question_hash] = {
-                "question": question,
-                "answer": answer_text,  # Original answer text with commas
-                "answers": answers,  # List of individual answers: ["A8X"] or ["A8X", "八百万"]
-            }
+            qa_pairs.append(
+                {
+                    "question": question,
+                    "answer": answer_text,  # Original answer text with commas
+                    "answers": answers,  # List of individual answers: ["A8X"] or ["A8X", "八百万"]
+                }
+            )
 
             logger.debug(
                 "Successfully parsed fill-in-the-blank question: %s", question[:50]

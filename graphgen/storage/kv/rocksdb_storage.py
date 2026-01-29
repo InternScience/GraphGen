@@ -68,6 +68,15 @@ class RocksDBKVStorage(BaseKVStorage):
 
         return left_data
 
+    def update(self, data: Dict[str, Any]):
+        for k, v in data.items():
+            self._db[k] = v
+
+    def delete(self, ids: List[str]):
+        for _id in ids:
+            if _id in self._db:
+                del self._db[_id]
+
     def drop(self):
         self._db.close()
         Rdict.destroy(self._db_path)

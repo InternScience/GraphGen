@@ -4,49 +4,49 @@ from typing import Any, Dict, Optional
 import numpy as np
 from scipy import stats
 
-from graphgen.bases import BaseGraphStorage
+from graphgen.bases import BaseGraphStorage, BaseKGEvaluator
 from graphgen.utils import logger
 
 
-class StructureEvaluator:
+class StructureEvaluator(BaseKGEvaluator):
     """Evaluates structural robustness of the graph."""
 
     def __init__(
         self,
-        graph_storage: BaseGraphStorage,
         noise_ratio_threshold: float = 0.15,
         largest_cc_ratio_threshold: float = 0.90,
         avg_degree_min: float = 2.0,
         avg_degree_max: float = 5.0,
         powerlaw_r2_threshold: float = 0.75,
     ):
-        self.graph_storage = graph_storage
         self.noise_ratio_threshold = noise_ratio_threshold
         self.largest_cc_ratio_threshold = largest_cc_ratio_threshold
         self.avg_degree_min = avg_degree_min
         self.avg_degree_max = avg_degree_max
         self.powerlaw_r2_threshold = powerlaw_r2_threshold
 
-    def evaluate(self) -> Dict[str, Any]:
+    def evaluate(self, kg: BaseGraphStorage) -> Dict[str, Any]:
         """
         Evaluate the structural robustness of the graph.
-        :return:
+        :return: Dictionary of structural metrics and robustness verdict. The keys include:
+            - total_nodes: Total number of nodes in the graph
+            - total_edges: Total number of edges in the graph
+            - noise_ratio: Ratio of isolated nodes to total nodes
+            - largest_cc_ratio: Ratio of largest connected component size to total nodes
+            - avg_degree: Average node degree
+            - powerlaw_r2: R² value of power law fit to degree distribution
+            - is_robust: Boolean indicating if the graph is structurally robust
         """
-        storage = self.graph_storage
-
-        total_nodes = storage.get_node_count()
-        if total_nodes == 0:
-            return {"error": "Empty graph"}
-
-        total_edges = storage.get_edge_count()
-        degree_map = storage.get_all_node_degrees()
+        total_nodes = kg.get_node_count()
+        total_edges = kg.get_edge_count()
+        degree_map = kg.get_all_node_degrees()
 
         # Noise ratio: isolated nodes / total nodes
         isolated_nodes = [nid for nid, deg in degree_map.items() if deg == 0]
         noise_ratio = len(isolated_nodes) / total_nodes
 
         # Largest connected component
-        components = storage.get_connected_components(undirected=True)
+        components = kg.get_connected_components(undirected=True)
         largest_cc_ratio = (
             len(max(components, key=len)) / total_nodes if components else 0
         )

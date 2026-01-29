@@ -31,12 +31,16 @@ class QuizGenerator(BaseGenerator):
             description = edges[0][2].get("description", "")
             template_type = edges[0][2].get("template_type", "TEMPLATE")
         else:
-            raise ValueError("Batch must contain at least one node or edge with description")
+            raise ValueError(
+                "Batch must contain at least one node or edge with description"
+            )
 
         return QuizGenerator.build_prompt_for_description(description, template_type)
 
     @staticmethod
-    def build_prompt_for_description(description: str, template_type: str = "TEMPLATE") -> str:
+    def build_prompt_for_description(
+        description: str, template_type: str = "TEMPLATE"
+    ) -> str:
         """
         Build prompt for rephrasing a single description.
         :param description: The description to rephrase
@@ -50,21 +54,21 @@ class QuizGenerator(BaseGenerator):
         return prompt
 
     @staticmethod
-    def parse_rephrased_text(response: str) -> str:
-        """
-        Parse the rephrased text from the response.
-        :param response:
-        :return:
-        """
-        rephrased_text = response.strip().strip('"')
-        logger.debug("Rephrased Text: %s", rephrased_text)
-        return rephrased_text
-
-    @staticmethod
     def parse_response(response: str) -> Any:
         """
         Parse the LLM response. For quiz generator, this returns the rephrased text.
         :param response: LLM response
         :return: Rephrased text
         """
-        return QuizGenerator.parse_rephrased_text(response)
+
+        def parse_rephrased_text(content: str) -> str:
+            """
+            Parse the rephrased text from the response.
+            :param content: LLM response content
+            :return:
+            """
+            rephrased_text = content.strip().strip('"')
+            logger.debug("Rephrased Text: %s", rephrased_text)
+            return rephrased_text
+
+        return parse_rephrased_text(response)

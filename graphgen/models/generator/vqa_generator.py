@@ -1,9 +1,10 @@
+import json
 import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import VQA_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class VQAGenerator(BaseGenerator):
@@ -32,13 +33,13 @@ class VQAGenerator(BaseGenerator):
         return prompt
 
     @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(response: str) -> list[dict]:
         """
         Parse the LLM response and return the generated QAs
         :param response
         :return: QA pairs
         """
-        qa_pairs = {}
+        qa_pairs = []
         pattern = r"<question>(.*?)</question>\s*<answer>(.*?)</answer>"
         matches = re.findall(pattern, response, re.DOTALL)
 
@@ -48,10 +49,12 @@ class VQAGenerator(BaseGenerator):
                 answer = answer.strip().strip('"').strip("'")
                 logger.debug("Question: %s", question)
                 logger.debug("Answer: %s", answer)
-                qa_pairs[compute_content_hash(question)] = {
-                    "question": question,
-                    "answer": answer,
-                }
+                qa_pairs.append(
+                    {
+                        "question": question,
+                        "answer": answer,
+                    }
+                )
         else:
             logger.warning("Error parsing the response %s", response)
         return qa_pairs
@@ -61,76 +64,58 @@ class VQAGenerator(BaseGenerator):
         batch: tuple[
             list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
         ],
-    ) -> dict[str, Any]:
+    ) -> list[dict]:
         """
         Generate QAs based on a given batch.
         :param batch
         :return: QA pairs
         """
-        result = {}
         prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(prompt)
         qa_pairs = self.parse_response(response)  # generate one or more QA pairs
         nodes, _ = batch
         for node in nodes:
             node_data = node[1]
-            if "image_data" in node_data and node_data["image_data"]:
-                img_path = node_data["image_data"]["img_path"]
-                for qa in qa_pairs.values():
+            if "metadata" in node_data and node_data["metadata"]:
+                metadata = json.loads(node_data["metadata"])["metadata"]
+                img_path = metadata.get("path", "")
+                for qa in qa_pairs:
                     qa["img_path"] = img_path
-        result.update(qa_pairs)
-        return result
+        return qa_pairs
 
     @staticmethod
-    def format_generation_results(
-        results: list[dict], output_data_format: str
-    ) -> list[dict[str, Any]]:
+    def format_generation_results(result: dict, output_data_format: str) -> dict:
+        question = result.get("question", "")
+        answer = result.get("answer", "")
+        img_path = result.get("img_path", "")
         if output_data_format == "Alpaca":
-            results = [
-                {
-                    "instruction": v["question"],
-                    "input": "",
-                    "output": v["answer"],
-                    "image": v.get("img_path", ""),
-                }
-                for item in results
-                for k, v in item.items()
-            ]
-        elif output_data_format == "Sharegpt":
-            results = [
-                {
-                    "conversations": [
-                        {
-                            "from": "human",
-                            "value": [
-                                {"text": v["question"], "image": v.get("img_path", "")}
-                            ],
-                        },
-                        {"from": "gpt", "value": [{"text": v["answer"]}]},
-                    ]
-                }
-                for item in results
-                for k, v in item.items()
-            ]
-        elif output_data_format == "ChatML":
-            results = [
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {"text": v["question"], "image": v.get("img_path", "")}
-                            ],
-                        },
-                        {
-                            "role": "assistant",
-                            "content": [{"type": "text", "text": v["answer"]}],
-                        },
-                    ]
-                }
-                for item in results
-                for k, v in item.items()
-            ]
-        else:
-            raise ValueError(f"Unknown output data format: {output_data_format}")
-        return results
+            return {
+                "instruction": question,
+                "input": "",
+                "output": answer,
+                "image": img_path,
+            }
+        if output_data_format == "Sharegpt":
+            return {
+                "conversations": [
+                    {
+                        "from": "human",
+                        "value": [{"text": question, "image": img_path}],
+                    },
+                    {"from": "gpt", "value": [{"text": answer}]},
+                ]
+            }
+        if output_data_format == "ChatML":
+            return {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"text": question, "image": img_path}],
+                    },
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": answer}],
+                    },
+                ]
+            }
+        raise ValueError(f"Unknown output data format: {output_data_format}")

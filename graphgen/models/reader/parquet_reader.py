@@ -24,7 +24,7 @@ class ParquetReader(BaseReader):
         if not ray.is_initialized():
             ray.init()
 
-        ds = ray.data.read_parquet(input_path)
+        ds = ray.data.read_parquet(input_path, include_paths=True)
         ds = ds.map_batches(self._validate_batch, batch_format="pandas")
         ds = ds.filter(self._should_keep_item)
         return ds

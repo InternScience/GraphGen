@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import MULTI_HOP_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class MultiHopGenerator(BaseGenerator):
@@ -32,7 +32,7 @@ class MultiHopGenerator(BaseGenerator):
         return prompt
 
     @staticmethod
-    def parse_response(response: str) -> dict:
+    def parse_response(response: str) -> list[dict]:
         question_match = re.search(r"<question>(.*?)</question>", response, re.DOTALL)
         answer_match = re.search(r"<answer>(.*?)</answer>", response, re.DOTALL)
 
@@ -41,15 +41,10 @@ class MultiHopGenerator(BaseGenerator):
             answer = answer_match.group(1).strip()
         else:
             logger.warning("Failed to parse response: %s", response)
-            return {}
+            return []
 
         question = question.strip('"').strip("'")
         answer = answer.strip('"').strip("'")
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", answer)
-        return {
-            compute_content_hash(question): {
-                "question": question,
-                "answer": answer,
-            }
-        }
+        return [{"question": question, "answer": answer}]

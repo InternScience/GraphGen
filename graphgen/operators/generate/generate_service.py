@@ -1,9 +1,6 @@
-import json
-
-import pandas as pd
-
-from graphgen.bases import BaseLLMWrapper, BaseOperator
-from graphgen.common import init_llm
+from typing import Tuple
+from graphgen.bases import BaseKVStorage, BaseLLMWrapper, BaseOperator
+from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger, run_concurrent
 
 
@@ -15,12 +12,18 @@ class GenerateService(BaseOperator):
     def __init__(
         self,
         working_dir: str = "cache",
+        kv_backend: str = "rocksdb",
         method: str = "aggregated",
         data_format: str = "ChatML",
         **generate_kwargs,
     ):
-        super().__init__(working_dir=working_dir, op_name="generate_service")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="generate"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
+        self.generate_storage: BaseKVStorage = init_storage(
+            backend=kv_backend, working_dir=working_dir, namespace="generate"
+        )
 
         self.method = method
         self.data_format = data_format
@@ -76,32 +79,31 @@ class GenerateService(BaseOperator):
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        items = batch.to_dict(orient="records")
-        return pd.DataFrame(self.generate(items))
-
-    def generate(self, items: list[dict]) -> list[dict]:
+    def process(self, batch: list) -> Tuple[list, dict]:
         """
         Generate question-answer pairs based on nodes and edges.
-        :param items
-        :return: QA pairs
         """
-        logger.info("[Generation] mode: %s, batches: %d", self.method, len(items))
-        items = [
-            (json.loads(item["nodes"]), json.loads(item["edges"])) for item in items
-        ]
+        logger.info("[Generation] mode: %s, batches: %d", self.method, len(batch))
+        triples = [(item["nodes"], item["edges"]) for item in batch]
         results = run_concurrent(
             self.generator.generate,
-            items,
-            desc="[4/4]Generating QAs",
+            triples,
+            desc="Generating QAs",
             unit="batch",
         )
 
-        # Filter out empty results
-        results = [res for res in results if res]
-
-        results = self.generator.format_generation_results(
-            results, output_data_format=self.data_format
-        )
-
-        return results
+        meta_updates = {}
+        final_results = []
+        for input_trace_id, qa_pairs in zip(
+            [item["_trace_id"] for item in batch], results
+        ):
+            if not qa_pairs:
+                continue
+            for qa_pair in qa_pairs:
+                res = self.generator.format_generation_results(
+                    qa_pair, output_data_format=self.data_format
+                )
+                res["_trace_id"] = self.get_trace_id(res)
+                final_results.append(res)
+                meta_updates.setdefault(input_trace_id, []).append(res["_trace_id"])
+        return final_results, meta_updates
