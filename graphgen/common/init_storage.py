@@ -8,11 +8,11 @@ from graphgen.bases.base_storage import BaseGraphStorage, BaseKVStorage
 class KVStorageActor:
     def __init__(self, backend: str, working_dir: str, namespace: str):
         if backend == "json_kv":
-            from graphgen.models import JsonKVStorage
+            from graphgen.storage import JsonKVStorage
 
             self.kv = JsonKVStorage(working_dir, namespace)
         elif backend == "rocksdb":
-            from graphgen.models import RocksDBKVStorage
+            from graphgen.storage import RocksDBKVStorage
 
             self.kv = RocksDBKVStorage(working_dir, namespace)
         else:
@@ -61,11 +61,11 @@ class KVStorageActor:
 class GraphStorageActor:
     def __init__(self, backend: str, working_dir: str, namespace: str):
         if backend == "networkx":
-            from graphgen.models import NetworkXStorage
+            from graphgen.storage import NetworkXStorage
 
             self.graph = NetworkXStorage(working_dir, namespace)
         elif backend == "kuzu":
-            from graphgen.models import KuzuStorage
+            from graphgen.storage import KuzuStorage
 
             self.graph = KuzuStorage(working_dir, namespace)
         else:
