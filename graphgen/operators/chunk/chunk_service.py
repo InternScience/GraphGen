@@ -1,8 +1,6 @@
 import os
 from functools import lru_cache
-from typing import Union
-
-import pandas as pd
+from typing import Union, Tuple
 
 from graphgen.bases import BaseOperator
 from graphgen.models import (
@@ -51,7 +49,7 @@ class ChunkService(BaseOperator):
         self.tokenizer_instance: Tokenizer = Tokenizer(model_name=tokenizer_model)
         self.chunk_kwargs = chunk_kwargs
 
-    def process(self, batch: list) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         results = []
         meta_updates = {}
         for doc in batch:
@@ -72,17 +70,15 @@ class ChunkService(BaseOperator):
                         else len(text_chunk),
                         "language": doc_language,
                     }
-                    chunk["_trace_id"] = self.generate_trace_id(chunk)
+                    chunk["_trace_id"] = self.get_trace_id(chunk)
                     results.append(chunk)
                     meta_updates.setdefault(doc["_trace_id"], []).append(
                         chunk["_trace_id"]
                     )
             else:
                 # other types of documents(images, sequences) are not chunked
-                doc["_trace_id"] = self.generate_trace_id(doc)
-                results.append(doc)
-        self.store(
-            results,
-            meta_updates,
-        )
-        return pd.DataFrame(results)
+                data = doc.copy()
+                data["_trace_id"] = self.get_trace_id(data)
+                results.append(data)
+                meta_updates.setdefault(doc["_trace_id"], []).append(data["_trace_id"])
+        return results, meta_updates

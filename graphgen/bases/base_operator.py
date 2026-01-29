@@ -1,7 +1,7 @@
 import inspect
 import os
 from abc import ABC, abstractmethod
-from typing import Iterable, Union
+from typing import Iterable, Union, Tuple
 
 import pandas as pd
 import ray
@@ -64,12 +64,17 @@ class BaseOperator(ABC):
             if to_process.empty:
                 return
 
-            docs = to_process.to_dict(orient="records")
-            result = self.process(docs)
+            data = to_process.to_dict(orient="records")
+            result, meta_update = self.process(data)
             if inspect.isgenerator(result):
-                yield from result
+                is_first = True
+                for res in result:
+                    yield pd.DataFrame([res])
+                    self.store([res], meta_update if is_first else {})
+                    is_first = False
             else:
-                yield result
+                yield pd.DataFrame(result)
+                self.store(result, meta_update)
         finally:
             CURRENT_LOGGER_VAR.reset(logger_token)
 
@@ -130,5 +135,11 @@ class BaseOperator(ABC):
         self.kv_storage.index_done_callback()
 
     @abstractmethod
-    def process(self, batch: list) -> Union[pd.DataFrame, Iterable[pd.DataFrame]]:
-        pass
+    def process(self, batch: list) -> Tuple[Union[list, Iterable[list]], dict]:
+        """
+        Process the input batch and return the result.
+        :param batch
+        :return:
+            result: DataFrame of processed documents
+            meta_update: dict of meta data to be updated
+        """

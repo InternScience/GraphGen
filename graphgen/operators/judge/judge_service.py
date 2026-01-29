@@ -1,6 +1,5 @@
+from typing import Tuple
 import math
-
-import pandas as pd
 
 from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
@@ -44,7 +43,7 @@ class JudgeService(BaseOperator):
             item["loss"] = -math.log(0.1)
         return item
 
-    def process(self, batch: list) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         """
         Judge the description in the item and compute the loss.
         """
@@ -78,10 +77,9 @@ class JudgeService(BaseOperator):
                 edge_data["loss"] = loss
                 self.graph_storage.update_edge(edge_source, edge_target, edge_data)
 
-            result["_trace_id"] = self.generate_trace_id(result)
+            result["_trace_id"] = self.get_trace_id(result)
             to_store.append(result)
             meta_update.setdefault(input_trace_id, []).append(result["_trace_id"])
         self.graph_storage.index_done_callback()
-        self.store(to_store, meta_update)
 
-        return pd.DataFrame(results)
+        return results, meta_update

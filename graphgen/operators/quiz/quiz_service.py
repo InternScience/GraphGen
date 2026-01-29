@@ -1,4 +1,4 @@
-import pandas as pd
+from typing import Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
@@ -50,7 +50,7 @@ class QuizService(BaseOperator):
             logger.error("Error when quizzing description %s: %s", item, e)
             return None
 
-    def process(self, batch: list) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         """
         Get all nodes and edges and quiz their descriptions using QuizGenerator.
         """
@@ -67,7 +67,7 @@ class QuizService(BaseOperator):
                 edge_key = (edge["src_id"], edge["tgt_id"])
                 items.append((input_id, edge["description"], edge_key))
         if not items:
-            return pd.DataFrame()
+            return [], {}
 
         logger.info("Total descriptions to quiz: %d", len(items))
         results = run_concurrent(
@@ -83,11 +83,8 @@ class QuizService(BaseOperator):
         for (input_id, _, _), quiz_data in zip(items, results):
             if quiz_data is None:
                 continue
-            quiz_data["_trace_id"] = self.generate_trace_id(quiz_data)
+            quiz_data["_trace_id"] = self.get_trace_id(quiz_data)
             final_results.append(quiz_data)
             meta_update[input_id] = [quiz_data["_trace_id"]]
 
-        if final_results:
-            self.store(final_results, meta_update)
-
-        return pd.DataFrame(final_results)
+        return final_results, meta_update

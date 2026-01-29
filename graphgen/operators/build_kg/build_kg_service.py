@@ -1,4 +1,4 @@
-import pandas as pd
+from typing import Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.bases.datatypes import Chunk
@@ -27,7 +27,7 @@ class BuildKGService(BaseOperator):
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
 
-    def process(self, batch: list) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         """
         Build knowledge graph (KG) and merge into kg_instance
         """
@@ -99,8 +99,4 @@ class BuildKGService(BaseOperator):
             source_ids = edge.get("source_id", "").split("<SEP>")
             for source_id in source_ids:
                 meta_updates.setdefault(source_id, []).append(str(trace_id))
-        self.store(
-            results,
-            meta_updates,
-        )
-        return pd.DataFrame(results)
+        return results, meta_updates

@@ -1,6 +1,5 @@
 import json
-
-import pandas as pd
+from typing import Tuple
 
 from graphgen.bases import BaseLLMWrapper, BaseOperator, Chunk
 from graphgen.common import init_llm
@@ -26,7 +25,7 @@ class ExtractService(BaseOperator):
         else:
             raise ValueError(f"Unsupported extraction method: {self.method}")
 
-    def process(self, batch: list) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         logger.info("Start extracting information from %d items", len(batch))
         chunks = [Chunk.from_dict(item["_trace_id"], item) for item in batch]
         results = run_concurrent(

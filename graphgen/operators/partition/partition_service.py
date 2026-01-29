@@ -1,7 +1,5 @@
 import os
-from typing import Iterable
-
-import pandas as pd
+from typing import Iterable, Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseOperator, BaseTokenizer
 from graphgen.common import init_storage
@@ -24,7 +22,9 @@ class PartitionService(BaseOperator):
         graph_backend: str = "kuzu",
         **partition_kwargs,
     ):
-        super().__init__(working_dir=working_dir, op_name="partition")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="partition"
+        )
         self.kg_instance: BaseGraphStorage = init_storage(
             backend=graph_backend,
             working_dir=working_dir,
@@ -55,7 +55,7 @@ class PartitionService(BaseOperator):
         else:
             raise ValueError(f"Unsupported partition method: {method}")
 
-    def process(self, batch: pd.DataFrame) -> Iterable[pd.DataFrame]:
+    def process(self, batch: list) -> Tuple[Iterable[list], dict]:
         # this operator does not consume any batch data
         # but for compatibility we keep the interface
         self.kg_instance.reload()
@@ -64,19 +64,22 @@ class PartitionService(BaseOperator):
             g=self.kg_instance, **self.method_params
         )
 
-        count = 0
-        for community in communities:
-            count += 1
-            batch = self.partitioner.community2batch(community, g=self.kg_instance)
-            # batch = self._attach_additional_data_to_node(batch)
+        def generator():
+            count = 0
+            for community in communities:
+                count += 1
+                batch = self.partitioner.community2batch(community, g=self.kg_instance)
+                # batch = self._attach_additional_data_to_node(batch)
 
-            result = {
-                "nodes": batch[0],
-                "edges": batch[1],
-            }
-            result["_trace_id"] = self.generate_trace_id(result)
-            yield pd.DataFrame([result])
-        logger.info("Total communities partitioned: %d", count)
+                result = {
+                    "nodes": batch[0],
+                    "edges": batch[1],
+                }
+                result["_trace_id"] = self.get_trace_id(result)
+                yield result
+            logger.info("Total communities partitioned: %d", count)
+
+        return generator(), {}
 
     # def _attach_additional_data_to_node(self, batch: tuple) -> tuple:
     #     """

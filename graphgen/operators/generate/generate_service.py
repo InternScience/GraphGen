@@ -1,5 +1,4 @@
-import pandas as pd
-
+from typing import Tuple
 from graphgen.bases import BaseKVStorage, BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger, run_concurrent
@@ -80,11 +79,9 @@ class GenerateService(BaseOperator):
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
 
-    def process(self, batch: list[dict]) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         """
         Generate question-answer pairs based on nodes and edges.
-        :param batch
-        :return: QA pairs
         """
         logger.info("[Generation] mode: %s, batches: %d", self.method, len(batch))
         triples = [(item["nodes"], item["edges"]) for item in batch]
@@ -106,11 +103,7 @@ class GenerateService(BaseOperator):
                 res = self.generator.format_generation_results(
                     qa_pair, output_data_format=self.data_format
                 )
-                res["_trace_id"] = self.generate_trace_id(res)
+                res["_trace_id"] = self.get_trace_id(res)
                 final_results.append(res)
                 meta_updates.setdefault(input_trace_id, []).append(res["_trace_id"])
-        self.store(
-            final_results,
-            meta_updates,
-        )
-        return pd.DataFrame(final_results)
+        return final_results, meta_updates
