@@ -1,3 +1,4 @@
+import json
 import re
 from typing import Any
 
@@ -75,62 +76,46 @@ class VQAGenerator(BaseGenerator):
         nodes, _ = batch
         for node in nodes:
             node_data = node[1]
-            if "image_data" in node_data and node_data["image_data"]:
-                img_path = node_data["image_data"]["img_path"]
+            if "metadata" in node_data and node_data["metadata"]:
+                metadata = json.loads(node_data["metadata"])["metadata"]
+                img_path = metadata.get("path", "")
                 for qa in qa_pairs:
                     qa["img_path"] = img_path
         return qa_pairs
 
     @staticmethod
-    def format_generation_results(
-        result: list[dict], output_data_format: str
-    ) -> list[dict[str, Any]]:
+    def format_generation_results(result: dict, output_data_format: str) -> dict:
+        question = result.get("question", "")
+        answer = result.get("answer", "")
+        img_path = result.get("img_path", "")
         if output_data_format == "Alpaca":
-            result = [
-                {
-                    "instruction": v["question"],
-                    "input": "",
-                    "output": v["answer"],
-                    "image": v.get("img_path", ""),
-                }
-                for item in result
-                for k, v in item.items()
-            ]
-        elif output_data_format == "Sharegpt":
-            result = [
-                {
-                    "conversations": [
-                        {
-                            "from": "human",
-                            "value": [
-                                {"text": v["question"], "image": v.get("img_path", "")}
-                            ],
-                        },
-                        {"from": "gpt", "value": [{"text": v["answer"]}]},
-                    ]
-                }
-                for item in result
-                for k, v in item.items()
-            ]
-        elif output_data_format == "ChatML":
-            result = [
-                {
-                    "messages": [
-                        {
-                            "role": "user",
-                            "content": [
-                                {"text": v["question"], "image": v.get("img_path", "")}
-                            ],
-                        },
-                        {
-                            "role": "assistant",
-                            "content": [{"type": "text", "text": v["answer"]}],
-                        },
-                    ]
-                }
-                for item in result
-                for k, v in item.items()
-            ]
-        else:
-            raise ValueError(f"Unknown output data format: {output_data_format}")
-        return result
+            return {
+                "instruction": question,
+                "input": "",
+                "output": answer,
+                "image": img_path,
+            }
+        if output_data_format == "Sharegpt":
+            return {
+                "conversations": [
+                    {
+                        "from": "human",
+                        "value": [{"text": question, "image": img_path}],
+                    },
+                    {"from": "gpt", "value": [{"text": answer}]},
+                ]
+            }
+        if output_data_format == "ChatML":
+            return {
+                "messages": [
+                    {
+                        "role": "user",
+                        "content": [{"text": question, "image": img_path}],
+                    },
+                    {
+                        "role": "assistant",
+                        "content": [{"type": "text", "text": answer}],
+                    },
+                ]
+            }
+        raise ValueError(f"Unknown output data format: {output_data_format}")

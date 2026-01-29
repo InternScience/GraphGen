@@ -152,7 +152,7 @@ class BaseOperator(ABC):
         self.kv_storage.index_done_callback()
 
     @abstractmethod
-    def process(self, batch: list) -> Tuple[Union[list, Iterable[list]], dict]:
+    def process(self, batch: list) -> Tuple[Union[list, Iterable[dict]], dict]:
         """
         Process the input batch and return the result.
         :param batch
