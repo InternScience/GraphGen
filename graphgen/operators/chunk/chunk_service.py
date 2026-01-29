@@ -1,6 +1,6 @@
 import os
 from functools import lru_cache
-from typing import Union, Tuple
+from typing import Tuple, Union
 
 from graphgen.bases import BaseOperator
 from graphgen.models import (
@@ -50,6 +50,13 @@ class ChunkService(BaseOperator):
         self.chunk_kwargs = chunk_kwargs
 
     def process(self, batch: list) -> Tuple[list, dict]:
+        """
+        Chunk the documents in the batch.
+        :return: A tuple of (results, meta_updates)
+            results: A list of chunked documents. Each chunked document is a dict with the structure:
+                {"_trace_id": str, "content": str, "type": str,  "metadata": {"length": int, "language": str, ...}
+            meta_updates: A dict mapping source document IDs to lists of trace IDs for the chunked documents.
+        """
         results = []
         meta_updates = {}
         for doc in batch:
@@ -65,10 +72,12 @@ class ChunkService(BaseOperator):
                     chunk = {
                         "content": text_chunk,
                         "type": "text",
-                        "length": len(self.tokenizer_instance.encode(text_chunk))
-                        if self.tokenizer_instance
-                        else len(text_chunk),
-                        "language": doc_language,
+                        "metadata": {
+                            "length": len(self.tokenizer_instance.encode(text_chunk))
+                            if self.tokenizer_instance
+                            else len(text_chunk),
+                            "language": doc_language,
+                        },
                     }
                     chunk["_trace_id"] = self.get_trace_id(chunk)
                     results.append(chunk)
@@ -78,7 +87,11 @@ class ChunkService(BaseOperator):
             else:
                 # other types of documents(images, sequences) are not chunked
                 data = doc.copy()
-                data["_trace_id"] = self.get_trace_id(data)
-                results.append(data)
-                meta_updates.setdefault(doc["_trace_id"], []).append(data["_trace_id"])
+                input_trace_id = data.pop("_trace_id")
+                content = data.pop("content") if "content" in data else ""
+                doc_type = data.pop("type")
+                chunk = {"content": content, "type": doc_type, "metadata": data}
+                chunk["_trace_id"] = self.get_trace_id(chunk)
+                results.append(chunk)
+                meta_updates.setdefault(input_trace_id, []).append(chunk["_trace_id"])
         return results, meta_updates

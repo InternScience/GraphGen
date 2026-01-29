@@ -1,10 +1,23 @@
 import inspect
 import os
 from abc import ABC, abstractmethod
-from typing import Iterable, Union, Tuple
+from typing import Iterable, Tuple, Union
 
+import numpy as np
 import pandas as pd
 import ray
+
+
+def convert_to_serializable(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_to_serializable(v) for v in obj]
+    return obj
 
 
 class BaseOperator(ABC):
@@ -21,6 +34,7 @@ class BaseOperator(ABC):
         log_dir = os.path.join(working_dir, "logs")
         self.op_name = op_name or self.__class__.__name__
         self.working_dir = working_dir
+        self.kv_backend = kv_backend
         self.kv_storage = init_storage(
             backend=kv_backend, working_dir=working_dir, namespace=self.op_name
         )
@@ -118,6 +132,9 @@ class BaseOperator(ABC):
         return to_process, pd.DataFrame(recovered_chunks)
 
     def store(self, results: list, meta_update: dict):
+        results = convert_to_serializable(results)
+        meta_update = convert_to_serializable(meta_update)
+
         batch = {res["_trace_id"]: res for res in results}
         self.kv_storage.upsert(batch)
 

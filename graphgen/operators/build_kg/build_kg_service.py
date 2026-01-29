@@ -30,6 +30,10 @@ class BuildKGService(BaseOperator):
     def process(self, batch: list) -> Tuple[list, dict]:
         """
         Build knowledge graph (KG) and merge into kg_instance
+        :return: A tuple of (results, meta_updates)
+            results: A list of dicts containing nodes and edges added to the KG. Each dict has the structure:
+                {"_trace_id": str, "node": dict, "edge": dict}
+            meta_updates: A dict mapping source IDs to lists of trace IDs for nodes and edges added.
         """
         chunks = [Chunk.from_dict(doc["_trace_id"], doc) for doc in batch]
         text_chunks = [chunk for chunk in chunks if chunk.type == "text"]

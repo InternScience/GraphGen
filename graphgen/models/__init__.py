@@ -1,6 +1,5 @@
 from .evaluator import (
     AccuracyEvaluator,
-    ConsistencyEvaluator,
     LengthEvaluator,
     MTLDEvaluator,
     RewardEvaluator,

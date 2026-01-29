@@ -1,8 +1,9 @@
 from typing import Optional
-from graphgen.bases import BaseEvaluator, QAPair
+
+from graphgen.bases import BaseQAEvaluator, QAPair
 
 
-class RewardEvaluator(BaseEvaluator):
+class RewardEvaluator(BaseQAEvaluator):
     """
     Reward Model Evaluator for single QAPair evaluation.
     """
@@ -15,7 +16,7 @@ class RewardEvaluator(BaseEvaluator):
     ):
         """
         Initialize the reward evaluator.
-        
+
         Args:
             reward_name: Model name or path on HuggingFace Hub
             max_length: Maximum token length for the model
@@ -26,6 +27,7 @@ class RewardEvaluator(BaseEvaluator):
 
         import torch
         from transformers import AutoModelForSequenceClassification, AutoTokenizer
+
         self.torch = torch
 
         # Set device (auto-detect if not specified)
@@ -37,15 +39,17 @@ class RewardEvaluator(BaseEvaluator):
             self.model.to(self.device)
             self.model.eval()
         except Exception as e:
-            raise RuntimeError(f"Failed to load reward model '{reward_name}': {e}") from e
+            raise RuntimeError(
+                f"Failed to load reward model '{reward_name}': {e}"
+            ) from e
 
-    def evaluate(self, pair: QAPair) -> float:
+    async def evaluate(self, pair: QAPair) -> dict[str, float]:
         """
         Evaluate a single question-answer pair using the reward model.
-        
+
         Args:
             pair: QAPair containing question and answer strings
-            
+
         Returns:
             Score as a float
         """
@@ -63,4 +67,4 @@ class RewardEvaluator(BaseEvaluator):
         with self.torch.no_grad():
             score = self.model(**inputs).logits[0].item()
 
-        return score
+        return {"reward_score": score}

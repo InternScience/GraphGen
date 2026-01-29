@@ -1,7 +1,7 @@
 global_params:
   working_dir: cache
-  graph_backend: kuzu # graph database backend, support: kuzu, networkx
-  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+  graph_backend: networkx # graph database backend, support: kuzu, networkx
+  kv_backend: json_kv # key-value store backend, support: rocksdb, json_kv
 
 nodes:
   - id: read
@@ -39,6 +39,8 @@ nodes:
     dependencies:
       - build_kg
     params:
-      target: kg
+      target: triple
+      src_namespace: chunk
+      tgt_namespace: build_kg
       metrics:
-        - structure
+        - accuracy
