@@ -1,7 +1,7 @@
 import os
 from dataclasses import dataclass
 
-from graphgen.bases.base_storage import BaseKVStorage
+from graphgen.bases.base_storage import BaseKVStorage, T
 from graphgen.utils import load_json, write_json
 
 
@@ -50,6 +50,15 @@ class JsonKVStorage(BaseKVStorage):
         if left_data:
             self._data.update(left_data)
         return left_data
+
+    def update(self, data: dict[str, T]):
+        for k, v in data.items():
+            self._data[k] = v
+
+    def delete(self, ids: list[str]):
+        for _id in ids:
+            if _id in self._data:
+                del self._data[_id]
 
     def drop(self):
         if self._data:

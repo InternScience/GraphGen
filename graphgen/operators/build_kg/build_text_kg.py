@@ -30,6 +30,7 @@ def build_text_kg(
         desc="[2/4]Extracting entities and relationships from chunks",
         unit="chunk",
     )
+    results = [res for res in results if res]
 
     nodes = defaultdict(list)
     edges = defaultdict(list)

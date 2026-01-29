@@ -39,6 +39,12 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
     def upsert(self, data: dict[str, T]):
         raise NotImplementedError
 
+    def update(self, data: dict[str, T]):
+        raise NotImplementedError
+
+    def delete(self, ids: list[str]):
+        raise NotImplementedError
+
     def drop(self):
         raise NotImplementedError
 

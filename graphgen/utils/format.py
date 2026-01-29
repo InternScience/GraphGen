@@ -30,7 +30,9 @@ def clean_str(input: Any) -> str:
 
     result = html.unescape(input.strip())
     # https://stackoverflow.com/questions/4324790/removing-control-characters-from-a-string-in-python
-    return re.sub(r"[\x00-\x1f\x7f-\x9f]", "", result)
+    result = re.sub(r"[\x00-\x1f\x7f-\x9f]", "", result)
+    result = result.strip('"').strip("'")
+    return result
 
 
 async def handle_single_entity_extraction(

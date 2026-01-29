@@ -1,9 +1,9 @@
-import pandas as pd
+from typing import Tuple
 
-from graphgen.bases import BaseGraphStorage, BaseKVStorage, BaseLLMWrapper, BaseOperator
+from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
 from graphgen.models import QuizGenerator
-from graphgen.utils import compute_dict_hash, logger, run_concurrent
+from graphgen.utils import logger, run_concurrent
 
 
 class QuizService(BaseOperator):
@@ -14,27 +14,18 @@ class QuizService(BaseOperator):
         kv_backend: str = "rocksdb",
         quiz_samples: int = 1,
     ):
-        super().__init__(working_dir=working_dir, op_name="quiz_service")
+        super().__init__(working_dir=working_dir, kv_backend=kv_backend, op_name="quiz")
         self.quiz_samples = quiz_samples
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.graph_storage: BaseGraphStorage = init_storage(
             backend=graph_backend, working_dir=working_dir, namespace="graph"
         )
-        # { _quiz_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
-        self.quiz_storage: BaseKVStorage = init_storage(
-            backend=kv_backend, working_dir=working_dir, namespace="quiz"
-        )
+        # { _trace_id: { "description": str, "quizzes": List[Tuple[str, str]] } }
         self.generator = QuizGenerator(self.llm_client)
-
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        data = batch.to_dict(orient="records")
-        self.graph_storage.reload()
-        return self.quiz(data)
 
     async def _process_single_quiz(self, item: tuple) -> dict | None:
         # if quiz in quiz_storage exists already, directly get it
-        index, desc = item
-        _quiz_id = compute_dict_hash({"index": index, "description": desc})
+        desc, index = item
 
         tasks = []
         for i in range(self.quiz_samples):
@@ -51,52 +42,49 @@ class QuizService(BaseOperator):
                 rephrased_text = self.generator.parse_rephrased_text(new_description)
                 quizzes.append((rephrased_text, gt))
             return {
-                "_quiz_id": _quiz_id,
-                "description": desc,
                 "index": index,
+                "description": desc,
                 "quizzes": quizzes,
             }
         except Exception as e:
             logger.error("Error when quizzing description %s: %s", item, e)
             return None
 
-    def quiz(self, batch) -> pd.DataFrame:
+    def process(self, batch: list) -> Tuple[list, dict]:
         """
         Get all nodes and edges and quiz their descriptions using QuizGenerator.
         """
         items = []
 
         for item in batch:
-            node_data = item.get("node", [])
-            edge_data = item.get("edge", [])
+            input_id = item["_trace_id"]
+            node = item.get("node")
+            edge = item.get("edge")
 
-            if node_data:
-                node_id = node_data["entity_name"]
-                desc = node_data["description"]
-                items.append((node_id, desc))
-            if edge_data:
-                edge_key = (edge_data["src_id"], edge_data["tgt_id"])
-                desc = edge_data["description"]
-                items.append((edge_key, desc))
+            if node and node.get("description"):
+                items.append((input_id, node["description"], node["entity_name"]))
+            elif edge and edge.get("description"):
+                edge_key = (edge["src_id"], edge["tgt_id"])
+                items.append((input_id, edge["description"], edge_key))
+        if not items:
+            return [], {}
 
         logger.info("Total descriptions to quiz: %d", len(items))
-
         results = run_concurrent(
             self._process_single_quiz,
-            items,
+            [(desc, orig_id) for (_, desc, orig_id) in items],
             desc=f"Quizzing batch of {len(items)} descriptions",
             unit="description",
         )
-        valid_results = [res for res in results if res]
 
-        for res in valid_results:
-            self.quiz_storage.upsert(
-                {
-                    res["_quiz_id"]: {
-                        "description": res["description"],
-                        "quizzes": res["quizzes"],
-                    }
-                }
-            )
-        self.quiz_storage.index_done_callback()
-        return pd.DataFrame(valid_results)
+        final_results = []
+        meta_update = {}
+
+        for (input_id, _, _), quiz_data in zip(items, results):
+            if quiz_data is None:
+                continue
+            quiz_data["_trace_id"] = self.get_trace_id(quiz_data)
+            final_results.append(quiz_data)
+            meta_update[input_id] = [quiz_data["_trace_id"]]
+
+        return final_results, meta_update

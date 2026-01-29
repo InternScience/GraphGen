@@ -21,7 +21,9 @@ class EvaluateService(BaseOperator):
         kv_backend: str = "rocksdb",
         **kwargs,
     ):
-        super().__init__(working_dir=working_dir, op_name="evaluate_service")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="evaluate"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.metrics = metrics or []
         self.kwargs = kwargs

@@ -3,7 +3,7 @@ from typing import Any, Optional
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import AGGREGATED_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class AggregatedGenerator(BaseGenerator):
@@ -101,30 +101,26 @@ class AggregatedGenerator(BaseGenerator):
         batch: tuple[
             list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
         ],
-    ) -> dict[str, Any]:
+    ) -> list[dict]:
         """
         Generate QAs based on a given batch.
         :param batch
         :return: QA pairs
         """
-        result = {}
         rephrasing_prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(rephrasing_prompt)
         context = self.parse_rephrased_text(response)
         if not context:
-            return result
+            return []
         question_generation_prompt = self._build_prompt_for_question_generation(context)
         response = await self.llm_client.generate_answer(question_generation_prompt)
         question = self.parse_response(response)["question"]
         if not question:
-            return result
+            return []
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", context)
         qa_pairs = {
-            compute_content_hash(question): {
-                "question": question,
-                "answer": context,
-            }
+            "question": question,
+            "answer": context,
         }
-        result.update(qa_pairs)
-        return result
+        return [qa_pairs]
