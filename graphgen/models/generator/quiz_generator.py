@@ -54,6 +54,17 @@ class QuizGenerator(BaseGenerator):
         return prompt
 
     @staticmethod
+    def parse_rephrased_text(content: str) -> str:
+        """
+        Parse the rephrased text from the response.
+        :param content: LLM response content
+        :return:
+        """
+        rephrased_text = content.strip().strip('"')
+        logger.debug("Rephrased Text: %s", rephrased_text)
+        return rephrased_text
+
+    @staticmethod
     def parse_response(response: str) -> Any:
         """
         Parse the LLM response. For quiz generator, this returns the rephrased text.
@@ -61,14 +72,4 @@ class QuizGenerator(BaseGenerator):
         :return: Rephrased text
         """
 
-        def parse_rephrased_text(content: str) -> str:
-            """
-            Parse the rephrased text from the response.
-            :param content: LLM response content
-            :return:
-            """
-            rephrased_text = content.strip().strip('"')
-            logger.debug("Rephrased Text: %s", rephrased_text)
-            return rephrased_text
-
-        return parse_rephrased_text(response)
+        return QuizGenerator.parse_rephrased_text(response)
