@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import MULTI_HOP_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class MultiHopGenerator(BaseGenerator):

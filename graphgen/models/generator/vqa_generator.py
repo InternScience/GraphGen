@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import VQA_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class VQAGenerator(BaseGenerator):
@@ -83,21 +83,21 @@ class VQAGenerator(BaseGenerator):
 
     @staticmethod
     def format_generation_results(
-        results: list[dict], output_data_format: str
+        result: list[dict], output_data_format: str
     ) -> list[dict[str, Any]]:
         if output_data_format == "Alpaca":
-            results = [
+            result = [
                 {
                     "instruction": v["question"],
                     "input": "",
                     "output": v["answer"],
                     "image": v.get("img_path", ""),
                 }
-                for item in results
+                for item in result
                 for k, v in item.items()
             ]
         elif output_data_format == "Sharegpt":
-            results = [
+            result = [
                 {
                     "conversations": [
                         {
@@ -109,11 +109,11 @@ class VQAGenerator(BaseGenerator):
                         {"from": "gpt", "value": [{"text": v["answer"]}]},
                     ]
                 }
-                for item in results
+                for item in result
                 for k, v in item.items()
             ]
         elif output_data_format == "ChatML":
-            results = [
+            result = [
                 {
                     "messages": [
                         {
@@ -128,9 +128,9 @@ class VQAGenerator(BaseGenerator):
                         },
                     ]
                 }
-                for item in results
+                for item in result
                 for k, v in item.items()
             ]
         else:
             raise ValueError(f"Unknown output data format: {output_data_format}")
-        return results
+        return result

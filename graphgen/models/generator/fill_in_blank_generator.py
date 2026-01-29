@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import FILL_IN_BLANK_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class FillInBlankGenerator(BaseGenerator):
