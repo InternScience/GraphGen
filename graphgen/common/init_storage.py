@@ -1,9 +1,8 @@
-from typing import TYPE_CHECKING, Any, Dict, List, Set, Union
+from typing import Any, Dict, List, Set, Union
+
+import ray
 
 from graphgen.bases.base_storage import BaseGraphStorage, BaseKVStorage
-
-if TYPE_CHECKING:
-    import ray
 
 
 class KVStorageActor:
@@ -152,186 +151,137 @@ class RemoteKVStorageProxy(BaseKVStorage):
         self.actor = actor_handle
 
     def data(self) -> Dict[str, Any]:
-        import ray
-
         return ray.get(self.actor.data.remote())
 
     def all_keys(self) -> list[str]:
-        import ray
-
         return ray.get(self.actor.all_keys.remote())
 
     def index_done_callback(self):
-        import ray
-
         return ray.get(self.actor.index_done_callback.remote())
 
     def get_by_id(self, id: str) -> Union[Any, None]:
-        import ray
-
         return ray.get(self.actor.get_by_id.remote(id))
 
     def get_by_ids(self, ids: list[str], fields=None) -> list[Any]:
-        import ray
-
         return ray.get(self.actor.get_by_ids.remote(ids, fields))
 
     def get_all(self) -> Dict[str, Any]:
-        import ray
-
         return ray.get(self.actor.get_all.remote())
 
     def filter_keys(self, data: list[str]) -> set[str]:
-        import ray
-
         return ray.get(self.actor.filter_keys.remote(data))
 
     def upsert(self, data: Dict[str, Any]):
-        import ray
-
         return ray.get(self.actor.upsert.remote(data))
 
     def update(self, data: Dict[str, Any]):
-        import ray
-
         return ray.get(self.actor.update.remote(data))
 
     def delete(self, ids: list[str]):
-        import ray
-
         return ray.get(self.actor.delete.remote(ids))
 
     def drop(self):
-        import ray
-
         return ray.get(self.actor.drop.remote())
 
     def reload(self):
-        import ray
-
         return ray.get(self.actor.reload.remote())
 
 
 class RemoteGraphStorageProxy(BaseGraphStorage):
-    def __init__(self, actor_handle: "ray.actor.ActorHandle"):
+    def __init__(self, actor_handle: ray.actor.ActorHandle):
         super().__init__()
         self.actor = actor_handle
 
     def index_done_callback(self):
-        import ray
-
         return ray.get(self.actor.index_done_callback.remote())
 
     def is_directed(self) -> bool:
-        import ray
-
         return ray.get(self.actor.is_directed.remote())
 
     def get_all_node_degrees(self) -> Dict[str, int]:
-        import ray
-
         return ray.get(self.actor.get_all_node_degrees.remote())
 
     def get_node_count(self) -> int:
-        import ray
 
         return ray.get(self.actor.get_node_count.remote())
 
     def get_edge_count(self) -> int:
-        import ray
 
         return ray.get(self.actor.get_edge_count.remote())
 
     def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
-        import ray
 
         return ray.get(self.actor.get_connected_components.remote(undirected))
 
     def has_node(self, node_id: str) -> bool:
-        import ray
 
         return ray.get(self.actor.has_node.remote(node_id))
 
     def has_edge(self, source_node_id: str, target_node_id: str):
-        import ray
 
         return ray.get(self.actor.has_edge.remote(source_node_id, target_node_id))
 
     def node_degree(self, node_id: str) -> int:
-        import ray
 
         return ray.get(self.actor.node_degree.remote(node_id))
 
     def edge_degree(self, src_id: str, tgt_id: str) -> int:
-        import ray
 
         return ray.get(self.actor.edge_degree.remote(src_id, tgt_id))
 
     def get_node(self, node_id: str) -> Any:
-        import ray
 
         return ray.get(self.actor.get_node.remote(node_id))
 
     def update_node(self, node_id: str, node_data: dict[str, str]):
-        import ray
 
         return ray.get(self.actor.update_node.remote(node_id, node_data))
 
     def get_all_nodes(self) -> Any:
-        import ray
 
         return ray.get(self.actor.get_all_nodes.remote())
 
     def get_edge(self, source_node_id: str, target_node_id: str):
-        import ray
 
         return ray.get(self.actor.get_edge.remote(source_node_id, target_node_id))
 
     def update_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
     ):
-        import ray
 
         return ray.get(
             self.actor.update_edge.remote(source_node_id, target_node_id, edge_data)
         )
 
     def get_all_edges(self) -> Any:
-        import ray
 
         return ray.get(self.actor.get_all_edges.remote())
 
     def get_node_edges(self, source_node_id: str) -> Any:
-        import ray
 
         return ray.get(self.actor.get_node_edges.remote(source_node_id))
 
     def upsert_node(self, node_id: str, node_data: dict[str, str]):
-        import ray
 
         return ray.get(self.actor.upsert_node.remote(node_id, node_data))
 
     def upsert_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
     ):
-        import ray
 
         return ray.get(
             self.actor.upsert_edge.remote(source_node_id, target_node_id, edge_data)
         )
 
     def delete_node(self, node_id: str):
-        import ray
 
         return ray.get(self.actor.delete_node.remote(node_id))
 
     def get_neighbors(self, node_id: str) -> List[str]:
-        import ray
 
         return ray.get(self.actor.get_neighbors.remote(node_id))
 
     def reload(self):
-        import ray
 
         return ray.get(self.actor.reload.remote())
 
@@ -343,7 +293,6 @@ class StorageFactory:
 
     @staticmethod
     def create_storage(backend: str, working_dir: str, namespace: str):
-        import ray
 
         if backend in ["json_kv", "rocksdb"]:
             actor_name = f"Actor_KV_{namespace}"
