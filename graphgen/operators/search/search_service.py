@@ -1,11 +1,12 @@
 from functools import partial
-from typing import Optional
-
-import pandas as pd
+from typing import TYPE_CHECKING, Optional
 
 from graphgen.bases import BaseOperator
 from graphgen.common import init_storage
 from graphgen.utils import compute_content_hash, logger, run_concurrent
+
+if TYPE_CHECKING:
+    import pandas as pd
 
 
 class SearchService(BaseOperator):
@@ -136,7 +137,9 @@ class SearchService(BaseOperator):
 
         return final_results
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
+    def process(self, batch: "pd.DataFrame") -> "pd.DataFrame":
+        import pandas as pd
+
         docs = batch.to_dict(orient="records")
 
         self._init_searchers()

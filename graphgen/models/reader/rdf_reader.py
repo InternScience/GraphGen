@@ -1,14 +1,14 @@
 from pathlib import Path
-from typing import Any, Dict, List, Union
-
-import ray
-import rdflib
-from ray.data import Dataset
-from rdflib import Literal
-from rdflib.util import guess_format
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
 from graphgen.bases.base_reader import BaseReader
 from graphgen.utils import logger
+
+if TYPE_CHECKING:
+    import ray
+    import rdflib
+    from ray.data import Dataset
+    from rdflib import Literal
 
 
 class RDFReader(BaseReader):
@@ -30,13 +30,15 @@ class RDFReader(BaseReader):
     def read(
         self,
         input_path: Union[str, List[str]],
-    ) -> Dataset:
+    ) -> "Dataset":
         """
         Read RDF file(s) using Ray Data.
 
         :param input_path: Path to RDF file or list of RDF files.
         :return: Ray Dataset containing extracted documents.
         """
+        import ray
+
         if not ray.is_initialized():
             ray.init()
 
@@ -73,6 +75,10 @@ class RDFReader(BaseReader):
         :param file_path: Path to RDF file.
         :return: List of document dictionaries.
         """
+        import rdflib
+        from rdflib import Literal
+        from rdflib.util import guess_format
+
         if not file_path.is_file():
             raise FileNotFoundError(f"RDF file not found: {file_path}")
 

@@ -1,10 +1,11 @@
 import os
-from typing import Any, Dict, Optional
-
-import ray
+from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from graphgen.bases import BaseLLMWrapper
 from graphgen.models import Tokenizer
+
+if TYPE_CHECKING:
+    import ray
 
 
 class LLMServiceActor:
@@ -73,7 +74,7 @@ class LLMServiceProxy(BaseLLMWrapper):
     A proxy class to interact with the LLMServiceActor for distributed LLM operations.
     """
 
-    def __init__(self, actor_handle: ray.actor.ActorHandle):
+    def __init__(self, actor_handle: "ray.actor.ActorHandle"):
         super().__init__()
         self.actor_handle = actor_handle
         self._create_local_tokenizer()
@@ -120,6 +121,8 @@ class LLMFactory:
     def create_llm(
         model_type: str, backend: str, config: Dict[str, Any]
     ) -> BaseLLMWrapper:
+        import ray
+
         if not config:
             raise ValueError(
                 f"No configuration provided for LLM {model_type} with backend {backend}."

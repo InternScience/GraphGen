@@ -1,7 +1,5 @@
 from pathlib import Path
-from typing import Any, List, Optional, Union
-
-import ray
+from typing import TYPE_CHECKING, Any, List, Optional, Union
 
 from graphgen.common import init_storage
 from graphgen.models import (
@@ -16,6 +14,11 @@ from graphgen.models import (
 from graphgen.utils import compute_dict_hash, logger
 
 from .parallel_file_scanner import ParallelFileScanner
+
+if TYPE_CHECKING:
+    import ray
+    import ray.data
+
 
 _MAPPING = {
     "jsonl": JSONReader,
@@ -57,7 +60,7 @@ def read(
     recursive: bool = True,
     read_nums: Optional[int] = None,
     **reader_kwargs: Any,
-) -> ray.data.Dataset:
+) -> "ray.data.Dataset":
     """
     Unified entry point to read files of multiple types using Ray Data.
 
@@ -71,6 +74,8 @@ def read(
     :param reader_kwargs: Additional kwargs passed to readers
     :return: Ray Dataset containing all documents
     """
+    import ray
+
     input_path_cache = init_storage(
         backend=kv_backend, working_dir=working_dir, namespace="input_path"
     )

@@ -1,10 +1,11 @@
 import json
-from typing import List, Union
-
-import ray
-import ray.data
+from typing import TYPE_CHECKING, List, Union
 
 from graphgen.bases.base_reader import BaseReader
+
+if TYPE_CHECKING:
+    import ray
+    import ray.data
 
 
 class JSONReader(BaseReader):
@@ -15,12 +16,14 @@ class JSONReader(BaseReader):
         - if type is "text", "content" column must be present.
     """
 
-    def read(self, input_path: Union[str, List[str]]) -> ray.data.Dataset:
+    def read(self, input_path: Union[str, List[str]]) -> "ray.data.Dataset":
         """
         Read JSON file and return Ray Dataset.
         :param input_path: Path to JSON/JSONL file or list of JSON/JSONL files.
         :return: Ray Dataset containing validated and filtered data.
         """
+        import ray
+
         if self.modalities and len(self.modalities) >= 2:
             ds: ray.data.Dataset = ray.data.from_items([])
             for file in input_path if isinstance(input_path, list) else [input_path]:

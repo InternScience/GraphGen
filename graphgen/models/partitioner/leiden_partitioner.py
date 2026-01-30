@@ -1,11 +1,11 @@
 from collections import defaultdict
-from typing import Any, Dict, List, Set, Tuple
-
-import igraph as ig
-from leidenalg import ModularityVertexPartition, find_partition
+from typing import TYPE_CHECKING, Any, Dict, List, Set, Tuple
 
 from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community
+
+if TYPE_CHECKING:
+    import igraph as ig
 
 
 class LeidenPartitioner(BasePartitioner):
@@ -62,6 +62,9 @@ class LeidenPartitioner(BasePartitioner):
         use_lcc: bool = False,
         random_seed: int = 42,
     ) -> Dict[str, int]:
+        import igraph as ig
+        from leidenalg import ModularityVertexPartition, find_partition
+
         # build igraph
         ig_graph = ig.Graph.TupleList(((u, v) for u, v, _ in edges), directed=False)
 

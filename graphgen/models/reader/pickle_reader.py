@@ -1,12 +1,12 @@
 import pickle
-from typing import List, Union
-
-import pandas as pd
-import ray
-from ray.data import Dataset
+from typing import TYPE_CHECKING, List, Union
 
 from graphgen.bases.base_reader import BaseReader
 from graphgen.utils import logger
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from ray.data import Dataset
 
 
 class PickleReader(BaseReader):
@@ -23,13 +23,16 @@ class PickleReader(BaseReader):
     def read(
         self,
         input_path: Union[str, List[str]],
-    ) -> Dataset:
+    ) -> "Dataset":
         """
         Read Pickle files using Ray Data.
 
         :param input_path: Path to pickle file or list of pickle files.
         :return: Ray Dataset containing validated documents.
         """
+        import pandas as pd
+        import ray
+
         if not ray.is_initialized():
             ray.init()
 
@@ -37,7 +40,7 @@ class PickleReader(BaseReader):
         ds = ray.data.read_binary_files(input_path, include_paths=True)
 
         # Deserialize pickle files and flatten into individual records
-        def deserialize_batch(batch: pd.DataFrame) -> pd.DataFrame:
+        def deserialize_batch(batch: "pd.DataFrame") -> "pd.DataFrame":
             all_records = []
             for _, row in batch.iterrows():
                 try:

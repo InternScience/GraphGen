@@ -1,7 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Any, Union
+from typing import TYPE_CHECKING, Any, Union
 
-import numpy as np
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class BaseFilter(ABC):
@@ -15,7 +16,7 @@ class BaseFilter(ABC):
 
 class BaseValueFilter(BaseFilter, ABC):
     @abstractmethod
-    def filter(self, data: Union[int, float, np.number]) -> bool:
+    def filter(self, data: Union[int, float, "np.number"]) -> bool:
         """
         Filter the numeric value and return True if it passes the filter, False otherwise.
         """

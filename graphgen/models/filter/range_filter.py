@@ -1,8 +1,9 @@
-from typing import Union
-
-import numpy as np
+from typing import TYPE_CHECKING, Union
 
 from graphgen.bases import BaseValueFilter
+
+if TYPE_CHECKING:
+    import numpy as np
 
 
 class RangeFilter(BaseValueFilter):
@@ -22,7 +23,7 @@ class RangeFilter(BaseValueFilter):
         self.left_inclusive = left_inclusive
         self.right_inclusive = right_inclusive
 
-    def filter(self, data: Union[int, float, np.number]) -> bool:
+    def filter(self, data: Union[int, float, "np.number"]) -> bool:
         value = float(data)
         if self.left_inclusive and self.right_inclusive:
             return self.min_val <= value <= self.max_val

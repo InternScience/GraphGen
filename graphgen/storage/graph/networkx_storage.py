@@ -1,11 +1,12 @@
 import html
 import os
 from dataclasses import dataclass
-from typing import Any, Dict, List, Optional, Set, Union, cast
-
-import networkx as nx
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set, Union, cast
 
 from graphgen.bases.base_storage import BaseGraphStorage
+
+if TYPE_CHECKING:
+    import networkx as nx
 
 
 @dataclass
@@ -26,6 +27,8 @@ class NetworkXStorage(BaseGraphStorage):
         return self._graph.number_of_edges()
 
     def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
+        import networkx as nx
+
         graph = self._graph
 
         if undirected and graph.is_directed():
@@ -36,24 +39,29 @@ class NetworkXStorage(BaseGraphStorage):
         ]
 
     @staticmethod
-    def load_nx_graph(file_name) -> Optional[nx.Graph]:
+    def load_nx_graph(file_name) -> Optional["nx.Graph"]:
+        import networkx as nx
+
         if os.path.exists(file_name):
             return nx.read_graphml(file_name)
         return None
 
     @staticmethod
-    def write_nx_graph(graph: nx.Graph, file_name):
+    def write_nx_graph(graph: "nx.Graph", file_name):
+        import networkx as nx
+
         nx.write_graphml(graph, file_name)
 
     @staticmethod
-    def stable_largest_connected_component(graph: nx.Graph) -> nx.Graph:
+    def stable_largest_connected_component(graph: "nx.Graph") -> "nx.Graph":
         """Refer to https://github.com/microsoft/graphrag/index/graph/utils/stable_lcc.py
         Return the largest connected component of the graph, with nodes and edges sorted in a stable way.
         """
+        import networkx as nx
         from graspologic.utils import largest_connected_component
 
         graph = graph.copy()
-        graph = cast(nx.Graph, largest_connected_component(graph))
+        graph = cast("nx.Graph", largest_connected_component(graph))
         node_mapping = {
             node: html.unescape(node.upper().strip()) for node in graph.nodes()
         }  # type: ignore
@@ -61,11 +69,13 @@ class NetworkXStorage(BaseGraphStorage):
         return NetworkXStorage._stabilize_graph(graph)
 
     @staticmethod
-    def _stabilize_graph(graph: nx.Graph) -> nx.Graph:
+    def _stabilize_graph(graph: "nx.Graph") -> "nx.Graph":
         """Refer to https://github.com/microsoft/graphrag/index/graph/utils/stable_lcc.py
         Ensure an undirected graph with the same relationships will always be read the same way.
         通过对节点和边进行排序来实现
         """
+        import networkx as nx
+
         fixed_graph = nx.DiGraph() if graph.is_directed() else nx.Graph()
 
         sorted_nodes = graph.nodes(data=True)
@@ -97,6 +107,8 @@ class NetworkXStorage(BaseGraphStorage):
         Initialize the NetworkX graph storage by loading an existing graph from a GraphML file,
         if it exists, or creating a new empty graph otherwise.
         """
+        import networkx as nx
+
         self._graphml_xml_file = os.path.join(
             self.working_dir, f"{self.namespace}.graphml"
         )
@@ -141,7 +153,7 @@ class NetworkXStorage(BaseGraphStorage):
             return list(self._graph.edges(source_node_id, data=True))
         return None
 
-    def get_graph(self) -> nx.Graph:
+    def get_graph(self) -> "nx.Graph":
         return self._graph
 
     def upsert_node(self, node_id: str, node_data: dict[str, any]):
