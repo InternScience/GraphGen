@@ -1,5 +1,6 @@
 from .base_evaluator import BaseKGEvaluator, BaseQAEvaluator, BaseTripleEvaluator
 from .base_extractor import BaseExtractor
+from .base_filter import BaseValueFilter
 from .base_generator import BaseGenerator
 from .base_kg_builder import BaseKGBuilder
 from .base_llm_wrapper import BaseLLMWrapper
