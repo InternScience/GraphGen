@@ -146,7 +146,7 @@ class GraphStorageActor:
 
 
 class RemoteKVStorageProxy(BaseKVStorage):
-    def __init__(self, actor_handle: ray.actor.ActorHandle):
+    def __init__(self, actor_handle: "ray.actor.ActorHandle"):
         super().__init__()
         self.actor = actor_handle
 
@@ -202,68 +202,87 @@ class RemoteGraphStorageProxy(BaseGraphStorage):
         return ray.get(self.actor.get_all_node_degrees.remote())
 
     def get_node_count(self) -> int:
+
         return ray.get(self.actor.get_node_count.remote())
 
     def get_edge_count(self) -> int:
+
         return ray.get(self.actor.get_edge_count.remote())
 
     def get_connected_components(self, undirected: bool = True) -> List[Set[str]]:
+
         return ray.get(self.actor.get_connected_components.remote(undirected))
 
     def has_node(self, node_id: str) -> bool:
+
         return ray.get(self.actor.has_node.remote(node_id))
 
     def has_edge(self, source_node_id: str, target_node_id: str):
+
         return ray.get(self.actor.has_edge.remote(source_node_id, target_node_id))
 
     def node_degree(self, node_id: str) -> int:
+
         return ray.get(self.actor.node_degree.remote(node_id))
 
     def edge_degree(self, src_id: str, tgt_id: str) -> int:
+
         return ray.get(self.actor.edge_degree.remote(src_id, tgt_id))
 
     def get_node(self, node_id: str) -> Any:
+
         return ray.get(self.actor.get_node.remote(node_id))
 
     def update_node(self, node_id: str, node_data: dict[str, str]):
+
         return ray.get(self.actor.update_node.remote(node_id, node_data))
 
     def get_all_nodes(self) -> Any:
+
         return ray.get(self.actor.get_all_nodes.remote())
 
     def get_edge(self, source_node_id: str, target_node_id: str):
+
         return ray.get(self.actor.get_edge.remote(source_node_id, target_node_id))
 
     def update_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
     ):
+
         return ray.get(
             self.actor.update_edge.remote(source_node_id, target_node_id, edge_data)
         )
 
     def get_all_edges(self) -> Any:
+
         return ray.get(self.actor.get_all_edges.remote())
 
     def get_node_edges(self, source_node_id: str) -> Any:
+
         return ray.get(self.actor.get_node_edges.remote(source_node_id))
 
     def upsert_node(self, node_id: str, node_data: dict[str, str]):
+
         return ray.get(self.actor.upsert_node.remote(node_id, node_data))
 
     def upsert_edge(
         self, source_node_id: str, target_node_id: str, edge_data: dict[str, str]
     ):
+
         return ray.get(
             self.actor.upsert_edge.remote(source_node_id, target_node_id, edge_data)
         )
 
     def delete_node(self, node_id: str):
+
         return ray.get(self.actor.delete_node.remote(node_id))
 
     def get_neighbors(self, node_id: str) -> List[str]:
+
         return ray.get(self.actor.get_neighbors.remote(node_id))
 
     def reload(self):
+
         return ray.get(self.actor.reload.remote())
 
 
@@ -274,6 +293,7 @@ class StorageFactory:
 
     @staticmethod
     def create_storage(backend: str, working_dir: str, namespace: str):
+
         if backend in ["json_kv", "rocksdb"]:
             actor_name = f"Actor_KV_{namespace}"
             actor_class = KVStorageActor

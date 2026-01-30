@@ -1,36 +1,40 @@
 import os
 from functools import lru_cache
-from typing import Tuple, Union
+from typing import TYPE_CHECKING, Any, Optional, Tuple, Union
 
 from graphgen.bases import BaseOperator
-from graphgen.models import (
-    ChineseRecursiveTextSplitter,
-    RecursiveCharacterSplitter,
-    Tokenizer,
-)
 from graphgen.utils import detect_main_language
 
-_MAPPING = {
-    "en": RecursiveCharacterSplitter,
-    "zh": ChineseRecursiveTextSplitter,
-}
+if TYPE_CHECKING:
+    from graphgen.models import (
+        ChineseRecursiveTextSplitter,
+        RecursiveCharacterSplitter,
+        Tokenizer,
+    )
 
-SplitterT = Union[RecursiveCharacterSplitter, ChineseRecursiveTextSplitter]
+if TYPE_CHECKING:
+    SplitterT = Union["RecursiveCharacterSplitter", "ChineseRecursiveTextSplitter"]
+else:
+    SplitterT = Any
 
 
 @lru_cache(maxsize=None)
 def _get_splitter(language: str, frozen_kwargs: frozenset) -> SplitterT:
-    cls = _MAPPING[language]
     kwargs = dict(frozen_kwargs)
-    return cls(**kwargs)
+    if language == "en":
+        from graphgen.models import RecursiveCharacterSplitter
+
+        return RecursiveCharacterSplitter(**kwargs)
+    if language == "zh":
+        from graphgen.models import ChineseRecursiveTextSplitter
+
+        return ChineseRecursiveTextSplitter(**kwargs)
+    raise ValueError(
+        f"Unsupported language: {language}. Supported languages are: en, zh"
+    )
 
 
 def split_chunks(text: str, language: str = "en", **kwargs) -> list:
-    if language not in _MAPPING:
-        raise ValueError(
-            f"Unsupported language: {language}. "
-            f"Supported languages are: {list(_MAPPING.keys())}"
-        )
     frozen_kwargs = frozenset(
         (k, tuple(v) if isinstance(v, list) else v) for k, v in kwargs.items()
     )
@@ -45,9 +49,17 @@ class ChunkService(BaseOperator):
         super().__init__(
             working_dir=working_dir, kv_backend=kv_backend, op_name="chunk"
         )
-        tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
-        self.tokenizer_instance: Tokenizer = Tokenizer(model_name=tokenizer_model)
+        self.tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
+        self._tokenizer_instance: Optional["Tokenizer"] = None
         self.chunk_kwargs = chunk_kwargs
+
+    @property
+    def tokenizer_instance(self) -> "Tokenizer":
+        if self._tokenizer_instance is None:
+            from graphgen.models import Tokenizer
+
+            self._tokenizer_instance = Tokenizer(model_name=self.tokenizer_model)
+        return self._tokenizer_instance
 
     def process(self, batch: list) -> Tuple[list, dict]:
         """

@@ -3,14 +3,6 @@ from typing import Iterable, Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseOperator, BaseTokenizer
 from graphgen.common.init_storage import init_storage
-from graphgen.models import (
-    AnchorBFSPartitioner,
-    BFSPartitioner,
-    DFSPartitioner,
-    ECEPartitioner,
-    LeidenPartitioner,
-    Tokenizer,
-)
 from graphgen.utils import logger
 
 
@@ -31,21 +23,34 @@ class PartitionService(BaseOperator):
             namespace="graph",
         )
         tokenizer_model = os.getenv("TOKENIZER_MODEL", "cl100k_base")
+
+        from graphgen.models import Tokenizer
+
         self.tokenizer_instance: BaseTokenizer = Tokenizer(model_name=tokenizer_model)
         method = partition_kwargs["method"]
         self.method_params = partition_kwargs["method_params"]
 
         if method == "bfs":
+            from graphgen.models import BFSPartitioner
+
             self.partitioner = BFSPartitioner()
         elif method == "dfs":
+            from graphgen.models import DFSPartitioner
+
             self.partitioner = DFSPartitioner()
         elif method == "ece":
             # before ECE partitioning, we need to:
             # 'quiz' and 'judge' to get the comprehension loss if unit_sampling is not random
+            from graphgen.models import ECEPartitioner
+
             self.partitioner = ECEPartitioner()
         elif method == "leiden":
+            from graphgen.models import LeidenPartitioner
+
             self.partitioner = LeidenPartitioner()
         elif method == "anchor_bfs":
+            from graphgen.models import AnchorBFSPartitioner
+
             self.partitioner = AnchorBFSPartitioner(
                 anchor_type=self.method_params.get("anchor_type"),
                 anchor_ids=set(self.method_params.get("anchor_ids", []))

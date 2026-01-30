@@ -1,9 +1,10 @@
-from typing import List, Union
-
-import ray
-from ray.data import Dataset
+from typing import TYPE_CHECKING, List, Union
 
 from graphgen.bases.base_reader import BaseReader
+
+if TYPE_CHECKING:
+    import ray
+    from ray.data import Dataset
 
 
 class ParquetReader(BaseReader):
@@ -14,13 +15,15 @@ class ParquetReader(BaseReader):
     - if type is "text", "content" column must be present.
     """
 
-    def read(self, input_path: Union[str, List[str]]) -> Dataset:
+    def read(self, input_path: Union[str, List[str]]) -> "Dataset":
         """
         Read Parquet files using Ray Data.
 
         :param input_path: Path to Parquet file or list of Parquet files.
         :return: Ray Dataset containing validated documents.
         """
+        import ray
+
         if not ray.is_initialized():
             ray.init()
 

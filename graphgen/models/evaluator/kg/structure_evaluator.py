@@ -1,9 +1,6 @@
 from collections import Counter
 from typing import Any, Dict, Optional
 
-import numpy as np
-from scipy import stats
-
 from graphgen.bases import BaseGraphStorage, BaseKGEvaluator
 from graphgen.utils import logger
 
@@ -75,6 +72,9 @@ class StructureEvaluator(BaseKGEvaluator):
 
     @staticmethod
     def _calculate_powerlaw_r2(degree_map: Dict[str, int]) -> Optional[float]:
+        import numpy as np
+        from scipy import stats
+
         degrees = [deg for deg in degree_map.values() if deg > 0]
 
         if len(degrees) < 10:

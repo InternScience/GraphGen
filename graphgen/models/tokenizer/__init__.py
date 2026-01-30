@@ -4,29 +4,21 @@ from graphgen.bases import BaseTokenizer
 
 from .tiktoken_tokenizer import TiktokenTokenizer
 
-try:
-    from transformers import AutoTokenizer
-
-    _HF_AVAILABLE = True
-except ImportError:
-    _HF_AVAILABLE = False
-
 
 def get_tokenizer_impl(tokenizer_name: str = "cl100k_base") -> BaseTokenizer:
     import tiktoken
 
     if tokenizer_name in tiktoken.list_encoding_names():
         return TiktokenTokenizer(model_name=tokenizer_name)
-
-    # 2. HuggingFace
-    if _HF_AVAILABLE:
+    try:
+        # HuggingFace
         from .hf_tokenizer import HFTokenizer
 
         return HFTokenizer(model_name=tokenizer_name)
-
-    raise ValueError(
-        f"Unknown tokenizer {tokenizer_name} and HuggingFace not available."
-    )
+    except ImportError as e:
+        raise ValueError(
+            f"Unknown tokenizer {tokenizer_name} and HuggingFace not available."
+        ) from e
 
 
 class Tokenizer(BaseTokenizer):

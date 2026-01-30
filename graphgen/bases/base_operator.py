@@ -1,14 +1,18 @@
+from __future__ import annotations
+
 import inspect
 import os
 from abc import ABC, abstractmethod
-from typing import Iterable, Tuple, Union
+from typing import TYPE_CHECKING, Iterable, Tuple, Union
 
-import numpy as np
-import pandas as pd
-import ray
+if TYPE_CHECKING:
+    import numpy as np
+    import pandas as pd
 
 
 def convert_to_serializable(obj):
+    import numpy as np
+
     if isinstance(obj, np.ndarray):
         return obj.tolist()
     if isinstance(obj, np.generic):
@@ -40,6 +44,8 @@ class BaseOperator(ABC):
         )
 
         try:
+            import ray
+
             ctx = ray.get_runtime_context()
             worker_id = ctx.get_actor_id() or ctx.get_worker_id()
             worker_id_short = worker_id[-6:] if worker_id else "driver"
@@ -62,9 +68,11 @@ class BaseOperator(ABC):
         )
 
     def __call__(
-        self, batch: pd.DataFrame
-    ) -> Union[pd.DataFrame, Iterable[pd.DataFrame]]:
+        self, batch: "pd.DataFrame"
+    ) -> Union["pd.DataFrame", Iterable["pd.DataFrame"]]:
         # lazy import to avoid circular import
+        import pandas as pd
+
         from graphgen.utils import CURRENT_LOGGER_VAR
 
         logger_token = CURRENT_LOGGER_VAR.set(self.logger)
@@ -106,7 +114,7 @@ class BaseOperator(ABC):
 
         return compute_dict_hash(content, prefix=f"{self.op_name}-")
 
-    def split(self, batch: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+    def split(self, batch: "pd.DataFrame") -> tuple["pd.DataFrame", "pd.DataFrame"]:
         """
         Split the input batch into to_process & processed based on _meta data in KV_storage
         :param batch
@@ -114,6 +122,8 @@ class BaseOperator(ABC):
             to_process: DataFrame of documents to be chunked
             recovered: Result DataFrame of already chunked documents
         """
+        import pandas as pd
+
         meta_forward = self.get_meta_forward()
         meta_ids = set(meta_forward.keys())
         mask = batch["_trace_id"].isin(meta_ids)

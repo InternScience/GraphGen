@@ -3,14 +3,15 @@ import os
 import subprocess
 import tempfile
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
-
-import ray
-from ray.data import Dataset
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
 
 from graphgen.bases.base_reader import BaseReader
 from graphgen.models.reader.txt_reader import TXTReader
 from graphgen.utils import logger, pick_device
+
+if TYPE_CHECKING:
+    import ray
+    from ray.data import Dataset
 
 
 class PDFReader(BaseReader):
@@ -69,7 +70,8 @@ class PDFReader(BaseReader):
         self,
         input_path: Union[str, List[str]],
         **override,
-    ) -> Dataset:
+    ) -> "Dataset":
+        import ray
 
         # Ensure input_path is a list
         if isinstance(input_path, str):

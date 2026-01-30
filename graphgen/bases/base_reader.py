@@ -1,10 +1,14 @@
+from __future__ import annotations
+
 import os
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Union
 
-import pandas as pd
 import requests
-from ray.data import Dataset
+
+if TYPE_CHECKING:
+    import pandas as pd
+    from ray.data import Dataset
 
 
 class BaseReader(ABC):
@@ -51,6 +55,7 @@ class BaseReader(ABC):
         """
         Validate data format.
         """
+
         if "type" not in batch.columns:
             raise ValueError(f"Missing 'type' column. Found: {list(batch.columns)}")
 
