@@ -8,6 +8,7 @@ from .judge import JudgeService
 from .partition import PartitionService
 from .quiz import QuizService
 from .read import read
+from .rephrase import RephraseService
 from .search import SearchService
 
 operators = {
@@ -21,5 +22,6 @@ operators = {
     "partition": PartitionService,
     "generate": GenerateService,
     "evaluate": EvaluateService,
+    "rephrase": RephraseService,
     "filter": FilterService,
 }

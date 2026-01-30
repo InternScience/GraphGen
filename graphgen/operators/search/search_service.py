@@ -4,7 +4,7 @@ from typing import Optional
 import pandas as pd
 
 from graphgen.bases import BaseOperator
-from graphgen.common import init_storage
+from graphgen.common.init_storage import init_storage
 from graphgen.utils import compute_content_hash, logger, run_concurrent
 
 

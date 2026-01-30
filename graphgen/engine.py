@@ -11,7 +11,8 @@ from ray.data.block import Block
 from ray.data.datasource.filename_provider import FilenameProvider
 
 from graphgen.bases import Config, Node
-from graphgen.common import init_llm, init_storage
+from graphgen.common.init_llm import init_llm
+from graphgen.common.init_storage import init_storage
 from graphgen.utils import logger
 
 
@@ -70,6 +71,7 @@ class Engine:
 
         if not ray.is_initialized():
             context = ray.init(
+                include_dashboard=True,
                 ignore_reinit_error=True,
                 logging_level=logging.ERROR,
                 log_to_driver=True,

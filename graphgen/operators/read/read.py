@@ -3,7 +3,7 @@ from typing import Any, List, Optional, Union
 
 import ray
 
-from graphgen.common import init_storage
+from graphgen.common.init_storage import init_storage
 from graphgen.models import (
     CSVReader,
     JSONReader,

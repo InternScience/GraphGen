@@ -12,7 +12,7 @@ nltk
 jieba
 plotly
 pandas
-gradio==5.44.1
+gradio==5.50.0
 kaleido
 pyyaml
 langcodes
@@ -21,8 +21,7 @@ fastapi
 trafilatura
 aiohttp
 socksio
-pydantic
-ray==2.53.0
+ray[default]==2.53.0
 pyarrow
 
 leidenalg
