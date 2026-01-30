@@ -2,7 +2,6 @@ import inspect
 import logging
 import os
 from collections import defaultdict, deque
-from functools import wraps
 from typing import Any, Callable, Dict, List, Set
 
 import ray
@@ -103,7 +102,6 @@ class Engine:
         kv_namespaces = set()
         graph_namespaces = set()
 
-        # TODO: Temporarily hard-coded; node storage will be centrally managed later.
         for node in self.config.nodes:
             op_name = node.op_name
             if self._function_needs_param(op_name, "kv_backend"):
@@ -232,62 +230,38 @@ class Engine:
 
         input_ds = self._get_input_dataset(node, initial_ds)
 
-        if inspect.isclass(op_handler):
-            execution_params = node.execution_params or {}
-            replicas = execution_params.get("replicas", 1)
-            batch_size = (
-                int(execution_params.get("batch_size"))
-                if "batch_size" in execution_params
-                else "default"
+        # if inspect.isclass(op_handler):
+        execution_params = node.execution_params or {}
+        replicas = execution_params.get("replicas", 1)
+        batch_size = (
+            int(execution_params.get("batch_size"))
+            if "batch_size" in execution_params
+            else "default"
+        )
+        compute_resources = execution_params.get("compute_resources", {})
+
+        if node.type == "aggregate":
+            self.datasets[node.id] = input_ds.repartition(1).map_batches(
+                op_handler,
+                compute=ray.data.ActorPoolStrategy(min_size=1, max_size=1),
+                batch_size=None,  # aggregate processes the whole dataset at once
+                num_gpus=compute_resources.get("num_gpus", 0)
+                if compute_resources
+                else 0,
+                fn_constructor_kwargs=node_params,
+                batch_format="pandas",
             )
-            compute_resources = execution_params.get("compute_resources", {})
-
-            if node.type == "aggregate":
-                self.datasets[node.id] = input_ds.repartition(1).map_batches(
-                    op_handler,
-                    compute=ray.data.ActorPoolStrategy(min_size=1, max_size=1),
-                    batch_size=None,  # aggregate processes the whole dataset at once
-                    num_gpus=compute_resources.get("num_gpus", 0)
-                    if compute_resources
-                    else 0,
-                    fn_constructor_kwargs=node_params,
-                    batch_format="pandas",
-                )
-            else:
-                # others like map, filter, flatmap, map_batch let actors process data inside batches
-                self.datasets[node.id] = input_ds.map_batches(
-                    op_handler,
-                    compute=ray.data.ActorPoolStrategy(min_size=1, max_size=replicas),
-                    batch_size=batch_size,
-                    num_gpus=compute_resources.get("num_gpus", 0)
-                    if compute_resources
-                    else 0,
-                    fn_constructor_kwargs=node_params,
-                    batch_format="pandas",
-                )
-
         else:
-
-            @wraps(op_handler)
-            def func_wrapper(row_or_batch: Dict[str, Any]) -> Dict[str, Any]:
-                return op_handler(row_or_batch, **node_params)
-
-            if node.type == "map":
-                self.datasets[node.id] = input_ds.map(func_wrapper)
-            elif node.type == "filter":
-                self.datasets[node.id] = input_ds.filter(func_wrapper)
-            elif node.type == "flatmap":
-                self.datasets[node.id] = input_ds.flat_map(func_wrapper)
-            elif node.type == "aggregate":
-                self.datasets[node.id] = input_ds.repartition(1).map_batches(
-                    func_wrapper, batch_format="default"
-                )
-            elif node.type == "map_batch":
-                self.datasets[node.id] = input_ds.map_batches(func_wrapper)
-            else:
-                raise ValueError(
-                    f"Unsupported node type {node.type} for node {node.id}"
-                )
+            self.datasets[node.id] = input_ds.map_batches(
+                op_handler,
+                compute=ray.data.ActorPoolStrategy(min_size=1, max_size=replicas),
+                batch_size=batch_size,
+                num_gpus=compute_resources.get("num_gpus", 0)
+                if compute_resources
+                else 0,
+                fn_constructor_kwargs=node_params,
+                batch_format="pandas",
+            )
 
     def execute(
         self, initial_ds: ray.data.Dataset, output_dir: str
@@ -315,6 +289,14 @@ class Engine:
                 logger.info("Node %s output saved to %s", node.id, node_output_path)
 
                 # ray will lazy read the dataset
-                self.datasets[node.id] = ray.data.read_json(node_output_path)
+                if os.path.exists(node_output_path) and os.listdir(node_output_path):
+                    self.datasets[node.id] = ray.data.read_json(node_output_path)
+                else:
+                    self.datasets[node.id] = ray.data.from_items([])
+                    logger.warning(
+                        "Node %s output path %s is empty. Created an empty dataset.",
+                        node.id,
+                        node_output_path,
+                    )
 
         return self.datasets

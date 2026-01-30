@@ -6,6 +6,7 @@ from .evaluator import (
     StructureEvaluator,
     UniEvaluator,
 )
+from .filter import RangeFilter
 from .generator import (
     AggregatedGenerator,
     AtomicGenerator,

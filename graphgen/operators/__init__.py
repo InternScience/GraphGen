@@ -2,6 +2,7 @@ from .build_kg import BuildKGService
 from .chunk import ChunkService
 from .evaluate import EvaluateService
 from .extract import ExtractService
+from .filter import FilterService
 from .generate import GenerateService
 from .judge import JudgeService
 from .partition import PartitionService
@@ -22,4 +23,5 @@ operators = {
     "generate": GenerateService,
     "evaluate": EvaluateService,
     "rephrase": RephraseService,
+    "filter": FilterService,
 }
