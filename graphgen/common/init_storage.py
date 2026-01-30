@@ -8,11 +8,11 @@ from graphgen.bases.base_storage import BaseGraphStorage, BaseKVStorage
 class KVStorageActor:
     def __init__(self, backend: str, working_dir: str, namespace: str):
         if backend == "json_kv":
-            from graphgen.models import JsonKVStorage
+            from graphgen.storage import JsonKVStorage
 
             self.kv = JsonKVStorage(working_dir, namespace)
         elif backend == "rocksdb":
-            from graphgen.models import RocksDBKVStorage
+            from graphgen.storage import RocksDBKVStorage
 
             self.kv = RocksDBKVStorage(working_dir, namespace)
         else:
@@ -42,6 +42,12 @@ class KVStorageActor:
     def upsert(self, data: dict) -> dict:
         return self.kv.upsert(data)
 
+    def update(self, data: dict):
+        return self.kv.update(data)
+
+    def delete(self, ids: list[str]):
+        return self.kv.delete(ids)
+
     def drop(self):
         return self.kv.drop()
 
@@ -55,11 +61,11 @@ class KVStorageActor:
 class GraphStorageActor:
     def __init__(self, backend: str, working_dir: str, namespace: str):
         if backend == "networkx":
-            from graphgen.models import NetworkXStorage
+            from graphgen.storage import NetworkXStorage
 
             self.graph = NetworkXStorage(working_dir, namespace)
         elif backend == "kuzu":
-            from graphgen.models import KuzuStorage
+            from graphgen.storage import KuzuStorage
 
             self.graph = KuzuStorage(working_dir, namespace)
         else:
@@ -129,6 +135,9 @@ class GraphStorageActor:
     def delete_node(self, node_id: str):
         return self.graph.delete_node(node_id)
 
+    def get_neighbors(self, node_id: str) -> List[str]:
+        return self.graph.get_neighbors(node_id)
+
     def reload(self):
         return self.graph.reload()
 
@@ -164,6 +173,12 @@ class RemoteKVStorageProxy(BaseKVStorage):
 
     def upsert(self, data: Dict[str, Any]):
         return ray.get(self.actor.upsert.remote(data))
+
+    def update(self, data: Dict[str, Any]):
+        return ray.get(self.actor.update.remote(data))
+
+    def delete(self, ids: list[str]):
+        return ray.get(self.actor.delete.remote(ids))
 
     def drop(self):
         return ray.get(self.actor.drop.remote())
@@ -244,6 +259,9 @@ class RemoteGraphStorageProxy(BaseGraphStorage):
 
     def delete_node(self, node_id: str):
         return ray.get(self.actor.delete_node.remote(node_id))
+
+    def get_neighbors(self, node_id: str) -> List[str]:
+        return ray.get(self.actor.get_neighbors.remote(node_id))
 
     def reload(self):
         return ray.get(self.actor.reload.remote())

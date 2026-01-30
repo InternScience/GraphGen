@@ -1,4 +1,3 @@
-from .base_evaluator import BaseEvaluator
 from .base_extractor import BaseExtractor
 from .base_generator import BaseGenerator
 from .base_kg_builder import BaseKGBuilder

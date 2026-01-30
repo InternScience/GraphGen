@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import COT_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class CoTGenerator(BaseGenerator):
@@ -100,28 +100,25 @@ class CoTGenerator(BaseGenerator):
         batch: tuple[
             list[tuple[str, dict]], list[tuple[Any, Any, dict] | tuple[Any, Any, Any]]
         ],
-    ) -> dict[str, Any]:
+    ) -> list[dict]:
         """
         Generate QAs based on a given batch.
         :param batch
         :return: QA pairs
         """
-        result = {}
         prompt = self.build_prompt(batch)
         response = await self.llm_client.generate_answer(prompt)
         response = self.parse_response(response)
         if not response:
-            return result
+            return []
         question, reasoning_path = response["question"], response["reasoning_path"]
         prompt = self.build_prompt_for_cot_generation(batch, question, reasoning_path)
         cot_answer = await self.llm_client.generate_answer(prompt)
         logger.debug("CoT Answer: %s", cot_answer)
-        qa_pairs = {
-            compute_content_hash(question): {
+        return [
+            {
                 "question": question,
                 "answer": cot_answer,
                 "reasoning_path": reasoning_path,
             }
-        }
-        result.update(qa_pairs)
-        return result
+        ]

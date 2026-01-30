@@ -1,14 +1,15 @@
 # https://github.com/maszhongming/UniEval/tree/main
-from typing import Optional, List
-from graphgen.bases import BaseEvaluator, QAPair
+from typing import List, Optional
+
+from graphgen.bases import BaseQAEvaluator, QAPair
 
 
-class UniEvaluator(BaseEvaluator):
+class UniEvaluator(BaseQAEvaluator):
     """
     UniEvaluator for single QAPair evaluation across quality dimensions.
-    
+
     Dimensions: naturalness, coherence, understandability
-    
+
     Usage:
         evaluator = UniEvaluator()
         pair = QAPair(question="...", answer="...")
@@ -34,6 +35,7 @@ class UniEvaluator(BaseEvaluator):
         """
         import torch
         from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+
         self.torch = torch
 
         self.model_name = model_name or self.DEFAULT_MODEL
@@ -58,10 +60,12 @@ class UniEvaluator(BaseEvaluator):
         if dimension == "coherence":
             return f"question: Is this a coherent response? </s> response: {answer} </s> history: {question}"
         if dimension == "understandability":
-            return f"question: Is this an understandable response? </s> response: {answer}"
+            return (
+                f"question: Is this an understandable response? </s> response: {answer}"
+            )
         raise NotImplementedError(f"Unsupported dimension '{dimension}'")
 
-    def evaluate(
+    async def evaluate(
         self,
         pair: QAPair,
         dimensions: Optional[List[str]] = None,
@@ -72,7 +76,9 @@ class UniEvaluator(BaseEvaluator):
         # Validate dimensions
         invalid = set(dimensions) - set(self.DEFAULT_DIMS)
         if invalid:
-            raise ValueError(f"Invalid dimensions: {invalid}. Available: {self.DEFAULT_DIMS}")
+            raise ValueError(
+                f"Invalid dimensions: {invalid}. Available: {self.DEFAULT_DIMS}"
+            )
 
         results = {}
         no_token = self.torch.tensor([[self._no_id]], device=self.device)
@@ -95,7 +101,9 @@ class UniEvaluator(BaseEvaluator):
                     attention_mask=src_mask,
                     labels=no_token,
                     use_cache=False,
-                ).logits[:, 0, :]  # [1, vocab_size]
+                ).logits[
+                    :, 0, :
+                ]  # [1, vocab_size]
 
                 probs = self.torch.softmax(logits, dim=-1)[0]
                 score = probs[self._yes_id] / (probs[self._yes_id] + probs[self._no_id])

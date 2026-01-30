@@ -1,3 +1,4 @@
+import json
 import re
 from collections import Counter, defaultdict
 from typing import Dict, List, Tuple
@@ -130,15 +131,25 @@ class LightRAGKGBuilder(BaseKGBuilder):
             set([dp["source_id"] for dp in node_data] + source_ids)
         )
 
-        node_data = {
+        node_data_dict = {
             "entity_type": entity_type,
             "entity_name": entity_name,
             "description": description,
             "source_id": source_id,
             "length": self.tokenizer.count_tokens(description),
         }
-        kg_instance.upsert_node(entity_name, node_data=node_data)
-        return node_data
+
+        if entity_type in ("IMAGE", "TABLE", "FORMULA"):
+            metadata = next(
+                (dp["metadata"] for dp in node_data if dp.get("metadata")), None
+            )
+            if metadata:
+                node_data_dict["metadata"] = json.dumps(
+                    metadata, ensure_ascii=False, default=str
+                )
+
+        kg_instance.upsert_node(entity_name, node_data=node_data_dict)
+        return node_data_dict
 
     async def merge_edges(
         self,

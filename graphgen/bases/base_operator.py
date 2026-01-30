@@ -1,19 +1,43 @@
 import inspect
 import os
 from abc import ABC, abstractmethod
-from typing import Iterable, Union
+from typing import Iterable, Tuple, Union
 
+import numpy as np
 import pandas as pd
 import ray
 
 
+def convert_to_serializable(obj):
+    if isinstance(obj, np.ndarray):
+        return obj.tolist()
+    if isinstance(obj, np.generic):
+        return obj.item()
+    if isinstance(obj, dict):
+        return {k: convert_to_serializable(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [convert_to_serializable(v) for v in obj]
+    return obj
+
+
 class BaseOperator(ABC):
-    def __init__(self, working_dir: str = "cache", op_name: str = None):
+    def __init__(
+        self,
+        working_dir: str = "cache",
+        kv_backend: str = "rocksdb",
+        op_name: str = None,
+    ):
         # lazy import to avoid circular import
+        from graphgen.common import init_storage
         from graphgen.utils import set_logger
 
         log_dir = os.path.join(working_dir, "logs")
         self.op_name = op_name or self.__class__.__name__
+        self.working_dir = working_dir
+        self.kv_backend = kv_backend
+        self.kv_storage = init_storage(
+            backend=kv_backend, working_dir=working_dir, namespace=self.op_name
+        )
 
         try:
             ctx = ray.get_runtime_context()
@@ -45,17 +69,94 @@ class BaseOperator(ABC):
 
         logger_token = CURRENT_LOGGER_VAR.set(self.logger)
         try:
-            result = self.process(batch)
+            self.kv_storage.reload()
+            to_process, recovered = self.split(batch)
+            # yield recovered chunks first
+            if not recovered.empty:
+                yield recovered
+
+            if to_process.empty:
+                return
+
+            data = to_process.to_dict(orient="records")
+            result, meta_update = self.process(data)
             if inspect.isgenerator(result):
-                yield from result
+                is_first = True
+                for res in result:
+                    yield pd.DataFrame([res])
+                    self.store([res], meta_update if is_first else {})
+                    is_first = False
             else:
-                yield result
+                yield pd.DataFrame(result)
+                self.store(result, meta_update)
         finally:
             CURRENT_LOGGER_VAR.reset(logger_token)
 
-    @abstractmethod
-    def process(self, batch):
-        raise NotImplementedError("Subclasses must implement the process method.")
-
     def get_logger(self):
         return self.logger
+
+    def get_meta_forward(self):
+        return self.kv_storage.get_by_id("_meta_forward") or {}
+
+    def get_meta_inverse(self):
+        return self.kv_storage.get_by_id("_meta_inverse") or {}
+
+    def get_trace_id(self, content: dict) -> str:
+        from graphgen.utils import compute_dict_hash
+
+        return compute_dict_hash(content, prefix=f"{self.op_name}-")
+
+    def split(self, batch: pd.DataFrame) -> tuple[pd.DataFrame, pd.DataFrame]:
+        """
+        Split the input batch into to_process & processed based on _meta data in KV_storage
+        :param batch
+        :return:
+            to_process: DataFrame of documents to be chunked
+            recovered: Result DataFrame of already chunked documents
+        """
+        meta_forward = self.get_meta_forward()
+        meta_ids = set(meta_forward.keys())
+        mask = batch["_trace_id"].isin(meta_ids)
+        to_process = batch[~mask]
+        processed = batch[mask]
+
+        if processed.empty:
+            return to_process, pd.DataFrame()
+
+        all_ids = [
+            pid for tid in processed["_trace_id"] for pid in meta_forward.get(tid, [])
+        ]
+
+        recovered_chunks = self.kv_storage.get_by_ids(all_ids)
+        recovered_chunks = [c for c in recovered_chunks if c is not None]
+        return to_process, pd.DataFrame(recovered_chunks)
+
+    def store(self, results: list, meta_update: dict):
+        results = convert_to_serializable(results)
+        meta_update = convert_to_serializable(meta_update)
+
+        batch = {res["_trace_id"]: res for res in results}
+        self.kv_storage.upsert(batch)
+
+        # update forward meta
+        forward_meta = self.get_meta_forward()
+        forward_meta.update(meta_update)
+        self.kv_storage.update({"_meta_forward": forward_meta})
+
+        # update inverse meta
+        inverse_meta = self.get_meta_inverse()
+        for k, v_list in meta_update.items():
+            for v in v_list:
+                inverse_meta[v] = k
+        self.kv_storage.update({"_meta_inverse": inverse_meta})
+        self.kv_storage.index_done_callback()
+
+    @abstractmethod
+    def process(self, batch: list) -> Tuple[Union[list, Iterable[dict]], dict]:
+        """
+        Process the input batch and return the result.
+        :param batch
+        :return:
+            result: DataFrame of processed documents
+            meta_update: dict of meta data to be updated
+        """

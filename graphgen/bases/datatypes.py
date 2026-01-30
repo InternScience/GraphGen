@@ -31,6 +31,13 @@ class QAPair:
     question: str
     answer: str
 
+    @staticmethod
+    def from_dict(data: dict) -> "QAPair":
+        return QAPair(
+            question=data.get("question", ""),
+            answer=data.get("answer", ""),
+        )
+
 
 @dataclass
 class Token:

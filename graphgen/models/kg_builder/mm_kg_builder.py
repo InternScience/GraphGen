@@ -70,6 +70,8 @@ class MMKGBuilder(LightRAGKGBuilder):
 
                 entity = await handle_single_entity_extraction(attributes, chunk_id)
                 if entity is not None:
+                    if entity["entity_type"] == "IMAGE":
+                        entity["metadata"] = chunk.metadata
                     nodes[entity["entity_name"]].append(entity)
                     continue
 

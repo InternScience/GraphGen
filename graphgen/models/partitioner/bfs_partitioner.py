@@ -26,8 +26,6 @@ class BFSPartitioner(BasePartitioner):
         nodes = g.get_all_nodes()
         edges = g.get_all_edges()
 
-        adj, _ = self._build_adjacency_list(nodes, edges)
-
         used_n: set[str] = set()
         used_e: set[frozenset[str]] = set()
 
@@ -55,7 +53,7 @@ class BFSPartitioner(BasePartitioner):
                     used_n.add(it)
                     comm_n.append(it)
                     cnt += 1
-                    for nei in adj[it]:
+                    for nei in g.get_neighbors(it):
                         e_key = frozenset((it, nei))
                         if e_key not in used_e:
                             queue.append((EDGE_UNIT, e_key))
@@ -63,7 +61,8 @@ class BFSPartitioner(BasePartitioner):
                     if it in used_e:
                         continue
                     used_e.add(it)
-                    comm_e.append(tuple(sorted(it)))
+                    u, v = sorted(it)
+                    comm_e.append((u, v))
                     cnt += 1
                     # push nodes that are not visited
                     for n in it:

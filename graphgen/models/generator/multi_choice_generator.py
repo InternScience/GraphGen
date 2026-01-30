@@ -3,7 +3,7 @@ from typing import Any
 
 from graphgen.bases import BaseGenerator
 from graphgen.templates import MCQ_GENERATION_PROMPT
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class MultiChoiceGenerator(BaseGenerator):
@@ -12,7 +12,7 @@ class MultiChoiceGenerator(BaseGenerator):
         self.num_of_questions = num_of_questions
 
     @staticmethod
-    def parse_response(response: str) -> Any:
+    def parse_response(response: str) -> list[dict]:
         """
         Parse multiple choice QA pairs from the LLM response.
         Each QA pair contains question text, four options, and the correct answer.
@@ -21,14 +21,14 @@ class MultiChoiceGenerator(BaseGenerator):
         :return: Dictionary mapping question hash to question data, where each
                  value is a dict with "question", "options", and "answer" keys
         """
-        qa_pairs = {}
+        qa_pairs = []
 
         # Extract all QA pair blocks
         qa_blocks = re.findall(r"<qa_pair>(.*?)</qa_pair>", response, re.DOTALL)
 
         if not qa_blocks:
             logger.warning("No QA pairs found in response: %s", response)
-            return {}
+            return qa_pairs
 
         for block in qa_blocks:
             # Extract and clean question text
@@ -76,13 +76,13 @@ class MultiChoiceGenerator(BaseGenerator):
                 )
                 continue
 
-            # Build result entry with question hash as key
-            question_hash = compute_content_hash(question)
-            qa_pairs[question_hash] = {
-                "question": question,
-                "options": options,  # Dict like {"A": "text", "B": "text", ...}
-                "answer": answer,  # Single letter: "A", "B", "C", or "D"
-            }
+            qa_pairs.append(
+                {
+                    "question": question,
+                    "options": options,  # Dict like {"A": "text", "B": "text", ...}
+                    "answer": answer,  # Single letter: "A", "B", "C", or "D"
+                }
+            )
 
             logger.debug("Successfully parsed MCQ: %s", question[:50])
 

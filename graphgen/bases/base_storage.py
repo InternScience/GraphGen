@@ -39,6 +39,12 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
     def upsert(self, data: dict[str, T]):
         raise NotImplementedError
 
+    def update(self, data: dict[str, T]):
+        raise NotImplementedError
+
+    def delete(self, ids: list[str]):
+        raise NotImplementedError
+
     def drop(self):
         raise NotImplementedError
 
@@ -124,6 +130,10 @@ class BaseGraphStorage(StorageNameSpace, ABC):
 
     @abstractmethod
     def delete_node(self, node_id: str):
+        raise NotImplementedError
+
+    @abstractmethod
+    def get_neighbors(self, node_id: str) -> List[str]:
         raise NotImplementedError
 
     @abstractmethod

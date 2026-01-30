@@ -8,10 +8,36 @@ from typing import Any, Callable, Dict, List, Set
 import ray
 import ray.data
 from ray.data import DataContext
+from ray.data.block import Block
+from ray.data.datasource.filename_provider import FilenameProvider
 
 from graphgen.bases import Config, Node
 from graphgen.common import init_llm, init_storage
 from graphgen.utils import logger
+
+
+class NodeFilenameProvider(FilenameProvider):
+    def __init__(self, node_id: str):
+        self.node_id = node_id
+
+    def get_filename_for_block(
+        self, block: Block, write_uuid: str, task_index: int, block_index: int
+    ) -> str:
+        # format: {node_id}_{write_uuid}_{task_index:06}_{block_index:06}.jsonl
+        return f"{self.node_id}_{write_uuid}_{task_index:06d}_{block_index:06d}.jsonl"
+
+    def get_filename_for_row(
+        self,
+        row: Dict[str, Any],
+        write_uuid: str,
+        task_index: int,
+        block_index: int,
+        row_index: int,
+    ) -> str:
+        raise NotImplementedError(
+            f"Row-based filenames are not supported by write_json. "
+            f"Node: {self.node_id}, write_uuid: {write_uuid}"
+        )
 
 
 class Engine:
@@ -263,13 +289,32 @@ class Engine:
                     f"Unsupported node type {node.type} for node {node.id}"
                 )
 
-    def execute(self, initial_ds: ray.data.Dataset) -> Dict[str, ray.data.Dataset]:
+    def execute(
+        self, initial_ds: ray.data.Dataset, output_dir: str
+    ) -> Dict[str, ray.data.Dataset]:
         sorted_nodes = self._topo_sort(self.config.nodes)
 
         for node in sorted_nodes:
+            logger.info("Executing node %s of type %s", node.id, node.type)
             self._execute_node(node, initial_ds)
             if getattr(node, "save_output", False):
-                self.datasets[node.id] = self.datasets[node.id].materialize()
+                node_output_path = os.path.join(output_dir, f"{node.id}")
+                os.makedirs(node_output_path, exist_ok=True)
+                logger.info("Saving output of node %s to %s", node.id, node_output_path)
 
-        output_nodes = [n for n in sorted_nodes if getattr(n, "save_output", False)]
-        return {node.id: self.datasets[node.id] for node in output_nodes}
+                ds = self.datasets[node.id]
+                ds.write_json(
+                    node_output_path,
+                    filename_provider=NodeFilenameProvider(node.id),
+                    pandas_json_args_fn=lambda: {
+                        "orient": "records",
+                        "lines": True,
+                        "force_ascii": False,
+                    },
+                )
+                logger.info("Node %s output saved to %s", node.id, node_output_path)
+
+                # ray will lazy read the dataset
+                self.datasets[node.id] = ray.data.read_json(node_output_path)
+
+        return self.datasets

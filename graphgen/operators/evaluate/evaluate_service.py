@@ -1,10 +1,12 @@
-from typing import Any, Dict
+from typing import Tuple
 
-import pandas as pd
-
-from graphgen.bases import BaseLLMWrapper, BaseOperator, QAPair
+from graphgen.bases import BaseLLMWrapper, BaseOperator
 from graphgen.common import init_llm, init_storage
-from graphgen.utils import logger, run_concurrent
+from graphgen.utils import logger
+
+from .evaluate_kg import evaluate_kg
+from .evaluate_qa import evaluate_qa
+from .evaluate_triple import evaluate_triple
 
 
 class EvaluateService(BaseOperator):
@@ -15,167 +17,135 @@ class EvaluateService(BaseOperator):
 
     def __init__(
         self,
+        target: str,
+        metrics: list[str],
         working_dir: str = "cache",
-        metrics: list[str] = None,
         graph_backend: str = "kuzu",
         kv_backend: str = "rocksdb",
         **kwargs,
     ):
-        super().__init__(working_dir=working_dir, op_name="evaluate_service")
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="evaluate"
+        )
         self.llm_client: BaseLLMWrapper = init_llm("synthesizer")
         self.metrics = metrics or []
         self.kwargs = kwargs
         self.graph_storage = init_storage(
             backend=graph_backend, working_dir=working_dir, namespace="graph"
         )
-        self.chunk_storage = init_storage(
-            backend=kv_backend, working_dir=working_dir, namespace="chunk"
-        )
 
         # Initialize evaluators
-        self.qa_evaluators = {}
-        self.kg_evaluators = {}
-        self._init_evaluators()
+        self.target = target
+        self.src_storage = None
+        self.tgt_storage = None
+        self.evaluators = {}
+        self._init_evaluators(self.target, metrics)
 
-    def _init_evaluators(self):
-        """Initialize QA and KG evaluators based on metrics."""
-        for metric in self.metrics:
-            if metric == "qa_length":
-                from graphgen.models import LengthEvaluator
+    def _init_evaluators(self, target: str, metrics: list[str]):
+        """Initialize evaluators based on target and metrics."""
+        if target not in {"qa", "kg", "triple"}:
+            raise ValueError(f"Unknown evaluation target: {target}")
 
-                self.qa_evaluators[metric] = LengthEvaluator()
-            elif metric == "qa_mtld":
-                from graphgen.models import MTLDEvaluator
+        # Delegate to target-specific initializer
+        getattr(self, f"_init_{target}_evaluators")(metrics)
 
-                self.qa_evaluators[metric] = MTLDEvaluator(
-                    **self.kwargs.get("mtld_params", {})
-                )
-            elif metric == "qa_reward_score":
-                from graphgen.models import RewardEvaluator
+    def _init_qa_evaluators(self, metrics: list[str]):
+        """Initialize QA evaluators."""
+        for metric in metrics:
+            self.evaluators[metric] = self._create_qa_evaluator(metric)
 
-                self.qa_evaluators[metric] = RewardEvaluator(
-                    **self.kwargs.get("reward_params", {})
-                )
-            elif metric == "qa_uni_score":
-                from graphgen.models import UniEvaluator
+    def _create_qa_evaluator(self, metric: str):
+        """Factory method for QA evaluator instances."""
+        if metric == "length":
+            from graphgen.models import LengthEvaluator
 
-                self.qa_evaluators[metric] = UniEvaluator(
-                    **self.kwargs.get("uni_params", {})
-                )
-            elif metric == "kg_accuracy":
-                from graphgen.models import AccuracyEvaluator
+            return LengthEvaluator()
+        if metric == "mtld":
+            from graphgen.models import MTLDEvaluator
 
-                self.kg_evaluators[metric] = AccuracyEvaluator(
-                    graph_storage=self.graph_storage,
-                    chunk_storage=self.chunk_storage,
-                    llm_client=self.llm_client,
-                )
-            elif metric == "kg_consistency":
-                from graphgen.models import ConsistencyEvaluator
+            return MTLDEvaluator(**self.kwargs.get("mtld_params", {}))
+        if metric == "reward_score":
+            from graphgen.models import RewardEvaluator
 
-                self.kg_evaluators[metric] = ConsistencyEvaluator(
-                    graph_storage=self.graph_storage,
-                    chunk_storage=self.chunk_storage,
-                    llm_client=self.llm_client,
-                )
-            elif metric == "kg_structure":
-                from graphgen.models import StructureEvaluator
+            return RewardEvaluator(**self.kwargs.get("reward_params", {}))
+        if metric == "uni_score":
+            from graphgen.models import UniEvaluator
 
-                self.kg_evaluators[metric] = StructureEvaluator(
-                    graph_storage=self.graph_storage,
-                    **self.kwargs.get("structure_params", {}),
-                )
-            else:
-                raise ValueError(f"Unknown QA metric: {metric}")
+            return UniEvaluator(**self.kwargs.get("uni_params", {}))
+        raise ValueError(f"Unknown QA metric: {metric}")
 
-    async def _process_single_qa(self, item: dict[str, Any]) -> dict[str, Any]:
-        try:
-            qa_pair = QAPair(
-                question=str(item.get("question", "")),
-                answer=str(item.get("answer", "")),
+    def _init_kg_evaluators(self, metrics: list[str]):
+        """Initialize KG evaluators."""
+        for metric in metrics:
+            if metric != "structure":
+                raise ValueError(f"Unknown KG metric: {metric}")
+            from graphgen.models import StructureEvaluator
+
+            self.evaluators[metric] = StructureEvaluator(
+                **self.kwargs.get("structure_params", {})
             )
-            if not qa_pair.question or not qa_pair.answer:
-                logger.error("Empty question or answer, skipping.")
-                return {}
-        except Exception as e:
-            logger.error("Error in QAPair creation: %s", str(e))
-            return {}
 
-        for metric, evaluator in self.qa_evaluators.items():
-            try:
-                score = evaluator.evaluate(qa_pair)
-                if isinstance(score, dict):
-                    for sub_metric, sub_score in score.items():
-                        item[f"{metric}_{sub_metric}"] = float(sub_score)
-                else:
-                    item[metric] = float(score)
-            except Exception as e:
-                logger.error("Error in %s evaluation: %s", metric, str(e))
-                item[metric] = None
-        return item
-
-    def _evaluate_qa(self, items: list[dict[str, Any]]) -> list[dict[str, Any]]:
-        def transform_messages_format(items: list[dict]) -> list[dict]:
-            """
-            Transform from [{'messages': [...]}, ...] to [{'question': '...', 'answer': '...'}, ...]
-            """
-            transformed = []
-            for item in items:
-                messages = item.get("messages", [])
-                question = next(
-                    (m["content"] for m in messages if m.get("role") == "user"), ""
-                )
-                answer = next(
-                    (m["content"] for m in messages if m.get("role") == "assistant"), ""
-                )
-
-                transformed.append({"question": question, "answer": answer})
-            return transformed
-
-        if not items:
-            return []
-
-        if not self.qa_evaluators:
-            logger.warning("No QA evaluators initialized, skipping QA evaluation")
-            return []
-
-        items = transform_messages_format(items)
-        results = run_concurrent(
-            self._process_single_qa,
-            items,
-            desc="Evaluating QA items",
-            unit="item",
+    def _init_triple_evaluators(self, metrics: list[str]):
+        """Initialize Triple evaluators."""
+        self.src_storage = init_storage(
+            backend=self.kv_backend,
+            working_dir=self.working_dir,
+            namespace=self.kwargs["src_namespace"],
+        )
+        self.tgt_storage = init_storage(
+            backend=self.kv_backend,
+            working_dir=self.working_dir,
+            namespace=self.kwargs["tgt_namespace"],
         )
 
-        results = [item for item in results if item]
-        return results
+        for metric in metrics:
+            if metric != "accuracy":
+                raise ValueError(f"Unknown Triple metric: {metric}")
+            from graphgen.models import AccuracyEvaluator
 
-    def _evaluate_kg(self) -> Dict[str, Any]:
-        results = {}
+            self.evaluators[metric] = AccuracyEvaluator(llm_client=self.llm_client)
 
-        for metric, evaluator in self.kg_evaluators.items():
-            try:
-                logger.info("Running %s evaluation...", metric)
-                score = evaluator.evaluate()
-                results[metric] = score
-            except Exception as e:
-                logger.error("Error in %s evaluation: %s", metric, str(e))
-                results[metric] = {"error": str(e)}
-        return results
+    def process(self, batch: list) -> Tuple[list, dict]:
+        final_results = []
+        meta_updates = {}
 
-    def process(self, batch: pd.DataFrame) -> pd.DataFrame:
-        # QA evaluation
-        if len(self.qa_evaluators) > 0:
-            items = batch.to_dict(orient="records")
-            results = self._evaluate_qa(items)
-            return pd.DataFrame(results)
+        # 1. QA Evaluation (per item)
+        if self.target == "qa" and self.evaluators:
+            results: dict = evaluate_qa(self.evaluators, batch)
+            for i, item in enumerate(batch):
+                metrics = {}
+                for _, scores in results.items():
+                    metrics.update(scores[i])
+                item.update({"metrics": metrics})
+                input_trace_id = item.pop("_trace_id")
+                item["_trace_id"] = self.get_trace_id(item)
+                final_results.append(item)
+                meta_updates.setdefault(input_trace_id, []).append(item["_trace_id"])
 
-        # KG evaluation
-        if len(self.kg_evaluators) > 0:
-            results = self._evaluate_kg()
-            # Convert dict to DataFrame (single row)
-            return pd.DataFrame([results])
+            return final_results, meta_updates
+
+        # 2. KG evaluation
+        if self.target == "kg" and self.evaluators:
+            results = evaluate_kg(
+                self.evaluators,
+                self.graph_storage,
+            )
+            if not results:
+                logger.warning("No KG evaluation results, returning empty DataFrame")
+                return [], {}
+            results["_trace_id"] = self.get_trace_id(results)
+            final_results.append(results)
+            return final_results, {}
+
+        # 3. Triple evaluation
+        if self.target == "triple" and self.evaluators:
+            results = evaluate_triple(
+                self.evaluators, self.src_storage, self.tgt_storage
+            )
+            results["_trace_id"] = "evaluate-triple-result"
+            final_results.append(results)
+            return final_results, {}
 
         # No metrics specified
         logger.warning("No metrics specified, returning empty DataFrame")
-        return pd.DataFrame()
+        return [], {}

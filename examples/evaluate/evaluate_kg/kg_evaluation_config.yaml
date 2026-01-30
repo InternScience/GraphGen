@@ -10,7 +10,7 @@ nodes:
     dependencies: []
     params:
       input_path:
-        - examples/input_examples/extract_demo.txt
+        - examples/input_examples/jsonl_demo.jsonl
 
   - id: chunk
     op_name: chunk
@@ -39,7 +39,6 @@ nodes:
     dependencies:
       - build_kg
     params:
+      target: kg
       metrics:
-        - kg_structure
-        - kg_accuracy
-        - kg_consistency
+        - structure
