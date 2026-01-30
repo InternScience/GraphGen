@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 from tqdm.asyncio import tqdm as tqdm_async
 
 from graphgen.bases import BaseLLMWrapper
-from graphgen.common import init_llm
+from graphgen.common.init_llm import init_llm
 from graphgen.storage import NetworkXStorage
 from graphgen.utils import create_event_loop
 

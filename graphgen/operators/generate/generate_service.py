@@ -1,6 +1,8 @@
 from typing import Tuple
+
 from graphgen.bases import BaseKVStorage, BaseLLMWrapper, BaseOperator
-from graphgen.common import init_llm, init_storage
+from graphgen.common.init_llm import init_llm
+from graphgen.common.init_storage import init_storage
 from graphgen.utils import logger, run_concurrent
 
 

@@ -1,3 +1,4 @@
+from .base_evaluator import BaseKGEvaluator, BaseQAEvaluator, BaseTripleEvaluator
 from .base_extractor import BaseExtractor
 from .base_filter import BaseValueFilter
 from .base_generator import BaseGenerator

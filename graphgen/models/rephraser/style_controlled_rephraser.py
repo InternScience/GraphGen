@@ -2,7 +2,7 @@ from typing import Any, Optional
 
 from graphgen.bases import BaseRephraser
 from graphgen.templates import STYLE_CONTROLLED_REPHRASING_PROMPTS
-from graphgen.utils import compute_content_hash, detect_main_language, logger
+from graphgen.utils import detect_main_language, logger
 
 
 class StyleControlledRephraser(BaseRephraser):
@@ -28,6 +28,5 @@ class StyleControlledRephraser(BaseRephraser):
         if not result:
             return None
         return {
-            "_rephrased_id": compute_content_hash(result),
             "content": result,
         }

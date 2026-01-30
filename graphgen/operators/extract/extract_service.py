@@ -2,7 +2,7 @@ import json
 from typing import Tuple
 
 from graphgen.bases import BaseLLMWrapper, BaseOperator, Chunk
-from graphgen.common import init_llm
+from graphgen.common.init_llm import init_llm
 from graphgen.models.extractor import SchemaGuidedExtractor
 from graphgen.utils import logger, run_concurrent
 
