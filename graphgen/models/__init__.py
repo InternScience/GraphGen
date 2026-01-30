@@ -40,6 +40,7 @@ if TYPE_CHECKING:
         RDFReader,
         TXTReader,
     )
+    from .rephraser import StyleControlledRephraser
     from .searcher.db.ncbi_searcher import NCBISearch
     from .searcher.db.rnacentral_searcher import RNACentralSearch
     from .searcher.db.uniprot_searcher import UniProtSearch
@@ -103,6 +104,8 @@ _import_map = {
     "RecursiveCharacterSplitter": ".splitter",
     # Tokenizer
     "Tokenizer": ".tokenizer",
+    # Rephraser
+    "StyleControlledRephraser": ".rephraser",
 }
 
 

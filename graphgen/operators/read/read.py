@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, List, Optional, Union
 
-from graphgen.common import init_storage
+from graphgen.common.init_storage import init_storage
 from graphgen.models import (
     CSVReader,
     JSONReader,

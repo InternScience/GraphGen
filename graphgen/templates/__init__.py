@@ -14,5 +14,6 @@ from .generation import (
     VQA_GENERATION_PROMPT,
 )
 from .kg import KG_EXTRACTION_PROMPT, KG_SUMMARIZATION_PROMPT, MMKG_EXTRACTION_PROMPT
+from .rephrasing import STYLE_CONTROLLED_REPHRASING_PROMPTS
 from .search_judgement import SEARCH_JUDGEMENT_PROMPT
 from .statement_judgement import STATEMENT_JUDGEMENT_PROMPT

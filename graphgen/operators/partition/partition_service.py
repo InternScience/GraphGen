@@ -2,7 +2,7 @@ import os
 from typing import Iterable, Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseOperator, BaseTokenizer
-from graphgen.common import init_storage
+from graphgen.common.init_storage import init_storage
 from graphgen.utils import logger
 
 

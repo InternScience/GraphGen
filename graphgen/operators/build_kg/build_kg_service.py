@@ -2,7 +2,8 @@ from typing import Tuple
 
 from graphgen.bases import BaseGraphStorage, BaseLLMWrapper, BaseOperator
 from graphgen.bases.datatypes import Chunk
-from graphgen.common import init_llm, init_storage
+from graphgen.common.init_llm import init_llm
+from graphgen.common.init_storage import init_storage
 from graphgen.utils import logger
 
 from .build_mm_kg import build_mm_kg

@@ -32,7 +32,7 @@ class BaseOperator(ABC):
         op_name: str = None,
     ):
         # lazy import to avoid circular import
-        from graphgen.common import init_storage
+        from graphgen.common.init_storage import init_storage
         from graphgen.utils import set_logger
 
         log_dir = os.path.join(working_dir, "logs")
