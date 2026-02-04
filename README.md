@@ -61,7 +61,7 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) and [xtuner](https://github.com/InternLM/xtuner) to finetune your LLMs.
 
 ## 📌 Latest Updates
-- **2026.02.04**： We support HuggingFace Datasets as input data source for data generation now.
+- **2026.02.04**: We support HuggingFace Datasets as input data source for data generation now.
 - **2026.01.15**: **LLM benchmark synthesis** now supports single/multiple-choice & fill-in-the-blank & true-or-false—ideal for education 🌟🌟
 - **2025.12.26**: Knowledge graph evaluation metrics about accuracy (entity/relation), consistency (conflict detection), structural robustness (noise, connectivity, degree distribution)
 
