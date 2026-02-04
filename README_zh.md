@@ -62,14 +62,15 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 在数据生成后，您可以使用[LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) 和 [xtuner](https://github.com/InternLM/xtuner)对大语言模型进行微调。
 
 ## 📌 最新功能
+- **2026.02.04**：支持使用直接读入 HuggingFace 数据集进行数据生成
 - **2026.01.15**：合成垂域评测数据（单选题、多选题、填空题和判断题型）🌟🌟
 - **2025.12.26**：引入知识图谱评估指标，包括准确度评估（实体/关系抽取质量）、一致性评估（冲突检测）和结构鲁棒性评估（噪声比、连通性、度分布）
-- **2025.12.16**：支持 [rocksdb](https://github.com/facebook/rocksdb) 作为键值存储后端, [kuzudb](https://github.com/kuzudb/kuzu) 作为图数据库后端
 
 
 <details>
 <summary>历史更新记录</summary>
 
+- **2025.12.16**：支持 [rocksdb](https://github.com/facebook/rocksdb) 作为键值存储后端, [kuzudb](https://github.com/kuzudb/kuzu) 作为图数据库后端。
 - **2025.12.16**：支持 [vllm](https://github.com/vllm-project/vllm) 作为本地推理后端。
 - **2025.12.16**：使用 [ray](https://github.com/ray-project/ray) 重构了数据生成 pipeline，提升了分布式执行和资源管理的效率。
 - **2025.12.1**：新增对 [NCBI](https://www.ncbi.nlm.nih.gov/) 和 [RNAcentral](https://rnacentral.org/) 数据库的检索支持，现在可以从这些生物信息学数据库中提取DNA和RNA数据。
