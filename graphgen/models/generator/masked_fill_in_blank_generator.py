@@ -1,5 +1,5 @@
-import re
 import random
+import re
 from typing import Any, Optional
 
 from graphgen.bases import BaseGenerator
@@ -7,6 +7,7 @@ from graphgen.templates import AGGREGATED_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 random.seed(42)
+
 
 class MaskedFillInBlankGenerator(BaseGenerator):
     """
@@ -94,18 +95,22 @@ class MaskedFillInBlankGenerator(BaseGenerator):
         context = self.parse_rephrased_text(response)
         if not context:
             return []
-        
+
         nodes, edge = batch
-        assert len(nodes) == 2, "MaskedFillInBlankGenerator currently only supports triples, which should has 2 nodes."
-        assert len(edge) == 1, "MaskedFillInBlankGenerator currently only supports triples, which should has 1 edge."
+        assert (
+            len(nodes) == 2
+        ), "MaskedFillInBlankGenerator currently only supports triples, which should has 2 nodes."
+        assert (
+            len(edge) == 1
+        ), "MaskedFillInBlankGenerator currently only supports triples, which should has 1 edge."
 
         node1, node2 = nodes
         mask_node = random.choice([node1, node2])
-        mask_node_name = mask_node[1]["entity_name"].strip('\'" \n\r\t')
+        mask_node_name = mask_node[1]["entity_name"].strip("'\" \n\r\t")
 
         mask_pattern = re.compile(re.escape(mask_node_name), re.IGNORECASE)
         masked_context = mask_pattern.sub("___", context)
-        # For accuracy, extract the actual replaced text from the context as the ground truth (keeping the original case)
+        # For accuracy, extract the actual replaced text from the context as the ground truth
         gth = re.search(mask_pattern, context).group(0)
 
         logger.debug("masked_context: %s", masked_context)
@@ -114,4 +119,3 @@ class MaskedFillInBlankGenerator(BaseGenerator):
             "answer": gth,
         }
         return [qa_pairs]
-
