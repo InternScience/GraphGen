@@ -1,4 +1,5 @@
 from .csv_reader import CSVReader
+from .huggingface_reader import HuggingFaceReader
 from .json_reader import JSONReader
 from .parquet_reader import ParquetReader
 from .pdf_reader import PDFReader

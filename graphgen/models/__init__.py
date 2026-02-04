@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     )
     from .reader import (
         CSVReader,
+        HuggingFaceReader,
         JSONReader,
         ParquetReader,
         PDFReader,
@@ -92,6 +93,7 @@ _import_map = {
     "PickleReader": ".reader",
     "RDFReader": ".reader",
     "TXTReader": ".reader",
+    "HuggingFaceReader": ".reader",
     # Searcher
     "NCBISearch": ".searcher.db.ncbi_searcher",
     "RNACentralSearch": ".searcher.db.rnacentral_searcher",
