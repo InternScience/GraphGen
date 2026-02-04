@@ -22,7 +22,7 @@ nodes:
       batch_size: 10
     save_output: true
     params:
-      data_sources: [uniprot] # data source for searcher, support: wikipedia, google, uniprot
+      data_source: uniprot # data source for searcher, support: wikipedia, google, uniprot
       uniprot_params:
         use_local_blast: true # whether to use local blast for uniprot search
         local_blast_db: /path/to/uniprot_sprot # format: /path/to/${RELEASE}/uniprot_sprot
