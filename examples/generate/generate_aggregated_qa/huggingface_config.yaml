@@ -1,0 +1,83 @@
+global_params:
+  working_dir: cache
+  graph_backend: networkx # graph database backend, support: kuzu, networkx
+  kv_backend: json_kv # key-value store backend, support: rocksdb, json_kv
+
+nodes:
+  - id: read_hf_dataset # Read from Hugging Face Hub
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+        input_path:
+          - huggingface://wikitext:wikitext-103-v1:train # Format: huggingface://dataset_name:subset:split
+        # Optional parameters for HuggingFaceReader:
+        text_column: text # Column name containing text content (default: content)
+        # cache_dir: /path/to/cache # Optional: directory to cache downloaded datasets
+        # trust_remote_code: false # Optional: whether to trust remote code in datasets
+
+  - id: chunk_documents
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read_hf_dataset
+    execution_params:
+      replicas: 4
+    params:
+        chunk_size: 1024
+        chunk_overlap: 100
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    dependencies:
+      - chunk_documents
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: quiz
+    op_name: quiz
+    type: map_batch
+    dependencies:
+      - build_kg
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    params:
+      quiz_samples: 2
+
+  - id: judge
+    op_name: judge
+    type: map_batch
+    dependencies:
+      - quiz
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - judge
+    params:
+      method: ece
+      method_params:
+        max_units_per_community: 20
+        min_units_per_community: 5
+        max_tokens_per_community: 10240
+        unit_sampling: max_loss
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    save_output: true
+    params:
+      method: aggregated
+      data_format: ChatML
