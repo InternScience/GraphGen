@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, List, Optional, Union
 from graphgen.bases.base_reader import BaseReader
 
 if TYPE_CHECKING:
+    import numpy as np
     import ray
     from ray.data import Dataset
 
@@ -133,6 +134,7 @@ class HuggingFaceReader(BaseReader):
         :param hf_datasets: Imported datasets module
         :return: Ray Dataset
         """
+        import numpy as np
         import ray
 
         # Parse dataset path format: "dataset_name:subset:split"
@@ -159,36 +161,43 @@ class HuggingFaceReader(BaseReader):
             dataset_name, split=final_split, **load_kwargs
         )
 
-        # Convert to pandas and then to Ray dataset
-        # Add type column if not present
-        dataset_dict = hf_dataset.to_dict()
-
-        # Ensure data is in list of dicts format
-        if isinstance(dataset_dict, dict) and all(
-            isinstance(v, list) for v in dataset_dict.values()
-        ):
-            # Convert from column-based to row-based format
-            num_rows = len(next(iter(dataset_dict.values())))
-            data = [
-                {key: dataset_dict[key][i] for key in dataset_dict}
-                for i in range(num_rows)
-            ]
-        else:
-            data = dataset_dict
-
-        # Add type field if not present
-        for item in data:
-            if "type" not in item:
-                item["type"] = "text"
-            # Rename text_column to 'content' if different
-            if self.text_column != "content" and self.text_column in item:
-                item["content"] = item[self.text_column]
-
-        # Apply limit if specified
+        # Apply limit before converting to Ray dataset for memory efficiency
         if limit:
-            data = data[:limit]
+            if streaming:
+                hf_dataset = hf_dataset.take(limit)
+            else:
+                hf_dataset = hf_dataset.select(range(limit))
 
-        # Create Ray dataset
-        ray_ds = ray.data.from_items(data)
+        # Convert to Ray dataset using lazy evaluation
+        ray_ds = ray.data.from_huggingface(hf_dataset)
+
+        # Define batch processing function for lazy evaluation
+        def _process_batch(batch: dict[str, "np.ndarray"]) -> dict[str, "np.ndarray"]:
+            """
+            Process a batch of data to add type field and rename text column.
+
+            :param batch: A dictionary with column names as keys and numpy arrays
+            :return: Processed batch dictionary with numpy arrays
+            """
+            if not batch:
+                return {}
+
+            # Get the number of rows in the batch
+            num_rows = len(next(iter(batch.values())))
+
+            # Add type field if not present
+            if "type" not in batch:
+                batch["type"] = np.array(["text"] * num_rows)
+
+            # Rename text_column to 'content' if different
+            if self.text_column != "content" and self.text_column in batch:
+                batch["content"] = batch[self.text_column]
+                # Optional: delete old key to avoid duplication
+                # del batch[self.text_column]
+
+            return batch
+
+        # Apply post-processing using map_batches for distributed lazy evaluation
+        ray_ds = ray_ds.map_batches(_process_batch)
 
         return ray_ds
