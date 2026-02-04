@@ -22,7 +22,7 @@ nodes:
       batch_size: 10
     save_output: true
     params:
-      data_sources: [ncbi] # data source for searcher, support: wikipedia, google, uniprot, ncbi, rnacentral
+      data_source: ncbi # data source for searcher, support: wikipedia, google, uniprot, ncbi, rnacentral
       ncbi_params:
         email: test@example.com # NCBI requires an email address
         tool: GraphGen # tool name for NCBI API

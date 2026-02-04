@@ -22,7 +22,7 @@ nodes:
       batch_size: 10
     save_output: true
     params:
-      data_sources: [rnacentral] # data source for searcher, support: wikipedia, google, uniprot, ncbi, rnacentral
+      data_source: rnacentral # data source for searcher, support: wikipedia, google, uniprot, ncbi, rnacentral
       rnacentral_params:
         use_local_blast: true # whether to use local blast for RNA search
         local_blast_db: rnacentral_ensembl_gencode_YYYYMMDD/ensembl_gencode_YYYYMMDD # path to local BLAST database (without .nhr extension)
