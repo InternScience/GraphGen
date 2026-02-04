@@ -55,11 +55,11 @@ def _build_reader(suffix: str, cache_dir: str | None, **reader_kwargs):
 def _process_huggingface_datasets(hf_uris: List[str], reader_kwargs: dict) -> list:
     """Process HuggingFace datasets and return list of Ray datasets."""
     logger.info("[READ] Processing HuggingFace datasets: %s", hf_uris)
+    hf_reader = HuggingFaceReader(**reader_kwargs)
     read_tasks = []
     for hf_uri in hf_uris:
         # Parse URI format: "huggingface://dataset_name:subset:split"
         uri_part = hf_uri.replace("huggingface://", "")
-        hf_reader = HuggingFaceReader(**reader_kwargs)
         ds = hf_reader.read(uri_part)
         read_tasks.append(ds)
     logger.info("[READ] Successfully loaded %d HuggingFace dataset(s)", len(hf_uris))

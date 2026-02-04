@@ -191,9 +191,7 @@ class HuggingFaceReader(BaseReader):
 
             # Rename text_column to 'content' if different
             if self.text_column != "content" and self.text_column in batch:
-                batch["content"] = batch[self.text_column]
-                # Optional: delete old key to avoid duplication
-                # del batch[self.text_column]
+                batch["content"] = batch.pop(self.text_column)
 
             return batch
 
