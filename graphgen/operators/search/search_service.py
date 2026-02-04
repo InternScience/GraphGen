@@ -1,5 +1,5 @@
 from functools import partial
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional, Tuple
 
 from graphgen.bases import BaseOperator
 from graphgen.common.init_storage import init_storage
@@ -22,8 +22,9 @@ class SearchService(BaseOperator):
         data_sources: list = None,
         **kwargs,
     ):
-        super().__init__(working_dir=working_dir, op_name="search_service")
-        self.working_dir = working_dir
+        super().__init__(
+            working_dir=working_dir, kv_backend=kv_backend, op_name="search"
+        )
         self.data_sources = data_sources or []
         self.kwargs = kwargs
         self.search_storage = init_storage(
@@ -137,20 +138,23 @@ class SearchService(BaseOperator):
 
         return final_results
 
-    def process(self, batch: "pd.DataFrame") -> "pd.DataFrame":
-        import pandas as pd
-
-        docs = batch.to_dict(orient="records")
-
+    def process(self, batch: list) -> Tuple[list, dict]:
+        """
+        Search for items in the batch across multiple data sources.
+        :return: A tuple of (results, meta_updates)
+            results: A list of search results from all data sources.
+            meta_updates: A dict mapping source IDs to lists of trace IDs for the search results.
+        """
         self._init_searchers()
 
-        seed_data = [doc for doc in docs if doc and "content" in doc]
+        seed_data = [item for item in batch if item and "content" in item]
 
         if not seed_data:
             logger.warning("No valid seeds in batch")
-            return pd.DataFrame([])
+            return [], {}
 
         all_results = []
+        meta_updates = {}
 
         for data_source in self.data_sources:
             if data_source not in self.searchers:
@@ -158,9 +162,12 @@ class SearchService(BaseOperator):
                 continue
 
             source_results = self._process_single_source(data_source, seed_data)
-            all_results.extend(source_results)
+            for result in source_results:
+                if "_trace_id" not in result:
+                    result["_trace_id"] = self.get_trace_id(result)
+                all_results.append(result)
 
         if not all_results:
             logger.warning("No search results generated for this batch")
 
-        return pd.DataFrame(all_results)
+        return all_results, meta_updates
