@@ -58,6 +58,11 @@ class SearchService(BaseOperator):
 
             params = self.kwargs.get("rnacentral_params", {})
             self.searcher = RNACentralSearch(**params)
+        elif self.data_source == "interpro":
+            from graphgen.models import InterProSearch
+
+            params = self.kwargs.get("interpro_params", {})
+            self.searcher = InterProSearch(**params)
         else:
             logger.error(f"Unknown data source: {self.data_source}")
 

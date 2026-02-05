@@ -42,6 +42,7 @@ if TYPE_CHECKING:
         TXTReader,
     )
     from .rephraser import StyleControlledRephraser
+    from .searcher.db.interpro_searcher import InterProSearch
     from .searcher.db.ncbi_searcher import NCBISearch
     from .searcher.db.rnacentral_searcher import RNACentralSearch
     from .searcher.db.uniprot_searcher import UniProtSearch
@@ -95,6 +96,7 @@ _import_map = {
     "TXTReader": ".reader",
     "HuggingFaceReader": ".reader",
     # Searcher
+    "InterProSearch": ".searcher.db.interpro_searcher",
     "NCBISearch": ".searcher.db.ncbi_searcher",
     "RNACentralSearch": ".searcher.db.rnacentral_searcher",
     "UniProtSearch": ".searcher.db.uniprot_searcher",
