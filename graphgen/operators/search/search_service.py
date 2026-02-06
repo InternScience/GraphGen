@@ -58,6 +58,11 @@ class SearchService(BaseOperator):
 
             params = self.kwargs.get("rnacentral_params", {})
             self.searcher = RNACentralSearch(**params)
+        elif self.data_source == "reactome":
+            from graphgen.models import ReactomeSearcher
+
+            params = self.kwargs.get("reactome_params", {})
+            self.searcher = ReactomeSearcher(**params)
         else:
             logger.error(f"Unknown data source: {self.data_source}")
 

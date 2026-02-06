@@ -43,6 +43,7 @@ if TYPE_CHECKING:
     )
     from .rephraser import StyleControlledRephraser
     from .searcher.db.ncbi_searcher import NCBISearch
+    from .searcher.db.reactome_searcher import ReactomeSearcher
     from .searcher.db.rnacentral_searcher import RNACentralSearch
     from .searcher.db.uniprot_searcher import UniProtSearch
     from .searcher.kg.wiki_search import WikiSearch
@@ -97,6 +98,7 @@ _import_map = {
     # Searcher
     "NCBISearch": ".searcher.db.ncbi_searcher",
     "RNACentralSearch": ".searcher.db.rnacentral_searcher",
+    "ReactomeSearcher": ".searcher.db.reactome_searcher",
     "UniProtSearch": ".searcher.db.uniprot_searcher",
     "WikiSearch": ".searcher.kg.wiki_search",
     "BingSearch": ".searcher.web.bing_search",
