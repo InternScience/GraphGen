@@ -46,6 +46,10 @@ class LLMServiceActor:
             from graphgen.models.llm.local.vllm_wrapper import VLLMWrapper
 
             self.llm_instance = VLLMWrapper(**config)
+        elif backend == "ray_serve":
+            from graphgen.models.llm.api.ray_serve_client import RayServeClient
+
+            self.llm_instance = RayServeClient(**config)
         else:
             raise NotImplementedError(f"Backend {backend} is not implemented yet.")
 
