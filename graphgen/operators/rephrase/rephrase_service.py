@@ -55,7 +55,6 @@ class RephraseService(BaseOperator):
             if not rephrased:
                 continue
             rephrased["_trace_id"] = self.get_trace_id(rephrased)
-            results.append(rephrased)
             meta_updates.setdefault(input_trace_id, []).append(rephrased["_trace_id"])
             final_results.append(rephrased)
 
