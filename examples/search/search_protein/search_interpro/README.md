@@ -23,7 +23,6 @@ input_path:
 
 data_source: interpro
 interpro_params:
-  email: your_email@example.com
   api_timeout: 30
 ```
 
