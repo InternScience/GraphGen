@@ -55,7 +55,7 @@ class InterProSearch(BaseSearcher):
         Returns:
             Dictionary with domain information or None if not found.
         """
-        if not accession or not isinstance(accession, str):
+        if not accession or not isinstance(accession, str) or not self._is_uniprot_accession(accession):
             logger.error("Invalid accession provided")
             return None
 
