@@ -4,11 +4,7 @@ This example demonstrates how to search for protein domain information and funct
 
 ## Overview
 
-The InterPro search pipeline reads protein queries (UniProt accession numbers or protein sequences) and searches the InterPro database to find domain matches, functional annotations, GO terms, and pathways.
-
-InterPro supports two search modes:
-1. **UniProt Accession Lookup**: Fast lookup of pre-computed domain information for known UniProt entries
-2. **Protein Sequence Analysis**: Submit protein sequences for InterProScan analysis to discover domains
+The InterPro search pipeline reads protein queries (UniProt accession numbers) and searches the InterPro database to find domain matches, functional annotations, GO terms, and pathways.
 
 ## Quick Start
 
@@ -18,7 +14,6 @@ Edit `search_interpro_config.yaml` to set:
 
 - **Input file path**: Set the path to your protein sequence or UniProt ID queries
 - **InterPro parameters**:
-  - `email`: Your email address for EBI API requests (required)
   - `api_timeout`: Request timeout in seconds (default: 30)
 
 Example configuration:
@@ -53,16 +48,6 @@ The input file should be in JSONL format with protein queries:
 ```jsonl
 {"type": "protein", "content": "P01308"}
 {"type": "protein", "content": "Q96KN2"}
-{"type": "protein", "content": "MHHHHHHSSGVDLGTENLYFQSNAMDFPQQLEACVKQANQALSRFIAPLPFQNTPVVETMQYGALLGGKRLRPFLVYATGHMFGVSTNTLDAPAAAVECIHAYSLIHDDLPAMDDDDLRRGLPTCHVKFGEANAILAGDALQTLAFSILSDANMPEVSDRDRISMISELASASGIAGMCGGQALDLDAEGKHVPLDALERIHRHKTGALIRAAVRLGALSAGDKGRRALPVLDKYAESIGLAFQVQDDILDVVGDTATLGKRQGADQQLGKSTYPALLGLEQARKKARDLIDDARQALKQLAEQSLDTSALEALADYIIQRNK"}
-```
-
-Or in FASTA format:
-```
->P01308
-MHHHHHHSSGVDLGTENLYFQSNAMDFPQQLEACVKQANQALSRFIAPLPFQNTPVVETMQYGALLGGKRLRPFLVYATGHMFGVSTNTLDAPAAAVECIHAYSLIHDDLPAMDDDDLRRGLPTCHVKFGEANAILAGDALQTLAFSILSDANMPEVSDRDRISMISELASASGIAGMCGGQALDLDAEGKHVPLDALERIHRHKTGALIRAAVRLGALSAGDKGRRALPVLDKYAESIGLAFQVQDDILDVVGDTATLGKRQGADQQLGKSTYPALLGLEQARKKARDLIDDARQALKQLAEQSLDTSALEALADYIIQRNK
-
->insulin_sequence
-MHHHHHHSSGVDLGTENLYFQS...
 ```
 
 
