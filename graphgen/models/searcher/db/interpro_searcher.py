@@ -90,8 +90,8 @@ class InterProSearch(BaseSearcher):
             "email": self.email,
             "title": title or "GraphGen_Analysis",
             "sequence": sequence,
-            "stype": "protein",
-            "appl": "Pfam,PANTHER,Gene3D,SMART",  # Multiple databases
+            "stype": "p",
+            "appl": "NCBIfam,SMART,CDD,HAMAP",  # Multiple databases
             "goterms": "true",
             "pathways": "true",
             "format": "json",
@@ -201,65 +201,6 @@ class InterProSearch(BaseSearcher):
         )
         return None
 
-    @staticmethod
-    def _parse_results(results: dict) -> Optional[dict]:
-        """
-        Parse InterProScan results into a structured format.
-
-        Args:
-            results (dict): Raw InterProScan JSON results.
-
-        Returns:
-            Parsed results with structured domain information.
-        """
-        if not results:
-            return None
-
-        domains = []
-        go_terms = set()
-        pathways = set()
-
-        # Extract matches from results
-        for result in results.get("results", []):
-            matches = result.get("matches", [])
-
-            for match in matches:
-                signature = match.get("signature", {})
-                ipr = match.get("ipr", {})
-
-                domain_info = {
-                    "signature_id": signature.get("accession"),
-                    "signature_name": signature.get("name"),
-                    "database": signature.get("database"),
-                    "interpro_id": ipr.get("id"),
-                    "interpro_name": ipr.get("name"),
-                    "start": match.get("start"),
-                    "end": match.get("end"),
-                    "score": match.get("score"),
-                    "evalue": match.get("evalue"),
-                }
-
-                # Collect GO terms
-                for go in ipr.get("go", []):
-                    go_id = go.get("id")
-                    if go_id:
-                        go_terms.add(go_id)
-
-                # Collect pathways
-                for pathway in ipr.get("pathways", []):
-                    pathway_id = pathway.get("id")
-                    if pathway_id:
-                        pathways.add(pathway_id)
-
-                domains.append(domain_info)
-
-        return {
-            "domains": domains,
-            "go_terms": sorted(list(go_terms)) if go_terms else [],
-            "pathways": sorted(list(pathways)) if pathways else [],
-            "domain_count": len(domains),
-        }
-
     def search_by_sequence(self, sequence: str) -> Optional[Dict]:
         """
         Search for protein domains in a sequence using InterProScan API.
@@ -292,55 +233,13 @@ class InterProSearch(BaseSearcher):
             logger.error("Failed to retrieve InterProScan results for job %s", job_id)
             return None
 
-        # Parse results
-        parsed = self._parse_results(results)
-        if parsed:
-            parsed["molecule_type"] = "protein"
-            parsed["database"] = "InterPro"
-            parsed["job_id"] = job_id
-            parsed["url"] = "https://www.ebi.ac.uk/interpro/"
-
-        return parsed
-
-    def _extract_domain_info(self, entry: dict, accession: str) -> list:
-        """Extract domain information for a specific accession from an entry."""
-        domains = []
-        proteins = entry.get("proteins", {})
-        protein_data = proteins.get(accession)
-        if protein_data:
-            entry_acc = entry.get("accession")
-            entry_name = entry.get("name")
-            entry_type = entry.get("type")
-            locations = protein_data.get("locations", [])
-            for location in locations:
-                domain_info = {
-                    "interpro_id": entry_acc,
-                    "interpro_name": entry_name,
-                    "type": entry_type,
-                    "start": location.get("start"),
-                    "end": location.get("end"),
-                }
-                domains.append(domain_info)
-        return domains
-
-    def _collect_annotation_terms(self, entry: dict) -> tuple:
-        """Collect GO terms and pathway annotations from entry."""
-        go_terms = set()
-        pathways = set()
-
-        go_list = entry.get("go_terms", [])
-        for go_item in go_list:
-            go_id = go_item.get("identifier") if isinstance(go_item, dict) else go_item
-            if go_id:
-                go_terms.add(go_id)
-
-        pathway_list = entry.get("pathways", [])
-        for pathway in pathway_list:
-            pathway_id = pathway.get("id") if isinstance(pathway, dict) else pathway
-            if pathway_id:
-                pathways.add(pathway_id)
-
-        return go_terms, pathways
+        return {
+            "molecule_type": "protein",
+            "database": "InterPro",
+            "job_id": job_id,
+            "content": results,
+            "url": f"https://www.ebi.ac.uk/interpro/result/{job_id}/",
+        }
 
     def search_by_uniprot_id(self, accession: str) -> Optional[Dict]:
         """
@@ -362,13 +261,10 @@ class InterProSearch(BaseSearcher):
         accession = accession.strip().upper()
 
         # Query InterPro REST API for UniProt entry
-        url = f"https://www.ebi.ac.uk/interpro/api/entry/protein/uniprot/{accession}/"
+        url = f"https://www.ebi.ac.uk/interpro/api/entry/interpro/protein/uniprot/{accession}/"
 
         response = requests.get(url, timeout=self.api_timeout)
 
-        if response.status_code == 404:
-            logger.info("UniProt accession %s not found in InterPro", accession)
-            return None
         if response.status_code != 200:
             logger.warning(
                 "Failed to search InterPro for accession %s: %d",
@@ -379,27 +275,11 @@ class InterProSearch(BaseSearcher):
 
         data = response.json()
 
-        domains = []
-        go_terms = set()
-        pathways = set()
-
-        # Parse entry information
-        for entry in data.get("results", []):
-            entry_domains = self._extract_domain_info(entry, accession)
-            domains.extend(entry_domains)
-
-            entry_go_terms, entry_pathways = self._collect_annotation_terms(entry)
-            go_terms.update(entry_go_terms)
-            pathways.update(entry_pathways)
-
         result = {
             "molecule_type": "protein",
             "database": "InterPro",
             "id": accession,
-            "domains": domains,
-            "go_terms": sorted(list(go_terms)) if go_terms else [],
-            "pathways": sorted(list(pathways)) if pathways else [],
-            "domain_count": len(domains),
+            "content": data.get("results", []),
             "url": f"https://www.ebi.ac.uk/interpro/protein/uniprot/{accession}/",
         }
 
