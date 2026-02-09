@@ -24,5 +24,4 @@ nodes:
     params:
       data_source: interpro # data source for searcher, support: wikipedia, google, uniprot, ncbi, interpro
       interpro_params:
-        email: test@example.com # Email address for EBI API requests
         api_timeout: 30 # Request timeout in seconds
