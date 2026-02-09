@@ -1,0 +1,28 @@
+global_params:
+  working_dir: cache
+  kv_backend: rocksdb # key-value store backend, support: rocksdb, json_kv
+  graph_backend: kuzu # graph database backend, support: kuzu, networkx
+
+nodes:
+  - id: read_step
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+      input_path:
+        - examples/input_examples/search_interpro_demo.jsonl # input file path, support json, jsonl, txt, pdf. See examples/input_examples for examples
+
+  - id: search_step
+    op_name: search
+    type: map_batch
+    dependencies:
+      - read_step # search_step depends on read_step
+    execution_params:
+      replicas: 1
+      batch_size: 10
+    save_output: true
+    params:
+      data_source: interpro # data source for searcher, support: wikipedia, google, uniprot, ncbi, interpro
+      interpro_params:
+        email: test@example.com # Email address for EBI API requests
+        api_timeout: 30 # Request timeout in seconds
