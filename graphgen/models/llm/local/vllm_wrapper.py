@@ -102,6 +102,7 @@ class VLLMWrapper(BaseLLMWrapper):
             temperature=0,
             max_tokens=1,
             logprobs=self.top_k,
+            chat_template_kwargs={"enable_thinking": False}
         )
 
         try:
