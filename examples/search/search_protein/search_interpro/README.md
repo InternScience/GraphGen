@@ -26,7 +26,7 @@ Example configuration:
 input_path:
   - examples/input_examples/search_interpro_demo.jsonl
 
-data_sources: [interpro]
+data_source: interpro
 interpro_params:
   email: your_email@example.com
   api_timeout: 30
