@@ -51,7 +51,8 @@ class VLLMWrapper(BaseLLMWrapper):
         return self.tokenizer.apply_chat_template(
             messages,
             tokenize=False,
-            add_generation_prompt=True
+            add_generation_prompt=True,
+            enable_thinking=False
         )
 
     async def _consume_generator(self, generator):
@@ -72,7 +73,7 @@ class VLLMWrapper(BaseLLMWrapper):
             temperature=self.temperature if self.temperature >= 0 else 1.0,
             top_p=self.top_p if self.top_p >= 0 else 1.0,
             max_tokens=extra.get("max_new_tokens", 2048),
-            repetition_penalty=extra.get("repetition_penalty", 1.05),
+            repetition_penalty=extra.get("repetition_penalty", 1.05)
         )
 
         try:
@@ -101,8 +102,7 @@ class VLLMWrapper(BaseLLMWrapper):
         sp = self.SamplingParams(
             temperature=0,
             max_tokens=1,
-            logprobs=self.top_k,
-            chat_template_kwargs={"enable_thinking": False}
+            logprobs=self.top_k
         )
 
         try:
