@@ -8,7 +8,7 @@ class BaseSearcher(ABC):
     """
 
     @abstractmethod
-    def search(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
+    async def search(self, query: str, **kwargs) -> Optional[Dict[str, Any]]:
         """
         Search for data based on the given query.
 
