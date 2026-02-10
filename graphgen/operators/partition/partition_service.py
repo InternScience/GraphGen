@@ -28,7 +28,7 @@ class PartitionService(BaseOperator):
 
         self.tokenizer_instance: BaseTokenizer = Tokenizer(model_name=tokenizer_model)
         method = partition_kwargs["method"]
-        self.method_params = partition_kwargs["method_params"]
+        self.method_params = partition_kwargs.get("method_params", {})
 
         if method == "bfs":
             from graphgen.models import BFSPartitioner
@@ -57,6 +57,10 @@ class PartitionService(BaseOperator):
                 if self.method_params.get("anchor_ids")
                 else None,
             )
+        elif method == "triple":
+            from graphgen.models import TriplePartitioner
+
+            self.partitioner = TriplePartitioner()
         else:
             raise ValueError(f"Unsupported partition method: {method}")
 

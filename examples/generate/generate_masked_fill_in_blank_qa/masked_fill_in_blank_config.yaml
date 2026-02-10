@@ -1,0 +1,54 @@
+global_params:
+  working_dir: cache
+  graph_backend: networkx # graph database backend, support: kuzu, networkx
+  kv_backend: json_kv # key-value store backend, support: rocksdb, json_kv
+
+nodes:
+  - id: read_files # id is unique in the pipeline, and can be referenced by other steps
+    op_name: read
+    type: source
+    dependencies: []
+    params:
+        input_path:
+          - examples/input_examples/jsonl_demo.jsonl # input file path, support json, jsonl, txt, pdf. See examples/input_examples for examples
+
+  - id: chunk_documents
+    op_name: chunk
+    type: map_batch
+    dependencies:
+      - read_files
+    execution_params:
+      replicas: 4
+    params:
+        chunk_size: 1024 # chunk size for text splitting
+        chunk_overlap: 100 # chunk overlap for text splitting
+
+  - id: build_kg
+    op_name: build_kg
+    type: map_batch
+    dependencies:
+      - chunk_documents
+    execution_params:
+      replicas: 1
+      batch_size: 128
+
+  - id: partition
+    op_name: partition
+    type: aggregate
+    dependencies:
+      - build_kg
+    params:
+      method: triple 
+
+  - id: generate
+    op_name: generate
+    type: map_batch
+    dependencies:
+      - partition
+    execution_params:
+      replicas: 1
+      batch_size: 128
+    save_output: true # save output
+    params:
+      method: masked_fill_in_blank # atomic, aggregated, multi_hop, cot, vqa
+      data_format: QA_pairs # Alpaca, Sharegpt, ChatML, QA_pairs

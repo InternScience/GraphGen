@@ -71,6 +71,10 @@ class GenerateService(BaseOperator):
                 self.llm_client,
                 num_of_questions=generate_kwargs.get("num_of_questions", 5),
             )
+        elif self.method == "masked_fill_in_blank":
+            from graphgen.models import MaskedFillInBlankGenerator
+
+            self.generator = MaskedFillInBlankGenerator(self.llm_client)
         elif self.method == "true_false":
             from graphgen.models import TrueFalseGenerator
 
