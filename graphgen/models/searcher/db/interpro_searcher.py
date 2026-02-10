@@ -127,10 +127,10 @@ class InterProSearch(BaseSearcher):
             return None
 
         query = query.strip()
-        logger.debug("InterPro search query: %s", query[:100])
 
-        logger.debug("Searching for UniProt accession: %s", query)
+        logger.debug("InterPro search query: %s", query[:100])
         result = await self.search_by_uniprot_id(query)
+        logger.debug("InterPro search result: %s", str(result)[:100])
 
         if result:
             result["_search_query"] = query
