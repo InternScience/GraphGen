@@ -1,4 +1,3 @@
-from functools import partial
 from typing import TYPE_CHECKING, Optional, Tuple
 
 from graphgen.bases import BaseOperator
@@ -111,18 +110,23 @@ class SearchService(BaseOperator):
             item for item in batch if item and "content" in item and "_trace_id" in item
         ]
 
-        if not seed_data:
-            logger.warning("No valid seeds in batch")
+        valid_seeds = []
+        queries = []
+        for seed in seed_data:
+            query = seed.get("content", "")
+            if not query:
+                logger.warning("Empty query for seed: %s", seed)
+                continue
+            valid_seeds.append(seed)
+            queries.append(query)
+
+        if not queries:
             return [], {}
 
         # Perform concurrent searches
         results = run_concurrent(
-            partial(
-                self._perform_search,
-                searcher_obj=self.searcher,
-                data_source=self.data_source,
-            ),
-            seed_data,
+            self.searcher.search,
+            queries,
             desc=f"Searching {self.data_source} database",
             unit="keyword",
         )
@@ -130,7 +134,7 @@ class SearchService(BaseOperator):
         # Filter out None results and add _trace_id from original seeds
         final_results = []
         meta_updates = {}
-        for result, seed in zip(results, seed_data):
+        for result, seed in zip(results, valid_seeds):
             if result is None:
                 continue
             result["_trace_id"] = self.get_trace_id(result)
