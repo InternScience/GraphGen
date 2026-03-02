@@ -96,22 +96,35 @@ class MaskedFillInBlankGenerator(BaseGenerator):
         if not context:
             return []
 
-        nodes, edge = batch
-        assert (
-            len(nodes) == 2
-        ), "MaskedFillInBlankGenerator currently only supports triples, which should has 2 nodes."
-        assert (
-            len(edge) == 1
-        ), "MaskedFillInBlankGenerator currently only supports triples, which should has 1 edge."
+        nodes, edges = batch
 
-        node1, node2 = nodes
-        mask_node = random.choice([node1, node2])
+        assert len(nodes) == 3, (
+            "MaskedFillInBlankGenerator currently only supports quintuples that has 3 nodes, "
+            f"but got {len(nodes)} nodes."
+        )
+        assert len(edges) == 2, (
+            "MaskedFillInBlankGenerator currently only supports quintuples that has 2 edges, "
+            f"but got {len(edges)} edges."
+        )
+
+        node1, node2, node3 = nodes
+        mask_node = random.choice([node1, node2, node3])
         mask_node_name = mask_node[1]["entity_name"].strip("'\" \n\r\t")
-
         mask_pattern = re.compile(re.escape(mask_node_name), re.IGNORECASE)
-        masked_context = mask_pattern.sub("___", context)
-        # For accuracy, extract the actual replaced text from the context as the ground truth
-        gth = re.search(mask_pattern, context).group(0)
+
+        match = re.search(mask_pattern, context)
+        if match:
+            gth = match.group(0)
+            masked_context = mask_pattern.sub("___", context)
+        else:
+            logger.debug(
+                "Regex Match Failed!\n"
+                "Expected name of node: %s\n"
+                "Actual context: %s\n",
+                mask_node_name,
+                context,
+            )
+            return []
 
         logger.debug("masked_context: %s", masked_context)
         qa_pairs = {

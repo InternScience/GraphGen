@@ -15,13 +15,13 @@ if TYPE_CHECKING:
         AtomicGenerator,
         CoTGenerator,
         FillInBlankGenerator,
+        MaskedFillInBlankGenerator,
         MultiAnswerGenerator,
         MultiChoiceGenerator,
         MultiHopGenerator,
         QuizGenerator,
         TrueFalseGenerator,
         VQAGenerator,
-        MaskedFillInBlankGenerator,
     )
     from .kg_builder import LightRAGKGBuilder, MMKGBuilder
     from .llm import HTTPClient, OllamaClient, OpenAIClient
@@ -31,6 +31,7 @@ if TYPE_CHECKING:
         DFSPartitioner,
         ECEPartitioner,
         LeidenPartitioner,
+        QuintuplePartitioner,
         TriplePartitioner,
     )
     from .reader import (
@@ -90,6 +91,7 @@ _import_map = {
     "ECEPartitioner": ".partitioner",
     "LeidenPartitioner": ".partitioner",
     "TriplePartitioner": ".partitioner",
+    "QuintuplePartitioner": ".partitioner",
     # Reader
     "CSVReader": ".reader",
     "JSONReader": ".reader",

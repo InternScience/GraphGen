@@ -61,6 +61,10 @@ class PartitionService(BaseOperator):
             from graphgen.models import TriplePartitioner
 
             self.partitioner = TriplePartitioner()
+        elif method == "quintuple":
+            from graphgen.models import QuintuplePartitioner
+
+            self.partitioner = QuintuplePartitioner()
         else:
             raise ValueError(f"Unsupported partition method: {method}")
 

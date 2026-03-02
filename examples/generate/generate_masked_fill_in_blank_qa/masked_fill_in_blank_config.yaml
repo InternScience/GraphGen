@@ -38,7 +38,7 @@ nodes:
     dependencies:
       - build_kg
     params:
-      method: triple 
+      method: quintuple
 
   - id: generate
     op_name: generate
