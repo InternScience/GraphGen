@@ -74,4 +74,10 @@ class BaseGenerator(ABC):
                     {"role": "assistant", "content": answer},
                 ]
             }
+
+        if output_data_format == "QA_pairs":
+            return {
+                "question": question, 
+                "answer": answer,
+            }
         raise ValueError(f"Unknown output data format: {output_data_format}")
