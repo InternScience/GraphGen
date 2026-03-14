@@ -10,6 +10,13 @@ from .quiz import QuizService
 from .read import read
 from .rephrase import RephraseService
 from .search import SearchService
+from .tree_pipeline import (
+    BuildTreeKGService,
+    HierarchyGenerateService,
+    StructureAnalyzeService,
+    TreeChunkService,
+    TreeConstructService,
+)
 
 operators = {
     "read": read,
@@ -24,4 +31,9 @@ operators = {
     "evaluate": EvaluateService,
     "rephrase": RephraseService,
     "filter": FilterService,
+    "structure_analyze": StructureAnalyzeService,
+    "hierarchy_generate": HierarchyGenerateService,
+    "tree_construct": TreeConstructService,
+    "tree_chunk": TreeChunkService,
+    "build_tree_kg": BuildTreeKGService,
 }
