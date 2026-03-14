@@ -10,6 +10,14 @@ from .build_mm_kg import build_mm_kg
 from .build_text_kg import build_text_kg
 
 
+def _to_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return bool(value)
+
+
 class BuildKGService(BaseOperator):
     def __init__(
         self,
@@ -27,6 +35,12 @@ class BuildKGService(BaseOperator):
         )
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
+        self.relation_confidence_threshold: float = float(
+            self.build_kwargs.get("relation_confidence_threshold", 0.5)
+        )
+        self.require_relation_evidence: bool = _to_bool(
+            self.build_kwargs.get("require_relation_evidence", True)
+        )
 
     def process(self, batch: list) -> Tuple[list, dict]:
         """
@@ -56,6 +70,8 @@ class BuildKGService(BaseOperator):
                 kg_instance=self.graph_storage,
                 chunks=text_chunks,
                 max_loop=self.max_loop,
+                relation_confidence_threshold=self.relation_confidence_threshold,
+                require_relation_evidence=self.require_relation_evidence,
             )
             nodes += text_nodes
             edges += text_edges

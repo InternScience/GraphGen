@@ -16,9 +16,17 @@ from graphgen.utils import (
 
 
 class LightRAGKGBuilder(BaseKGBuilder):
-    def __init__(self, llm_client: BaseLLMWrapper, max_loop: int = 3):
+    def __init__(
+        self,
+        llm_client: BaseLLMWrapper,
+        max_loop: int = 3,
+        relation_confidence_threshold: float = 0.5,
+        require_relation_evidence: bool = True,
+    ):
         super().__init__(llm_client)
         self.max_loop = max_loop
+        self.relation_confidence_threshold = relation_confidence_threshold
+        self.require_relation_evidence = require_relation_evidence
         self.tokenizer = llm_client.tokenizer
 
     async def extract(
@@ -92,6 +100,10 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
             relation = await handle_single_relationship_extraction(attributes, chunk_id)
             if relation is not None:
+                if relation["confidence"] < self.relation_confidence_threshold:
+                    continue
+                if self.require_relation_evidence and not relation["evidence_span"].strip():
+                    continue
                 key = (relation["src_id"], relation["tgt_id"])
                 edges[key].append(relation)
 
@@ -160,6 +172,9 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
         source_ids = []
         descriptions = []
+        relation_types = []
+        evidence_spans = []
+        confidence_scores = []
 
         edge = kg_instance.get_edge(src_id, tgt_id)
         if edge is not None:
@@ -167,12 +182,50 @@ class LightRAGKGBuilder(BaseKGBuilder):
                 split_string_by_multi_markers(edge["source_id"], ["<SEP>"])
             )
             descriptions.append(edge["description"])
+            relation_types.extend(
+                split_string_by_multi_markers(edge.get("relation_type", ""), ["<SEP>"])
+            )
+            evidence_spans.extend(
+                split_string_by_multi_markers(edge.get("evidence_span", ""), ["<SEP>"])
+            )
+            existing_conf = edge.get("confidence")
+            if isinstance(existing_conf, (int, float)):
+                confidence_scores.append(float(existing_conf))
 
         description = "<SEP>".join(
             sorted(set([dp["description"] for dp in edge_data] + descriptions))
         )
         source_id = "<SEP>".join(
             set([dp["source_id"] for dp in edge_data] + source_ids)
+        )
+
+        relation_type = sorted(
+            Counter(
+                [dp.get("relation_type", "related_to") for dp in edge_data]
+                + relation_types
+            ).items(),
+            key=lambda x: x[1],
+            reverse=True,
+        )[0][0]
+
+        evidence_span = "<SEP>".join(
+            sorted(
+                set(
+                    [dp.get("evidence_span", "") for dp in edge_data if dp.get("evidence_span")]
+                    + [e for e in evidence_spans if e]
+                )
+            )
+        )
+
+        confidence_values = [
+            float(dp.get("confidence", 0.5))
+            for dp in edge_data
+            if isinstance(dp.get("confidence", 0.5), (int, float))
+        ] + confidence_scores
+        confidence = (
+            float(sum(confidence_values) / len(confidence_values))
+            if confidence_values
+            else 0.5
         )
 
         if not kg_instance.has_node(src_id) or not kg_instance.has_node(tgt_id):
@@ -186,7 +239,10 @@ class LightRAGKGBuilder(BaseKGBuilder):
         edge_data = {
             "src_id": src_id,
             "tgt_id": tgt_id,
+            "relation_type": relation_type,
             "description": description,
+            "evidence_span": evidence_span,
+            "confidence": confidence,
             "source_id": source_id,  # for traceability
             "length": self.tokenizer.count_tokens(description),
         }

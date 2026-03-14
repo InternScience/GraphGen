@@ -69,13 +69,31 @@ async def handle_single_relationship_extraction(
     # add this record as edge
     source = clean_str(record_attributes[1].upper())
     target = clean_str(record_attributes[2].upper())
-    edge_description = clean_str(record_attributes[3])
+    relation_type = "related_to"
+    edge_description = ""
+    evidence_span = ""
+    confidence = 0.5
+
+    if len(record_attributes) >= 7:
+        relation_type = clean_str(record_attributes[3]).lower()
+        edge_description = clean_str(record_attributes[4])
+        evidence_span = clean_str(record_attributes[5])
+        confidence_str = clean_str(record_attributes[6])
+        if isinstance(confidence_str, str) and is_float_regex(confidence_str):
+            confidence = float(confidence_str)
+    else:
+        edge_description = clean_str(record_attributes[3])
+
+    confidence = max(0.0, min(confidence, 1.0))
 
     edge_source_id = chunk_key
     return {
         "src_id": source,
         "tgt_id": target,
+        "relation_type": relation_type,
         "description": edge_description,
+        "evidence_span": evidence_span,
+        "confidence": confidence,
         "source_id": edge_source_id,
     }
 

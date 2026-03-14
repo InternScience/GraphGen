@@ -13,16 +13,25 @@ def build_text_kg(
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
     max_loop: int = 3,
+    relation_confidence_threshold: float = 0.5,
+    require_relation_evidence: bool = True,
 ) -> tuple:
     """
     :param llm_client: Synthesizer LLM model to extract entities and relationships
     :param kg_instance
     :param chunks
     :param max_loop: Maximum number of loops for entity and relationship extraction
+    :param relation_confidence_threshold: Minimum confidence score for accepting a relation
+    :param require_relation_evidence: If True, relations without evidence span are dropped
     :return:
     """
 
-    kg_builder = LightRAGKGBuilder(llm_client=llm_client, max_loop=max_loop)
+    kg_builder = LightRAGKGBuilder(
+        llm_client=llm_client,
+        max_loop=max_loop,
+        relation_confidence_threshold=relation_confidence_threshold,
+        require_relation_evidence=require_relation_evidence,
+    )
 
     results = run_concurrent(
         kg_builder.extract,

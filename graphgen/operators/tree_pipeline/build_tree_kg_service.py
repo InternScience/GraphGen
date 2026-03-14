@@ -10,6 +10,14 @@ from graphgen.operators.build_kg.build_mm_kg import build_mm_kg
 from graphgen.operators.build_kg.build_text_kg import build_text_kg
 
 
+def _to_bool(value) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, str):
+        return value.strip().lower() in {"1", "true", "yes", "y", "on"}
+    return bool(value)
+
+
 class BuildTreeKGService(BaseOperator):
     """Build KG from tree-aware chunks while keeping output format compatible."""
 
@@ -33,6 +41,12 @@ class BuildTreeKGService(BaseOperator):
         )
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
+        self.relation_confidence_threshold: float = float(
+            self.build_kwargs.get("relation_confidence_threshold", 0.5)
+        )
+        self.require_relation_evidence: bool = _to_bool(
+            self.build_kwargs.get("require_relation_evidence", True)
+        )
 
     @staticmethod
     def _inject_tree_context(chunk: Chunk) -> Chunk:
@@ -68,6 +82,8 @@ class BuildTreeKGService(BaseOperator):
                 kg_instance=self.graph_storage,
                 chunks=text_chunks,
                 max_loop=self.max_loop,
+                relation_confidence_threshold=self.relation_confidence_threshold,
+                require_relation_evidence=self.require_relation_evidence,
             )
             nodes += text_nodes
             edges += text_edges
