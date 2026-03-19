@@ -11,6 +11,7 @@ from .read import read
 from .rephrase import RephraseService
 from .search import SearchService
 from .tree_pipeline import (
+    BuildGroundedTreeKGService,
     BuildTreeKGService,
     HierarchyGenerateService,
     StructureAnalyzeService,
@@ -36,4 +37,5 @@ operators = {
     "tree_construct": TreeConstructService,
     "tree_chunk": TreeChunkService,
     "build_tree_kg": BuildTreeKGService,
+    "build_grounded_tree_kg": BuildGroundedTreeKGService,
 }

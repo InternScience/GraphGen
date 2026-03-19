@@ -14,7 +14,9 @@ def build_text_kg(
     chunks: List[Chunk],
     max_loop: int = 3,
     relation_confidence_threshold: float = 0.5,
+    require_entity_evidence: bool = False,
     require_relation_evidence: bool = True,
+    validate_evidence_in_source: bool = False,
 ) -> tuple:
     """
     :param llm_client: Synthesizer LLM model to extract entities and relationships
@@ -22,7 +24,9 @@ def build_text_kg(
     :param chunks
     :param max_loop: Maximum number of loops for entity and relationship extraction
     :param relation_confidence_threshold: Minimum confidence score for accepting a relation
+    :param require_entity_evidence: If True, entities without evidence span are dropped
     :param require_relation_evidence: If True, relations without evidence span are dropped
+    :param validate_evidence_in_source: If True, evidence spans must be found in the source chunk
     :return:
     """
 
@@ -30,7 +34,9 @@ def build_text_kg(
         llm_client=llm_client,
         max_loop=max_loop,
         relation_confidence_threshold=relation_confidence_threshold,
+        require_entity_evidence=require_entity_evidence,
         require_relation_evidence=require_relation_evidence,
+        validate_evidence_in_source=validate_evidence_in_source,
     )
 
     results = run_concurrent(

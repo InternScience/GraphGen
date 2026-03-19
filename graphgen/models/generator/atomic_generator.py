@@ -5,18 +5,18 @@ from graphgen.bases import BaseGenerator
 from graphgen.templates import ATOMIC_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
+from .context_utils import build_grounded_context
+
 
 class AtomicGenerator(BaseGenerator):
     @staticmethod
     def build_prompt(
         batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
-        nodes, edges = batch
-        context = ""
-        for node in nodes:
-            context += f"- {node[0]}: {node[1]['description']}\n"
-        for edge in edges:
-            context += f"- {edge[0]} - {edge[1]}: {edge[2]['description']}\n"
+        entities_str, relationships_str = build_grounded_context(batch)
+        context = entities_str
+        if relationships_str:
+            context = f"{context}\n{relationships_str}".strip()
         language = detect_main_language(context)
 
         prompt = ATOMIC_GENERATION_PROMPT[language].format(context=context)

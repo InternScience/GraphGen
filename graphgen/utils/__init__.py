@@ -2,9 +2,11 @@ from .calculate_confidence import yes_no_loss_entropy
 from .detect_lang import detect_if_chinese, detect_main_language
 from .device import pick_device
 from .format import (
+    evidence_supported_by_text,
     handle_single_entity_extraction,
     handle_single_relationship_extraction,
     load_json,
+    normalize_evidence_text,
     pack_history_conversations,
     split_string_by_multi_markers,
     write_json,

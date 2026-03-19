@@ -12,6 +12,10 @@ def build_mm_kg(
     llm_client: BaseLLMWrapper,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
+    relation_confidence_threshold: float = 0.5,
+    require_entity_evidence: bool = False,
+    require_relation_evidence: bool = True,
+    validate_evidence_in_source: bool = False,
 ) -> tuple:
     """
     Build multi-modal KG and merge into kg_instance
@@ -20,7 +24,13 @@ def build_mm_kg(
     :param chunks
     :return:
     """
-    mm_builder = MMKGBuilder(llm_client=llm_client)
+    mm_builder = MMKGBuilder(
+        llm_client=llm_client,
+        relation_confidence_threshold=relation_confidence_threshold,
+        require_entity_evidence=require_entity_evidence,
+        require_relation_evidence=require_relation_evidence,
+        validate_evidence_in_source=validate_evidence_in_source,
+    )
 
     results = run_concurrent(
         mm_builder.extract,

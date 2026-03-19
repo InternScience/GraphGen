@@ -7,6 +7,7 @@ from graphgen.bases import BaseGraphStorage, BaseKGBuilder, BaseLLMWrapper, Chun
 from graphgen.templates import KG_EXTRACTION_PROMPT, KG_SUMMARIZATION_PROMPT
 from graphgen.utils import (
     detect_main_language,
+    evidence_supported_by_text,
     handle_single_entity_extraction,
     handle_single_relationship_extraction,
     logger,
@@ -21,12 +22,16 @@ class LightRAGKGBuilder(BaseKGBuilder):
         llm_client: BaseLLMWrapper,
         max_loop: int = 3,
         relation_confidence_threshold: float = 0.5,
+        require_entity_evidence: bool = False,
         require_relation_evidence: bool = True,
+        validate_evidence_in_source: bool = False,
     ):
         super().__init__(llm_client)
         self.max_loop = max_loop
         self.relation_confidence_threshold = relation_confidence_threshold
+        self.require_entity_evidence = require_entity_evidence
         self.require_relation_evidence = require_relation_evidence
+        self.validate_evidence_in_source = validate_evidence_in_source
         self.tokenizer = llm_client.tokenizer
 
     async def extract(
@@ -95,6 +100,11 @@ class LightRAGKGBuilder(BaseKGBuilder):
 
             entity = await handle_single_entity_extraction(attributes, chunk_id)
             if entity is not None:
+                if self.require_entity_evidence and not entity["evidence_span"].strip():
+                    continue
+                if self.validate_evidence_in_source and entity["evidence_span"].strip():
+                    if not evidence_supported_by_text(entity["evidence_span"], content):
+                        continue
                 nodes[entity["entity_name"]].append(entity)
                 continue
 
@@ -104,6 +114,9 @@ class LightRAGKGBuilder(BaseKGBuilder):
                     continue
                 if self.require_relation_evidence and not relation["evidence_span"].strip():
                     continue
+                if self.validate_evidence_in_source and relation["evidence_span"].strip():
+                    if not evidence_supported_by_text(relation["evidence_span"], content):
+                        continue
                 key = (relation["src_id"], relation["tgt_id"])
                 edges[key].append(relation)
 
@@ -118,6 +131,7 @@ class LightRAGKGBuilder(BaseKGBuilder):
         entity_types = []
         source_ids = []
         descriptions = []
+        evidence_spans = []
 
         node = kg_instance.get_node(entity_name)
         if node is not None:
@@ -126,6 +140,9 @@ class LightRAGKGBuilder(BaseKGBuilder):
                 split_string_by_multi_markers(node["source_id"], ["<SEP>"])
             )
             descriptions.append(node["description"])
+            evidence_spans.extend(
+                split_string_by_multi_markers(node.get("evidence_span", ""), ["<SEP>"])
+            )
 
         # take the most frequent entity_type
         entity_type = sorted(
@@ -142,11 +159,20 @@ class LightRAGKGBuilder(BaseKGBuilder):
         source_id = "<SEP>".join(
             set([dp["source_id"] for dp in node_data] + source_ids)
         )
+        evidence_span = "<SEP>".join(
+            sorted(
+                set(
+                    [dp.get("evidence_span", "") for dp in node_data if dp.get("evidence_span")]
+                    + [e for e in evidence_spans if e]
+                )
+            )
+        )
 
         node_data_dict = {
             "entity_type": entity_type,
             "entity_name": entity_name,
             "description": description,
+            "evidence_span": evidence_span,
             "source_id": source_id,
             "length": self.tokenizer.count_tokens(description),
         }

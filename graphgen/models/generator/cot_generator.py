@@ -5,6 +5,8 @@ from graphgen.bases import BaseGenerator
 from graphgen.templates import COT_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
+from .context_utils import build_grounded_context
+
 
 class CoTGenerator(BaseGenerator):
     @staticmethod
@@ -16,19 +18,7 @@ class CoTGenerator(BaseGenerator):
         :param batch:
         :return:
         """
-        nodes, edges = batch
-        entities_str = "\n".join(
-            [
-                f"{index + 1}. {node[0]}: {node[1]['description']}"
-                for index, node in enumerate(nodes)
-            ]
-        )
-        relationships_str = "\n".join(
-            [
-                f"{index + 1}. {edge[0]} -- {edge[1]}: {edge[2]['description']}"
-                for index, edge in enumerate(edges)
-            ]
-        )
+        entities_str, relationships_str = build_grounded_context(batch)
         language = detect_main_language(entities_str + relationships_str)
         prompt = COT_GENERATION_PROMPT[language]["COT_TEMPLATE_DESIGN"].format(
             entities=entities_str, relationships=relationships_str
@@ -44,19 +34,7 @@ class CoTGenerator(BaseGenerator):
         """
         Build prompts for COT Generation.
         """
-        nodes, edges = batch
-        entities_str = "\n".join(
-            [
-                f"{index + 1}. {node[0]}: {node[1]['description']}"
-                for index, node in enumerate(nodes)
-            ]
-        )
-        relationships_str = "\n".join(
-            [
-                f"{index + 1}. {edge[0]} -- {edge[1]}: {edge[2]['description']}"
-                for index, edge in enumerate(edges)
-            ]
-        )
+        entities_str, relationships_str = build_grounded_context(batch)
         language = detect_main_language(entities_str + relationships_str)
         prompt = COT_GENERATION_PROMPT[language]["COT_GENERATION"].format(
             entities=entities_str,

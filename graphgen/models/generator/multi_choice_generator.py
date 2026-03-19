@@ -5,6 +5,8 @@ from graphgen.bases import BaseGenerator
 from graphgen.templates import MCQ_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
+from .context_utils import build_grounded_context
+
 
 class MultiChoiceGenerator(BaseGenerator):
     def __init__(self, llm_client, num_of_questions) -> None:
@@ -95,20 +97,7 @@ class MultiChoiceGenerator(BaseGenerator):
     def build_prompt(
         self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
-        nodes, edges = batch
-        entities_str = "\n".join(
-            [
-                f"{index + 1}. {node[0]}: {node[1]['description']}"
-                for index, node in enumerate(nodes)
-            ]
-        )
-
-        relationships_str = "\n".join(
-            [
-                f"{index + 1}. {edge[0]} -- {edge[1]}: {edge[2]['description']}"
-                for index, edge in enumerate(edges)
-            ]
-        )
+        entities_str, relationships_str = build_grounded_context(batch)
         context = entities_str + "\n" + relationships_str
         language = detect_main_language(entities_str + relationships_str)
         prompt = MCQ_GENERATION_PROMPT[language].format(
