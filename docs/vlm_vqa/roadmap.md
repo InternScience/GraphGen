@@ -263,18 +263,18 @@ P1 做好以后：
 
 本总纲与以下四份专项计划配套使用：
 
-- `docs/plan_kg_grounding.md`
-- `docs/plan_multimodal_alignment.md`
-- `docs/plan_question_depth.md`
-- `docs/plan_eval_benchmark.md`
+- `docs/vlm_vqa/plans/kg_grounding.md`
+- `docs/vlm_vqa/plans/multimodal_alignment.md`
+- `docs/vlm_vqa/plans/question_depth.md`
+- `docs/vlm_vqa/plans/eval_benchmark.md`
 
 阅读顺序建议为：
 
 1. 本文，明确整体路线和阶段顺序
-2. `plan_kg_grounding`
-3. `plan_multimodal_alignment`
-4. `plan_question_depth`
-5. `plan_eval_benchmark`
+2. `plans/kg_grounding.md`
+3. `plans/multimodal_alignment.md`
+4. `plans/question_depth.md`
+5. `plans/eval_benchmark.md`
 
 ## 8. 结论
 
