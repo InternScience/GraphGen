@@ -22,6 +22,7 @@ def main() -> None:
         kv_backend="json_kv",
         chunk_size=128,
         chunk_overlap=16,
+        split_text_nodes=False,
     )
 
     input_docs = [{"_trace_id": "fixture-1", "type": "text", "content": content}]

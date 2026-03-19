@@ -14,10 +14,20 @@ class TreeChunkService(BaseOperator):
         kv_backend: str = "rocksdb",
         chunk_size: int = 1024,
         chunk_overlap: int = 100,
+        split_text_nodes: bool = True,
     ):
         super().__init__(working_dir=working_dir, kv_backend=kv_backend, op_name="tree_chunk")
         self.chunk_size = int(chunk_size)
         self.chunk_overlap = int(chunk_overlap)
+        if isinstance(split_text_nodes, str):
+            split_text_nodes = split_text_nodes.strip().lower() in {
+                "1",
+                "true",
+                "yes",
+                "y",
+                "on",
+            }
+        self.split_text_nodes = bool(split_text_nodes)
 
     def process(self, batch: list) -> Tuple[list, dict]:
         results = []
@@ -33,7 +43,7 @@ class TreeChunkService(BaseOperator):
                     continue
                 node_metadata = dict(node.get("metadata", {}))
                 language = detect_main_language(content) if content else "en"
-                if node_type == "text":
+                if node_type == "text" and self.split_text_nodes:
                     chunks = split_chunks(
                         content,
                         language=language,
