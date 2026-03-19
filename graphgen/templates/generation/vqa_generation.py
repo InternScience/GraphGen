@@ -10,6 +10,7 @@ Create multiple sets of VQA question-answer pairs that satisfy the following:
 4. Avoid repetitive questions, ensuring that each question is unique and meaningful.
 5. Use clear and concise language, avoiding complex or ambiguous wording.
 6. Prioritize high training value for VLM: include entity recognition, relation reasoning, numerical reading, and cross-modal grounding.
+7. Treat every `Evidence:` line as hard grounding. Do not ask or answer anything unsupported by those evidence spans.
 
 ---DRAM-Centric Guidance---
 If the sample is related to memory systems (e.g., DRAM, SRAM, HBM, LPDDR, GDDR, DIMM, timing parameters, channels, banks, ranks), prioritize these question styles:
@@ -18,6 +19,7 @@ If the sample is related to memory systems (e.g., DRAM, SRAM, HBM, LPDDR, GDDR, 
 - Performance and capacity: bandwidth, latency, data rate, capacity, power
 - Comparison and trade-off: differences between generations/standards/configurations
 - Cross-modal evidence grounding: answers must be directly supported by image/text entities and relationships
+- Evidence-aware generation: prefer questions whose answers can be justified by one or more explicit `Evidence:` spans
 
 ---Instructions---
 1. Carefully analyze the provided entities and relationships to identify:
@@ -38,6 +40,7 @@ If the sample is related to memory systems (e.g., DRAM, SRAM, HBM, LPDDR, GDDR, 
 4. Review and refine the question-answer pairs to ensure:
     - Overall logical consistency
     - Clear cause-and-effect relationships
+    - Every answer can be justified with the provided evidence snippets
 5. Generate 6 to 10 QA pairs, and keep balanced difficulty:
     - 30% factual extraction (easy)
     - 50% relational/numerical reasoning (medium)
@@ -76,6 +79,7 @@ TEMPLATE_ZH: str = """---角色---
 4. 避免重复问题，确保每个问题都是独特且有意义的。
 5. 使用清晰简洁的语言，避免复杂或含糊的措辞。
 6. 优先保证对 VLM 训练有效：覆盖实体识别、关系推理、数值读取和跨模态对齐。
+7. 将每条 `Evidence:` 视为硬约束；凡是没有证据支撑的信息都不要提问或作答。
 
 ---DRAM 场景增强---
 当样本与存储器系统相关（如 DRAM、SRAM、HBM、LPDDR、GDDR、DIMM、时序参数、channel、bank、rank）时，优先生成：
@@ -84,6 +88,7 @@ TEMPLATE_ZH: str = """---角色---
 - 性能/容量类问题：带宽、延迟、数据速率、容量、功耗
 - 比较/权衡类问题：不同代际、标准或配置差异
 - 跨模态证据问题：答案必须能在图像/文本实体与关系中直接定位依据
+- 证据感知生成：优先生成能够被一条或多条 `Evidence:` 直接支撑的问题
 
 ---说明---
 1. 仔细分析提供的实体和关系，以识别：
@@ -104,6 +109,7 @@ TEMPLATE_ZH: str = """---角色---
 4. 检查和完善问答对以确保：
     - 整体逻辑一致性
     - 清晰的因果关系
+    - 每个答案都能被提供的证据片段直接支撑
 5. 输出 6 到 10 组问答，并保持难度结构：
     - 30% 事实抽取（简单）
     - 50% 关系/数值推理（中等）

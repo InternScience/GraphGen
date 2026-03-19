@@ -44,8 +44,14 @@ class BuildTreeKGService(BaseOperator):
         self.relation_confidence_threshold: float = float(
             self.build_kwargs.get("relation_confidence_threshold", 0.5)
         )
+        self.require_entity_evidence: bool = _to_bool(
+            self.build_kwargs.get("require_entity_evidence", False)
+        )
         self.require_relation_evidence: bool = _to_bool(
             self.build_kwargs.get("require_relation_evidence", True)
+        )
+        self.validate_evidence_in_source: bool = _to_bool(
+            self.build_kwargs.get("validate_evidence_in_source", False)
         )
 
     @staticmethod
@@ -86,7 +92,9 @@ class BuildTreeKGService(BaseOperator):
                 chunks=text_chunks,
                 max_loop=self.max_loop,
                 relation_confidence_threshold=self.relation_confidence_threshold,
+                require_entity_evidence=self.require_entity_evidence,
                 require_relation_evidence=self.require_relation_evidence,
+                validate_evidence_in_source=self.validate_evidence_in_source,
             )
             nodes += text_nodes
             edges += text_edges
@@ -99,6 +107,10 @@ class BuildTreeKGService(BaseOperator):
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,
                 chunks=mm_chunks,
+                relation_confidence_threshold=self.relation_confidence_threshold,
+                require_entity_evidence=self.require_entity_evidence,
+                require_relation_evidence=self.require_relation_evidence,
+                validate_evidence_in_source=self.validate_evidence_in_source,
             )
             nodes += mm_nodes
             edges += mm_edges

@@ -35,6 +35,20 @@ def clean_str(input: Any) -> str:
     return result
 
 
+def normalize_evidence_text(text: str) -> str:
+    if not isinstance(text, str):
+        return ""
+    return re.sub(r"\s+", " ", clean_str(text)).strip()
+
+
+def evidence_supported_by_text(evidence_span: str, source_text: str) -> bool:
+    normalized_evidence = normalize_evidence_text(evidence_span)
+    normalized_source = normalize_evidence_text(source_text)
+    if not normalized_evidence:
+        return False
+    return normalized_evidence in normalized_source
+
+
 async def handle_single_entity_extraction(
     record_attributes: list[str],
     chunk_key: str,
@@ -47,11 +61,15 @@ async def handle_single_entity_extraction(
         return None
     entity_type = clean_str(record_attributes[2].upper())
     entity_description = clean_str(record_attributes[3])
+    evidence_span = ""
+    if len(record_attributes) >= 5:
+        evidence_span = clean_str(record_attributes[4])
     entity_source_id = chunk_key
     return {
         "entity_name": entity_name,
         "entity_type": entity_type,
         "description": entity_description,
+        "evidence_span": evidence_span,
         "source_id": entity_source_id,
     }
 

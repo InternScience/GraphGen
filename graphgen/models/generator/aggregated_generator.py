@@ -5,6 +5,8 @@ from graphgen.bases import BaseGenerator
 from graphgen.templates import AGGREGATED_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
+from .context_utils import build_grounded_context
+
 
 class AggregatedGenerator(BaseGenerator):
     """
@@ -23,19 +25,7 @@ class AggregatedGenerator(BaseGenerator):
         :param batch
         :return:
         """
-        nodes, edges = batch
-        entities_str = "\n".join(
-            [
-                f"{index + 1}. {node[0]}: {node[1]['description']}"
-                for index, node in enumerate(nodes)
-            ]
-        )
-        relations_str = "\n".join(
-            [
-                f"{index + 1}. {edge[0]} -- {edge[1]}: {edge[2]['description']}"
-                for index, edge in enumerate(edges)
-            ]
-        )
+        entities_str, relations_str = build_grounded_context(batch)
         language = detect_main_language(entities_str + relations_str)
 
         # TODO: configure add_context

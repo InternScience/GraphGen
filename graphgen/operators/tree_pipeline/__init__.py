@@ -1,3 +1,4 @@
+from .build_grounded_tree_kg_service import BuildGroundedTreeKGService
 from .build_tree_kg_service import BuildTreeKGService
 from .hierarchy_generate_service import HierarchyGenerateService
 from .structure_analyze_service import StructureAnalyzeService
@@ -10,4 +11,5 @@ __all__ = [
     "TreeConstructService",
     "TreeChunkService",
     "BuildTreeKGService",
+    "BuildGroundedTreeKGService",
 ]

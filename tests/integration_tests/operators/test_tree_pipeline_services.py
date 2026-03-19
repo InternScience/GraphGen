@@ -1,8 +1,10 @@
 from pathlib import Path
+from unittest.mock import patch
 
 from graphgen.models.generator.vqa_generator import VQAGenerator
 from graphgen.models.partitioner.anchor_bfs_partitioner import AnchorBFSPartitioner
 from graphgen.operators.tree_pipeline import (
+    BuildGroundedTreeKGService,
     HierarchyGenerateService,
     StructureAnalyzeService,
     TreeChunkService,
@@ -161,3 +163,27 @@ def test_anchor_bfs_accepts_multiple_anchor_types(tmp_path: Path):
     anchors = partitioner._pick_anchor_ids(storage.get_all_nodes())
 
     assert anchors == {"img-1", "table-1"}
+
+
+def test_build_grounded_tree_kg_service_enables_evidence_checks(tmp_path: Path):
+    class _DummyTokenizer:
+        @staticmethod
+        def count_tokens(text: str) -> int:
+            return len(text.split())
+
+    class _DummyLLM:
+        tokenizer = _DummyTokenizer()
+
+    with patch(
+        "graphgen.operators.tree_pipeline.build_tree_kg_service.init_llm",
+        return_value=_DummyLLM(),
+    ):
+        service = BuildGroundedTreeKGService(
+            working_dir=str(tmp_path / "cache"),
+            kv_backend="json_kv",
+            graph_backend="networkx",
+        )
+
+    assert service.require_entity_evidence is True
+    assert service.require_relation_evidence is True
+    assert service.validate_evidence_in_source is True
