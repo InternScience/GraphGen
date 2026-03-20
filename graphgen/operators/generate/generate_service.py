@@ -1,3 +1,5 @@
+import copy
+import json
 from typing import Tuple
 
 from graphgen.bases import BaseKVStorage, BaseLLMWrapper, BaseOperator
@@ -101,16 +103,86 @@ class GenerateService(BaseOperator):
 
         meta_updates = {}
         final_results = []
-        for input_trace_id, qa_pairs in zip(
-            [item["_trace_id"] for item in batch], results
-        ):
+        for item, qa_pairs in zip(batch, results):
             if not qa_pairs:
                 continue
+            input_trace_id = item["_trace_id"]
+            sub_graph = {
+                "nodes": copy.deepcopy(item.get("nodes", [])),
+                "edges": copy.deepcopy(item.get("edges", [])),
+            }
+            sub_graph_summary = self._build_sub_graph_summary(
+                item.get("nodes", []), item.get("edges", [])
+            )
             for qa_pair in qa_pairs:
                 res = self.generator.format_generation_results(
                     qa_pair, output_data_format=self.data_format
+                )
+                res["sub_graph"] = json.dumps(sub_graph, ensure_ascii=False)
+                res["sub_graph_summary"] = json.dumps(
+                    sub_graph_summary, ensure_ascii=False
                 )
                 res["_trace_id"] = self.get_trace_id(res)
                 final_results.append(res)
                 meta_updates.setdefault(input_trace_id, []).append(res["_trace_id"])
         return final_results, meta_updates
+
+    def split(self, batch):
+        to_process, recovered = super().split(batch)
+        if not recovered.empty and "sub_graph" in recovered.columns:
+            recovered = recovered.copy()
+            recovered["sub_graph"] = recovered["sub_graph"].apply(
+                lambda value: json.dumps(value, ensure_ascii=False)
+                if isinstance(value, (dict, list))
+                else value
+            )
+        if not recovered.empty and "sub_graph_summary" in recovered.columns:
+            recovered = recovered.copy()
+            recovered["sub_graph_summary"] = recovered["sub_graph_summary"].apply(
+                lambda value: json.dumps(value, ensure_ascii=False)
+                if isinstance(value, (dict, list))
+                else value
+            )
+        if not recovered.empty and "sub_graph" in recovered.columns:
+            recovered = recovered.copy()
+            recovered["sub_graph_summary"] = recovered.apply(
+                lambda row: row.get("sub_graph_summary")
+                if row.get("sub_graph_summary")
+                else self._build_summary_from_serialized_sub_graph(row.get("sub_graph")),
+                axis=1,
+            )
+        return to_process, recovered
+
+    @staticmethod
+    def _build_sub_graph_summary(nodes: list, edges: list) -> dict:
+        def _node_label(node) -> str:
+            if not isinstance(node, (list, tuple)) or not node:
+                return str(node)
+            return str(node[0])
+
+        def _edge_label(edge) -> str:
+            if not isinstance(edge, (list, tuple)) or len(edge) < 2:
+                return str(edge)
+            return f"{edge[0]} -> {edge[1]}"
+
+        return {
+            "node_count": len(nodes),
+            "edge_count": len(edges),
+            "node_ids": [_node_label(node) for node in nodes[:10]],
+            "edge_pairs": [_edge_label(edge) for edge in edges[:10]],
+        }
+
+    @classmethod
+    def _build_summary_from_serialized_sub_graph(cls, sub_graph) -> str | None:
+        if not sub_graph:
+            return None
+        try:
+            parsed = json.loads(sub_graph) if isinstance(sub_graph, str) else sub_graph
+        except (TypeError, json.JSONDecodeError):
+            return None
+        if not isinstance(parsed, dict):
+            return None
+        summary = cls._build_sub_graph_summary(
+            parsed.get("nodes", []), parsed.get("edges", [])
+        )
+        return json.dumps(summary, ensure_ascii=False)

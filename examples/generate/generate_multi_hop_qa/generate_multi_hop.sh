@@ -1,2 +1,2 @@
-python3 -m graphgen.run \
+conda run -n graphgen python -m graphgen.run \
 --config_file examples/generate/generate_multi_hop_qa/multi_hop_config.yaml

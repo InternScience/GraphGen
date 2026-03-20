@@ -195,6 +195,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
 
 2. Run in CLI
    ```bash
+   TOKENIZER_MODEL=cl100k_base \
    SYNTHESIZER_MODEL=your_synthesizer_model_name \
    SYNTHESIZER_BASE_URL=your_base_url_for_synthesizer_model \
    SYNTHESIZER_API_KEY=your_api_key_for_synthesizer_model \
@@ -214,7 +215,7 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
    - Set the following environment variables:
      ```bash
       # Tokenizer
-      TOKENIZER_MODEL=
+      TOKENIZER_MODEL=cl100k_base
       
       # LLM
       # Support different backends: http_api, openai_api, ollama_api, ollama, huggingface, tgi, sglang, tensorrt
@@ -272,6 +273,17 @@ For any questions, please check [FAQ](https://github.com/open-sciencelab/GraphGe
       # TRAINEE_BACKEND=vllm
       # TRAINEE_MODEL=Qwen/Qwen2.5-0.5B-Instruct
       # TRAINEE_NUM_GPUS=1
+     ```
+
+   - Generated QA/VQA records now include two optional inspection fields:
+     - `sub_graph`: JSON string of the nodes and edges used during generation
+     - `sub_graph_summary`: JSON string with a lightweight summary such as node/edge counts and short previews
+   - You can restore them in downstream scripts with:
+     ```python
+     import json
+
+     sub_graph = json.loads(item["sub_graph"])
+     sub_graph_summary = json.loads(item["sub_graph_summary"])
      ```
 2. (Optional) Customize generation parameters in `config.yaml` .
 

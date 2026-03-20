@@ -10,8 +10,7 @@ nodes:
     dependencies: []
     params:
       input_path:
-        - examples/input_examples/csv_demo.csv
-
+        - examples/input_examples/txt_demo.txt
   - id: chunk
     op_name: chunk
     type: map_batch
