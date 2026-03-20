@@ -1,10 +1,21 @@
+import re
 from typing import Dict, List, Tuple
 
 from graphgen.bases import BaseOperator
 
 
-def _uniq_key(parent: Dict, title: str) -> str:
+def _normalize_section_key(title: str) -> str:
     base = (title or "Document").strip() or "Document"
+    base = re.sub(r"^#{1,6}\s+", "", base)
+    base = re.sub(r"\s+", "-", base)
+    base = re.sub(r"[\\/]+", "-", base)
+    base = re.sub(r"[^\w.\-]+", "-", base, flags=re.UNICODE)
+    base = re.sub(r"-{2,}", "-", base).strip("-_.")
+    return base or "document"
+
+
+def _uniq_key(parent: Dict, base: str) -> str:
+    base = (base or "document").strip() or "document"
     children = parent.setdefault("children", {})
     if base not in children:
         return base
@@ -12,6 +23,12 @@ def _uniq_key(parent: Dict, title: str) -> str:
     while f"{base}_{idx}" in children:
         idx += 1
     return f"{base}_{idx}"
+
+
+def _make_node_key(parent: Dict, node_type: str, title: str) -> str:
+    if node_type == "section":
+        return _uniq_key(parent, _normalize_section_key(title))
+    return _uniq_key(parent, node_type or "text")
 
 
 class TreeConstructService(BaseOperator):
@@ -38,32 +55,37 @@ class TreeConstructService(BaseOperator):
                 "path": "root",
                 "children": {},
             }
-            stack: List[Tuple[Dict, int]] = [(root, 0)]
+            section_stack: List[Tuple[Dict, int]] = [(root, 0)]
             ordered_nodes: List[Dict] = []
 
             for idx, component in enumerate(doc.get("components", []), start=1):
                 level = max(1, int(component.get("title_level", 1)))
+                node_type = component.get("type", "text")
                 node = {
                     "node_id": f"n{idx}",
                     "title": component.get("title", "Document"),
                     "level": level,
                     "content": component.get("content", ""),
-                    "node_type": component.get("type", "text"),
+                    "node_type": node_type,
                     "metadata": dict(component.get("metadata", {})),
                     "children": {},
                 }
 
-                while stack and stack[-1][1] >= level:
-                    stack.pop()
-                parent = stack[-1][0] if stack else root
+                if node_type == "section":
+                    while section_stack and section_stack[-1][1] >= level:
+                        section_stack.pop()
+                    parent = section_stack[-1][0] if section_stack else root
+                else:
+                    parent = section_stack[-1][0] if section_stack else root
 
-                key = _uniq_key(parent, node["title"])
+                key = _make_node_key(parent, node_type, node["title"])
                 parent["children"][key] = node
                 parent_path = parent.get("path", "root")
                 node["path"] = f"{parent_path}/{key}"
                 node["parent_id"] = parent.get("node_id", "root")
                 ordered_nodes.append(node)
-                stack.append((node, level))
+                if node_type == "section":
+                    section_stack.append((node, level))
 
             result = {
                 "type": "doc_tree",

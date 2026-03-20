@@ -39,6 +39,8 @@ class TreeChunkService(BaseOperator):
             for node in doc.get("tree_nodes", []):
                 content = node.get("content", "")
                 node_type = node.get("node_type", "text")
+                if node_type == "section":
+                    continue
                 if not content and node_type == "text":
                     continue
                 node_metadata = dict(node.get("metadata", {}))

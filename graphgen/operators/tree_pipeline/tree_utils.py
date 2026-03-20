@@ -4,7 +4,7 @@ from typing import Any, Dict, List, Tuple
 
 TITLE_PATTERNS = [
     re.compile(r"^#{1,6}\s+.+"),
-    re.compile(r"^\d+(?:\.\d+)*\s+.+"),
+    re.compile(r"^(?:\d+(?:\.\d+)+(?:\s+.*)?|\d+\s+.+)$"),
     re.compile(r"^(?:第[一二三四五六七八九十百千万\d]+[章节篇节])\s*.+"),
 ]
 
@@ -14,16 +14,22 @@ def infer_title_level(title: str) -> int:
     if not stripped:
         return 1
 
-    if stripped.startswith("#"):
-        return min(6, len(stripped) - len(stripped.lstrip("#")))
+    markdown_match = re.match(r"^(#{1,6})\s+(.+)$", stripped)
+    markdown_level = len(markdown_match.group(1)) if markdown_match else 0
+    semantic_source = markdown_match.group(2).strip() if markdown_match else stripped
 
-    numeric = re.match(r"^(\d+(?:\.\d+)*)\s+", stripped)
+    numeric = re.match(r"^(\d+(?:\.\d+)*)(?:\s+.+)?$", semantic_source)
     if numeric:
-        return min(6, numeric.group(1).count(".") + 1)
+        numeric_level = min(6, numeric.group(1).count(".") + 1)
+        return max(markdown_level, numeric_level)
 
-    zh_num = re.match(r"^第([一二三四五六七八九十百千万\d]+)([章节篇节])", stripped)
+    zh_num = re.match(r"^第([一二三四五六七八九十百千万\d]+)([章节篇节])", semantic_source)
     if zh_num:
-        return 1 if zh_num.group(2) in {"章", "篇"} else 2
+        zh_level = 1 if zh_num.group(2) in {"章", "篇"} else 2
+        return max(markdown_level, zh_level)
+
+    if markdown_level:
+        return markdown_level
 
     return 1
 
@@ -59,6 +65,15 @@ def _make_text_component(title: str, lines: List[str]) -> Dict[str, Any]:
         "type": "text",
         "title": title,
         "content": compact_text("\n".join(lines)),
+        "title_level": infer_title_level(title),
+    }
+
+
+def _make_section_component(title: str) -> Dict[str, Any]:
+    return {
+        "type": "section",
+        "title": title,
+        "content": "",
         "title_level": infer_title_level(title),
     }
 
@@ -212,6 +227,7 @@ def _parse_markdown_components(content: str) -> List[Dict[str, Any]]:
         if is_title_line(line):
             flush_text_buffer()
             current_title = line
+            components.append(_make_section_component(current_title))
             idx += 1
             continue
 
@@ -279,7 +295,13 @@ def _parse_markdown_components(content: str) -> List[Dict[str, Any]]:
         idx += 1
 
     flush_text_buffer()
-    return [component for component in components if component.get("content") or component.get("metadata")]
+    return [
+        component
+        for component in components
+        if component.get("type") == "section"
+        or component.get("content")
+        or component.get("metadata")
+    ]
 
 
 def normalize_components(doc: Dict[str, Any]) -> List[Dict[str, Any]]:
