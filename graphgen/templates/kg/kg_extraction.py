@@ -78,28 +78,28 @@ Output:
 -Example 2-
 Text:
 #############
-该 HBM3 堆叠包含 8 个 DRAM die，并通过 TSV 与 base die 互连。实验结果表明，在 6.4 Gb/s pin 速率下，堆叠带宽达到 819 GB/s，但温度升高会增加刷新开销并拉高待机功耗。控制器采用 ECC 机制以提升可靠性。
+The HBM3 stack contains 8 DRAM dies and is interconnected with a base die through TSVs. Experimental results show that at a 6.4 Gb/s per-pin rate, the stack bandwidth reaches 819 GB/s, while higher temperature increases refresh overhead and standby power. The controller uses ECC to improve reliability.
 #############
-输出：
-("entity"{tuple_delimiter}"HBM3 堆叠"{tuple_delimiter}"memory_product"{tuple_delimiter}"HBM3 堆叠是该段文本的核心存储器对象，其规格涉及堆叠结构、互连方式、速率、带宽、温度影响、待机功耗与可靠性机制。"{tuple_delimiter}"该 HBM3 堆叠包含 8 个 DRAM die"){record_delimiter}
-("entity"{tuple_delimiter}"8 个 DRAM die"{tuple_delimiter}"substructure"{tuple_delimiter}"8 个 DRAM die 是 HBM3 堆叠的组成结构。"{tuple_delimiter}"包含 8 个 DRAM die"){record_delimiter}
-("entity"{tuple_delimiter}"TSV"{tuple_delimiter}"component"{tuple_delimiter}"TSV 是用于连接 HBM3 堆叠中 die 的互连结构。"{tuple_delimiter}"通过 TSV 与 base die 互连"){record_delimiter}
-("entity"{tuple_delimiter}"base die"{tuple_delimiter}"component"{tuple_delimiter}"base die 是 HBM3 堆叠中的基础芯片层，并与 TSV 互连。"{tuple_delimiter}"通过 TSV 与 base die 互连"){record_delimiter}
-("entity"{tuple_delimiter}"6.4 Gb/s pin 速率"{tuple_delimiter}"performance_metric"{tuple_delimiter}"6.4 Gb/s pin 速率是实验中的链路速度条件。"{tuple_delimiter}"在 6.4 Gb/s pin 速率下"){record_delimiter}
-("entity"{tuple_delimiter}"819 GB/s"{tuple_delimiter}"performance_metric"{tuple_delimiter}"819 GB/s 是该 HBM3 堆叠达到的带宽指标。"{tuple_delimiter}"堆叠带宽达到 819 GB/s"){record_delimiter}
-("entity"{tuple_delimiter}"温度升高"{tuple_delimiter}"operating_condition"{tuple_delimiter}"温度升高是影响刷新开销和待机功耗的运行条件。"{tuple_delimiter}"温度升高会增加刷新开销并拉高待机功耗"){record_delimiter}
-("entity"{tuple_delimiter}"刷新开销"{tuple_delimiter}"performance_metric"{tuple_delimiter}"刷新开销是随温度升高而增加的系统开销指标。"{tuple_delimiter}"增加刷新开销"){record_delimiter}
-("entity"{tuple_delimiter}"待机功耗"{tuple_delimiter}"power_metric"{tuple_delimiter}"待机功耗是随温度升高而上升的功耗指标。"{tuple_delimiter}"拉高待机功耗"){record_delimiter}
-("entity"{tuple_delimiter}"控制器"{tuple_delimiter}"component"{tuple_delimiter}"控制器是该系统中的控制模块，并采用 ECC 机制。"{tuple_delimiter}"控制器采用 ECC 机制"){record_delimiter}
-("entity"{tuple_delimiter}"ECC 机制"{tuple_delimiter}"interface_standard"{tuple_delimiter}"ECC 机制是用于提升可靠性的纠错机制。"{tuple_delimiter}"采用 ECC 机制以提升可靠性"){record_delimiter}
-("relationship"{tuple_delimiter}"HBM3 堆叠"{tuple_delimiter}"8 个 DRAM die"{tuple_delimiter}"part_of"{tuple_delimiter}"文本明确说明 8 个 DRAM die 是 HBM3 堆叠的组成部分。"{tuple_delimiter}"包含 8 个 DRAM die"{tuple_delimiter}0.98){record_delimiter}
-("relationship"{tuple_delimiter}"TSV"{tuple_delimiter}"base die"{tuple_delimiter}"connected_to"{tuple_delimiter}"文本明确指出 TSV 与 base die 互连。"{tuple_delimiter}"通过 TSV 与 base die 互连"{tuple_delimiter}0.97){record_delimiter}
-("relationship"{tuple_delimiter}"HBM3 堆叠"{tuple_delimiter}"819 GB/s"{tuple_delimiter}"has_bandwidth"{tuple_delimiter}"文本给出了 HBM3 堆叠的带宽指标 819 GB/s。"{tuple_delimiter}"堆叠带宽达到 819 GB/s"{tuple_delimiter}0.99){record_delimiter}
-("relationship"{tuple_delimiter}"6.4 Gb/s pin 速率"{tuple_delimiter}"819 GB/s"{tuple_delimiter}"measured_by"{tuple_delimiter}"文本说明 819 GB/s 带宽是在 6.4 Gb/s pin 速率条件下得到的。"{tuple_delimiter}"在 6.4 Gb/s pin 速率下，堆叠带宽达到 819 GB/s"{tuple_delimiter}0.92){record_delimiter}
-("relationship"{tuple_delimiter}"温度升高"{tuple_delimiter}"刷新开销"{tuple_delimiter}"impacts"{tuple_delimiter}"文本明确指出温度升高会增加刷新开销。"{tuple_delimiter}"温度升高会增加刷新开销"{tuple_delimiter}0.97){record_delimiter}
-("relationship"{tuple_delimiter}"温度升高"{tuple_delimiter}"待机功耗"{tuple_delimiter}"impacts"{tuple_delimiter}"文本明确指出温度升高会拉高待机功耗。"{tuple_delimiter}"温度升高会增加刷新开销并拉高待机功耗"{tuple_delimiter}0.97){record_delimiter}
-("relationship"{tuple_delimiter}"控制器"{tuple_delimiter}"ECC 机制"{tuple_delimiter}"uses_protocol"{tuple_delimiter}"文本说明控制器采用 ECC 机制以提升可靠性。"{tuple_delimiter}"控制器采用 ECC 机制以提升可靠性"{tuple_delimiter}0.95){record_delimiter}
-("content_keywords"{tuple_delimiter}"HBM3 堆叠结构, TSV 互连, 带宽指标, 温度影响, 刷新开销, 待机功耗, ECC 可靠性"){completion_delimiter}
+Output:
+("entity"{tuple_delimiter}"HBM3 stack"{tuple_delimiter}"memory_product"{tuple_delimiter}"HBM3 stack is the central memory-system entity in this text, with specifications covering stack composition, interconnect structure, signaling rate, bandwidth, thermal effects, standby power, and reliability features."{tuple_delimiter}"The HBM3 stack contains 8 DRAM dies"){record_delimiter}
+("entity"{tuple_delimiter}"8 DRAM dies"{tuple_delimiter}"substructure"{tuple_delimiter}"8 DRAM dies are structural elements that make up the HBM3 stack."{tuple_delimiter}"contains 8 DRAM dies"){record_delimiter}
+("entity"{tuple_delimiter}"TSVs"{tuple_delimiter}"component"{tuple_delimiter}"TSVs are vertical interconnect structures that connect the HBM3 DRAM dies to the base die."{tuple_delimiter}"interconnected with a base die through TSVs"){record_delimiter}
+("entity"{tuple_delimiter}"base die"{tuple_delimiter}"component"{tuple_delimiter}"The base die is a foundational chip layer in the HBM3 stack and is connected to the DRAM dies through TSVs."{tuple_delimiter}"base die through TSVs"){record_delimiter}
+("entity"{tuple_delimiter}"6.4 Gb/s per-pin rate"{tuple_delimiter}"performance_metric"{tuple_delimiter}"6.4 Gb/s per-pin rate is the signaling-rate condition under which the stack bandwidth result is reported."{tuple_delimiter}"at a 6.4 Gb/s per-pin rate"){record_delimiter}
+("entity"{tuple_delimiter}"819 GB/s"{tuple_delimiter}"performance_metric"{tuple_delimiter}"819 GB/s is the stack bandwidth achieved by the HBM3 stack under the stated operating condition."{tuple_delimiter}"stack bandwidth reaches 819 GB/s"){record_delimiter}
+("entity"{tuple_delimiter}"higher temperature"{tuple_delimiter}"operating_condition"{tuple_delimiter}"Higher temperature is an operating condition that increases refresh overhead and standby power in the described HBM3 system."{tuple_delimiter}"higher temperature increases refresh overhead and standby power"){record_delimiter}
+("entity"{tuple_delimiter}"refresh overhead"{tuple_delimiter}"performance_metric"{tuple_delimiter}"Refresh overhead is a system overhead metric that rises when temperature increases."{tuple_delimiter}"increases refresh overhead"){record_delimiter}
+("entity"{tuple_delimiter}"standby power"{tuple_delimiter}"power_metric"{tuple_delimiter}"Standby power is the power metric that increases at higher temperature in this text."{tuple_delimiter}"standby power"){record_delimiter}
+("entity"{tuple_delimiter}"controller"{tuple_delimiter}"component"{tuple_delimiter}"The controller is the system component that uses ECC to improve reliability."{tuple_delimiter}"The controller uses ECC"){record_delimiter}
+("entity"{tuple_delimiter}"ECC"{tuple_delimiter}"interface_standard"{tuple_delimiter}"ECC is the error-correction mechanism used by the controller to improve reliability."{tuple_delimiter}"uses ECC to improve reliability"){record_delimiter}
+("relationship"{tuple_delimiter}"HBM3 stack"{tuple_delimiter}"8 DRAM dies"{tuple_delimiter}"part_of"{tuple_delimiter}"The text explicitly states that the HBM3 stack contains 8 DRAM dies as part of its structure."{tuple_delimiter}"contains 8 DRAM dies"{tuple_delimiter}0.98){record_delimiter}
+("relationship"{tuple_delimiter}"TSVs"{tuple_delimiter}"base die"{tuple_delimiter}"connected_to"{tuple_delimiter}"The text explicitly states that TSVs interconnect the DRAM dies with the base die."{tuple_delimiter}"interconnected with a base die through TSVs"{tuple_delimiter}0.97){record_delimiter}
+("relationship"{tuple_delimiter}"HBM3 stack"{tuple_delimiter}"819 GB/s"{tuple_delimiter}"has_bandwidth"{tuple_delimiter}"The text gives 819 GB/s as the bandwidth metric achieved by the HBM3 stack."{tuple_delimiter}"stack bandwidth reaches 819 GB/s"{tuple_delimiter}0.99){record_delimiter}
+("relationship"{tuple_delimiter}"6.4 Gb/s per-pin rate"{tuple_delimiter}"819 GB/s"{tuple_delimiter}"measured_by"{tuple_delimiter}"The text states that the 819 GB/s bandwidth is reported at a 6.4 Gb/s per-pin rate."{tuple_delimiter}"at a 6.4 Gb/s per-pin rate, the stack bandwidth reaches 819 GB/s"{tuple_delimiter}0.92){record_delimiter}
+("relationship"{tuple_delimiter}"higher temperature"{tuple_delimiter}"refresh overhead"{tuple_delimiter}"impacts"{tuple_delimiter}"The text explicitly states that higher temperature increases refresh overhead."{tuple_delimiter}"higher temperature increases refresh overhead"{tuple_delimiter}0.97){record_delimiter}
+("relationship"{tuple_delimiter}"higher temperature"{tuple_delimiter}"standby power"{tuple_delimiter}"impacts"{tuple_delimiter}"The text explicitly states that higher temperature increases standby power."{tuple_delimiter}"higher temperature increases refresh overhead and standby power"{tuple_delimiter}0.97){record_delimiter}
+("relationship"{tuple_delimiter}"controller"{tuple_delimiter}"ECC"{tuple_delimiter}"uses_protocol"{tuple_delimiter}"The text states that the controller uses ECC to improve reliability."{tuple_delimiter}"The controller uses ECC to improve reliability"{tuple_delimiter}0.95){record_delimiter}
+("content_keywords"{tuple_delimiter}"HBM3 stack structure, TSV interconnect, stack bandwidth, per-pin rate, thermal impact, refresh overhead, standby power, ECC reliability"){completion_delimiter}
 
 ################
 -Real Data-
