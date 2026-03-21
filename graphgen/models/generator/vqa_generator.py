@@ -10,17 +10,8 @@ from .context_utils import build_grounded_context
 
 
 class VQAGenerator(BaseGenerator):
-    def __init__(
-        self,
-        llm_client,
-        min_answer_length: int = 2,
-        max_answer_length: int = 240,
-        min_question_length: int = 6,
-    ):
+    def __init__(self, llm_client):
         super().__init__(llm_client)
-        self.min_answer_length = min_answer_length
-        self.max_answer_length = max_answer_length
-        self.min_question_length = min_question_length
 
     @staticmethod
     def build_prompt(
@@ -85,11 +76,6 @@ class VQAGenerator(BaseGenerator):
         question = qa_pair.get("question", "").strip()
         answer = qa_pair.get("answer", "").strip()
         if not question or not answer:
-            return False
-
-        if len(question) < self.min_question_length:
-            return False
-        if len(answer) < self.min_answer_length or len(answer) > self.max_answer_length:
             return False
 
         if any(token in question.lower() for token in ["todo", "placeholder", "n/a"]):

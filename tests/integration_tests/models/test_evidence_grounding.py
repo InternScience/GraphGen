@@ -91,3 +91,33 @@ def test_vqa_prompt_includes_grounding_evidence():
     assert "Evidence: Figure 1 shows treated tissue." in prompt
     assert "Evidence: Latency is 12 ms." in prompt
     assert "[has_latency]" in prompt
+
+
+def test_vqa_generator_keeps_short_qa_when_other_quality_checks_pass():
+    llm = _DummyLLM(["<question>图里是什么?</question><answer>DRAM</answer>"])
+    generator = VQAGenerator(llm)
+
+    result = asyncio.run(
+        generator.generate(
+            (
+                [
+                    (
+                        "DRAM",
+                        {
+                            "description": "DRAM chip layout.",
+                            "metadata": '{"img_path":"demo.png"}',
+                        },
+                    )
+                ],
+                [],
+            )
+        )
+    )
+
+    assert result == [
+        {
+            "question": "图里是什么?",
+            "answer": "DRAM",
+            "img_path": "demo.png",
+        }
+    ]

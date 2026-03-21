@@ -21,7 +21,7 @@ before partitioning, so image/table VQA samples are grounded by tree-local evide
 ### 3) Quality controls already enabled
 - Prompt-level constraints for DRAM/VQA reasoning (structure, timing, performance, comparison, grounding).
 - Post-generation filtering in `VQAGenerator`:
-  - drop empty/too short/too long answers
+  - drop empty QA pairs
   - drop uncertain answers (e.g., unknown)
   - deduplicate near-identical QA pairs
   - enforce context keyword grounding
@@ -31,9 +31,4 @@ before partitioning, so image/table VQA samples are grounded by tree-local evide
   - `build_grounded_tree_kg` can reject unsupported entity/relation evidence
 
 ### 4) Recommended config tuning
-In `vqa_config.yaml` under `generate.params`, tune:
-- `min_question_length`
-- `min_answer_length`
-- `max_answer_length`
-
-For DRAM-heavy corpora, you can increase `min_question_length` slightly to reduce shallow questions.
+In `vqa_config.yaml` under `generate.params`, tune the general generation settings such as `data_format`.

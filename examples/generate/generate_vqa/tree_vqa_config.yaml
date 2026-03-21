@@ -74,6 +74,3 @@ nodes:
     params:
       method: vqa
       data_format: ChatML
-      min_question_length: 8
-      min_answer_length: 2
-      max_answer_length: 220
