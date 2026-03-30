@@ -92,8 +92,11 @@ class BaseOperator(ABC):
                 is_first = True
                 for res in result:
                     yield pd.DataFrame([res])
-                    self.store([res], meta_update if is_first else {})
+                    self.store(
+                        [res], meta_update if is_first else {}, flush=False
+                    )
                     is_first = False
+                self.kv_storage.index_done_callback()
             else:
                 yield pd.DataFrame(result)
                 self.store(result, meta_update)
@@ -141,7 +144,7 @@ class BaseOperator(ABC):
         recovered_chunks = [c for c in recovered_chunks if c is not None]
         return to_process, pd.DataFrame(recovered_chunks)
 
-    def store(self, results: list, meta_update: dict):
+    def store(self, results: list, meta_update: dict, flush: bool = True):
         results = convert_to_serializable(results)
         meta_update = convert_to_serializable(meta_update)
 
@@ -159,7 +162,8 @@ class BaseOperator(ABC):
             for v in v_list:
                 inverse_meta[v] = k
         self.kv_storage.update({"_meta_inverse": inverse_meta})
-        self.kv_storage.index_done_callback()
+        if flush:
+            self.kv_storage.index_done_callback()
 
     @abstractmethod
     def process(self, batch: list) -> Tuple[Union[list, Iterable[dict]], dict]:
