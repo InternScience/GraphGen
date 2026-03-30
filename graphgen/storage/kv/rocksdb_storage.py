@@ -1,3 +1,4 @@
+import logging
 import os
 from dataclasses import dataclass
 from typing import Any, Dict, List, Set
@@ -8,6 +9,8 @@ from rocksdict import Rdict
 
 from graphgen.bases.base_storage import BaseKVStorage
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class RocksDBKVStorage(BaseKVStorage):
@@ -17,8 +20,10 @@ class RocksDBKVStorage(BaseKVStorage):
     def __post_init__(self):
         self._db_path = os.path.join(self.working_dir, f"{self.namespace}.db")
         self._db = Rdict(self._db_path)
-        print(
-            f"RocksDBKVStorage initialized for namespace '{self.namespace}' at '{self._db_path}'"
+        logger.debug(
+            "RocksDBKVStorage initialized for namespace '%s' at '%s'",
+            self.namespace,
+            self._db_path,
         )
 
     @property
@@ -30,7 +35,7 @@ class RocksDBKVStorage(BaseKVStorage):
 
     def index_done_callback(self):
         self._db.flush()
-        print(f"RocksDB flushed for {self.namespace}")
+        logger.debug("RocksDB flushed for %s", self.namespace)
 
     def get_by_id(self, id: str) -> Any:
         return self._db.get(id, None)
