@@ -15,6 +15,7 @@ if TYPE_CHECKING:
         AtomicGenerator,
         CoTGenerator,
         FillInBlankGenerator,
+        MaskedFillInBlankGenerator,
         MultiAnswerGenerator,
         MultiChoiceGenerator,
         MultiHopGenerator,
@@ -30,6 +31,8 @@ if TYPE_CHECKING:
         DFSPartitioner,
         ECEPartitioner,
         LeidenPartitioner,
+        QuintuplePartitioner,
+        TriplePartitioner,
     )
     from .reader import (
         CSVReader,
@@ -73,6 +76,7 @@ _import_map = {
     "QuizGenerator": ".generator",
     "TrueFalseGenerator": ".generator",
     "VQAGenerator": ".generator",
+    "MaskedFillInBlankGenerator": ".generator",
     # KG Builder
     "LightRAGKGBuilder": ".kg_builder",
     "MMKGBuilder": ".kg_builder",
@@ -86,6 +90,8 @@ _import_map = {
     "DFSPartitioner": ".partitioner",
     "ECEPartitioner": ".partitioner",
     "LeidenPartitioner": ".partitioner",
+    "TriplePartitioner": ".partitioner",
+    "QuintuplePartitioner": ".partitioner",
     # Reader
     "CSVReader": ".reader",
     "JSONReader": ".reader",
