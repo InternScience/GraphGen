@@ -115,7 +115,6 @@ class MaskedFillInBlankGenerator(BaseGenerator):
         match = re.search(mask_pattern, context)
         if match:
             gth = match.group(0)
-            # masked_context = mask_pattern.sub("___", context)
             masked_context = mask_pattern.sub("{ }", context)
         else:
             logger.debug(
