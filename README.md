@@ -108,7 +108,7 @@ We applied reinforcement learning directly to the Qwen2.5-7B base model without 
 |  Medicine |                            MedQA                          | **87.1** |              80.7              |
 |  General  |                             BBH                           | **55.3** |              49.6              |
 
-More details can be found at `examples/generate/generate_masked_fill_in_blank_qa`
+More details can be found at [`examples/generate/generate_masked_fill_in_blank_qa`](./examples/generate/generate_masked_fill_in_blank_qa).
 
 ## ⚙️ Support List
 
