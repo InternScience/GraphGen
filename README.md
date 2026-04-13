@@ -103,7 +103,7 @@ Here is post-training result which **over 50% SFT data** comes from GraphGen and
 We applied reinforcement learning directly to the Qwen2.5-7B base model without any prior SFT. Here are the results.
 |  Domain   |                          Dataset                          |   Ours   | Qwen2.5-7B-Instruct (baseline) |
 |:---------:|:---------------------------------------------------------:|:--------:|:------------------------------:|
-|   Plant   |                           SeedBench                       | **66.8** |              51.5              |
+|   Plant   | [SeedBench](https://github.com/open-sciencelab/SeedBench) | **66.8** |              51.5              |
 |    law    |                           LawBench                        | **55.2** |              54.76             |
 |  Medicine |                            MedQA                          | **87.1** |              80.7              |
 |  General  |                             BBH                           | **55.3** |              49.6              |
