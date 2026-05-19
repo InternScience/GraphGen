@@ -51,7 +51,7 @@ Furthermore, GraphGen incorporates multi-hop neighborhood sampling to capture co
 After data generation, you can use [LLaMA-Factory](https://github.com/hiyouga/LLaMA-Factory) and [xtuner](https://github.com/InternLM/xtuner) to finetune your LLMs.
 
 ## 📌 Latest Updates
-- 🎉 **2026.04.13**: The paper based on GraphGen, *Knowledge-to-Verification: Exploring RLVR for LLMs in Knowledge-Intensive Domains*, has been accepted to the **ACL 2026** Main Conference! Congratulations! [Code](https://github.com/SeedScientist/K2V)
+- 🎉 **2026.04.13**: The paper based on GraphGen, *Knowledge-to-Verification: Exploring RLVR for LLMs in Knowledge-Intensive Domains*, has been accepted to the **ACL 2026** Main Conference! Congratulations! [[arXiv](https://arxiv.org/abs/2605.18261)][[Code](https://github.com/SeedScientist/K2V)]
 - **2026.02.04**: We support HuggingFace Datasets as input data source for data generation now.
 - **2026.01.15**: **LLM benchmark synthesis** now supports single/multiple-choice & fill-in-the-blank & true-or-false—ideal for education 🌟🌟
 
