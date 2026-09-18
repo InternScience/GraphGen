@@ -9,6 +9,13 @@ from graphgen.utils import logger, run_concurrent
 class GenerateService(BaseOperator):
     """
     Generate question-answer pairs based on nodes and edges.
+
+    PMS fork additions (all optional, default = official behavior):
+    - ``prompt_profile``: versioned prompt override loaded via
+      graphgen.templates.prompt_profiles;
+    - ``output_gate``: deterministic QA filter registered in
+      graphgen.operators.generate.gates;
+    - ``llm_concurrency``: cap on in-flight LLM requests per event loop.
     """
 
     def __init__(
@@ -17,6 +24,9 @@ class GenerateService(BaseOperator):
         kv_backend: str = "rocksdb",
         method: str = "aggregated",
         data_format: str = "ChatML",
+        prompt_profile: str | None = None,
+        output_gate: str | None = None,
+        llm_concurrency: int | None = None,
         **generate_kwargs,
     ):
         super().__init__(
@@ -84,6 +94,28 @@ class GenerateService(BaseOperator):
             )
         else:
             raise ValueError(f"Unsupported generation mode: {method}")
+
+        if prompt_profile:
+            self.generator.apply_prompt_profile(prompt_profile)
+        if llm_concurrency is not None:
+            from graphgen.operators.generate.llm_concurrency import (
+                bound_llm_concurrency,
+            )
+
+            limited = bound_llm_concurrency(self.generator.generate, llm_concurrency)
+            self.generator.generate = limited
+        if output_gate:
+            from graphgen.operators.generate.gates import GATES
+
+            if output_gate not in GATES:
+                raise ValueError(f"output_gate_not_registered:{output_gate}")
+            gate = GATES[output_gate]
+            base_generate = self.generator.generate
+
+            async def _gated_generate(batch: list) -> list[dict]:
+                return gate(await base_generate(batch))
+
+            self.generator.generate = _gated_generate
 
     def process(self, batch: list) -> Tuple[list, dict]:
         """

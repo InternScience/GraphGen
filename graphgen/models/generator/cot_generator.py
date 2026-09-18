@@ -2,14 +2,15 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import COT_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
 class CoTGenerator(BaseGenerator):
-    @staticmethod
+    TEMPLATE_KEY = "cot"
+
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         """
         Build prompts for COT Template Design.
@@ -30,13 +31,13 @@ class CoTGenerator(BaseGenerator):
             ]
         )
         language = detect_main_language(entities_str + relationships_str)
-        prompt = COT_GENERATION_PROMPT[language]["COT_TEMPLATE_DESIGN"].format(
+        prompt = self.template(language, "COT_TEMPLATE_DESIGN").format(
             entities=entities_str, relationships=relationships_str
         )
         return prompt
 
-    @staticmethod
     def build_prompt_for_cot_generation(
+        self,
         batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
         question: str,
         reasoning_path: str,
@@ -58,7 +59,7 @@ class CoTGenerator(BaseGenerator):
             ]
         )
         language = detect_main_language(entities_str + relationships_str)
-        prompt = COT_GENERATION_PROMPT[language]["COT_GENERATION"].format(
+        prompt = self.template(language, "COT_GENERATION").format(
             entities=entities_str,
             relationships=relationships_str,
             question=question,

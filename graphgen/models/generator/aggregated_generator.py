@@ -2,7 +2,6 @@ import re
 from typing import Any, Optional
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import AGGREGATED_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
@@ -14,9 +13,11 @@ class AggregatedGenerator(BaseGenerator):
     2. question generation: Generate relevant questions based on the rephrased text.
     """
 
-    @staticmethod
+    TEMPLATE_KEY = "aggregated"
+
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         """
         Build prompts for REPHRASE.
@@ -51,7 +52,7 @@ class AggregatedGenerator(BaseGenerator):
         #                 for index, text in enumerate(original_text)
         #             ]
         #         )
-        prompt = AGGREGATED_GENERATION_PROMPT[language]["ANSWER_REPHRASING"].format(
+        prompt = self.template(language, "ANSWER_REPHRASING").format(
             entities=entities_str, relationships=relations_str
         )
         return prompt
@@ -73,15 +74,14 @@ class AggregatedGenerator(BaseGenerator):
             return None
         return rephrased_text.strip('"').strip("'")
 
-    @staticmethod
-    def _build_prompt_for_question_generation(answer: str) -> str:
+    def _build_prompt_for_question_generation(self, answer: str) -> str:
         """
         Build prompts for QUESTION GENERATION.
         :param answer:
         :return:
         """
         language = detect_main_language(answer)
-        prompt = AGGREGATED_GENERATION_PROMPT[language]["QUESTION_GENERATION"].format(
+        prompt = self.template(language, "QUESTION_GENERATION").format(
             answer=answer
         )
         return prompt

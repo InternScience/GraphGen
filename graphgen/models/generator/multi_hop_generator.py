@@ -2,14 +2,15 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import MULTI_HOP_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
 class MultiHopGenerator(BaseGenerator):
-    @staticmethod
+    TEMPLATE_KEY = "multi_hop"
+
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         nodes, edges = batch
         entities_str = "\n".join(
@@ -26,7 +27,7 @@ class MultiHopGenerator(BaseGenerator):
             ]
         )
         language = detect_main_language(entities_str + relationships_str)
-        prompt = MULTI_HOP_GENERATION_PROMPT[language].format(
+        prompt = self.template(language).format(
             entities=entities_str, relationships=relationships_str
         )
         return prompt

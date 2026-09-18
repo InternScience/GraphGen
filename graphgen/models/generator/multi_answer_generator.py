@@ -2,11 +2,11 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import MAQ_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
 class MultiAnswerGenerator(BaseGenerator):
+    TEMPLATE_KEY = "multi_answer"
     def __init__(self, llm_client, num_of_questions) -> None:
         super().__init__(llm_client)
         self.num_of_questions = num_of_questions
@@ -113,7 +113,7 @@ class MultiAnswerGenerator(BaseGenerator):
         )
         context = entities_str + "\n" + relationships_str
         language = detect_main_language(entities_str + relationships_str)
-        prompt = MAQ_GENERATION_PROMPT[language].format(
+        prompt = self.template(language).format(
             context=context,
             num_of_questions=self.num_of_questions,
         )
