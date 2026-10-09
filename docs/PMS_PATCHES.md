@@ -65,12 +65,16 @@ SAG 思想移植（MIT，arXiv:2606.15971；参考源码 `workspace/sag_referenc
 - `models/kg_builder/event_contract.py`：纯 stdlib 响应合同（禁合同外字段、is_valid 自报、
   无锚 fail-closed 丢弃并计数）+ 数字接地校验（SAG grounding 移植）+ 确定性事件 ID。
 - `models/kg_builder/event_entity_kg_builder.py`：事件→星型编码（EVENT 节点 + 成员边，
-  边属性含角色）；合并/摘要/SEP 血缘复用官方 LightRAG merge。
+  边属性含角色）。实体描述/普通边继续复用官方合并；**EVENT 节点与事件成员边用确定性
+  SEP 合并、不走 LLM 摘要**（SAG 事件是事实文本，不能让 merge summarizer 把 event_id
+  扩写成“项目身份/分工总结”污染出题上下文）。事件描述限长 4,000 字符，且原文链以
+  `source_id` SEP 保持闭合。
 - `operators/build_kg/`：`kg_method: event_entity` 分发（默认 light_rag 与官方逐字节一致）。
 - `models/partitioner/event_join_partitioner.py`：共享实体 join + 同锚硬约束的事件簇分区
   （SAG join 语义离线物化），产出官方 `Community`，metadata 携带 event_ids。
 - `models/generator/support.py` + atomic/multi_hop 解析 + GenerateService 校验：
-  `<support>{"cited": [...]}` 引用必须存在于本分区节点集合，失败剥离保留题面。
+  `<support>{"cited": [...]}` 引用必须存在于本分区节点集合（EVENT 节点名即事件审计
+  ID，不依赖自定义 Community metadata 以保证 JSONL cache 往返一致），失败剥离保留题面。
 - `templates/profiles/pms_policy.v3/`：v2 模板 + support 输出要求。
 
 ## 验收

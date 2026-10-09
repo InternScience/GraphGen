@@ -139,7 +139,11 @@ class GenerateService(BaseOperator):
                 continue
             # PMS fork（Phase 2 升级 C）：<support>.cited 必须全部存在于本分区
             # 节点集合，否则整块剥离、题面保留（题面质量与审计质量解耦）。
-            node_names = {node[0] for node in item.get("nodes", []) if isinstance(node, (list, tuple)) and node}
+            node_names = {
+                node[0]
+                for node in item.get("nodes", [])
+                if isinstance(node, (list, tuple)) and node
+            }
             for qa_pair in qa_pairs:
                 support = qa_pair.pop("support", None) if isinstance(qa_pair, dict) else None
                 support = validate_support(support, node_names)

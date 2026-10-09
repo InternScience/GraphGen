@@ -17,13 +17,13 @@ import math
 from collections import deque
 from typing import Any, Iterable, List, Optional, Set, Tuple
 
-from graphgen.bases import BaseGraphStorage
+from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community
 
 EVENT_NODE_PREFIX = "event:"
 
 
-class EventJoinPartitioner:
+class EventJoinPartitioner(BasePartitioner):
     """EVENT 星型子图 → 同项目事件簇（官方 Community 数据类型）。"""
 
     def partition(
@@ -102,7 +102,6 @@ class EventJoinPartitioner:
                 id=seed[0],
                 nodes=member_events + sorted(member_entities),
                 edges=[tuple(sorted(edge)) for edge in sorted(member_edges, key=sorted)],
-                metadata={"event_ids": member_events, "anchor": anchor},
             )
 
         for event_id, data in events:

@@ -27,6 +27,9 @@ from graphgen.templates import EVENT_ENTITY_EXTRACTION_PROMPT
 from graphgen.templates.kg.event_entity_extraction import PMS_ENTITY_TYPES
 from graphgen.utils import detect_main_language, logger
 
+_EVENT_DESC_CAP = 4000
+_ENTITY_DESC_CAP = 2000
+
 from graphgen.models.kg_builder.event_contract import (
     PROJECT_ID_RE,
     _ALLOWED_ENTITY_KEYS,
@@ -129,7 +132,75 @@ class EventEntityKGBuilder:
         return dict(nodes), dict(edges)
 
     async def merge_nodes(self, node_data: tuple, kg_instance: BaseGraphStorage) -> dict:
-        return await self._merger.merge_nodes(node_data, kg_instance=kg_instance)
+        entity_name, node_list = node_data
+        if node_list and str(node_list[0].get("entity_type", "")).upper() == "EVENT":
+            return await self._merge_event_node(entity_name, node_list, kg_instance)
+        # 星型事件参与者是图投影，不需要再次 LLM 摘要；只做确定性去重合并，
+        # 避免 LightRAG summarizer 把跨事件上下文扩写成伪业务事实。
+        return await self._merge_entity_node(entity_name, node_list, kg_instance)
+
+    async def _merge_entity_node(
+        self, entity_name: str, node_list: list, kg_instance: BaseGraphStorage
+    ) -> dict:
+        existing = kg_instance.get_node(entity_name) or {}
+        all_rows = list(node_list)
+        if existing:
+            all_rows.append(existing)
+        types = [str(dp.get("entity_type") or "KEYWORD") for dp in all_rows]
+        entity_type = sorted(set(types), key=lambda t: (-types.count(t), t))[0]
+        descriptions = sorted({str(dp.get("description") or "") for dp in all_rows if dp.get("description")})
+        merged = "<SEP>".join(descriptions)[:_ENTITY_DESC_CAP]
+        source_ids = sorted({sid for dp in all_rows for sid in str(dp.get("source_id", "")).split("<SEP>") if sid})
+        payload = {
+            "entity_type": entity_type,
+            "entity_name": entity_name,
+            "description": merged,
+            "source_id": "<SEP>".join(source_ids),
+            "length": self._merger.tokenizer.count_tokens(merged),
+        }
+        kg_instance.upsert_node(entity_name, node_data=payload)
+        return payload
+
+    async def _merge_event_node(
+        self, entity_name: str, node_list: list, kg_instance: BaseGraphStorage
+    ) -> dict:
+        """事件节点确定性合并：SEP 去重拼接（截断），不走 LLM 摘要——
+        官方摘要器会把事件 id 当实体名写进描述，污染出题上下文。"""
+        merged = "<SEP>".join(sorted({dp["description"] for dp in node_list}))
+        if len(merged) > _EVENT_DESC_CAP:
+            merged = merged[:_EVENT_DESC_CAP]
+        node_data_dict = {
+            "entity_type": "EVENT",
+            "entity_name": entity_name,
+            "description": merged,
+            "source_id": "<SEP>".join(
+                sorted({sid for dp in node_list for sid in str(dp.get("source_id", "")).split("<SEP>") if sid}
+                       | {sid for sid in str((kg_instance.get_node(entity_name) or {}).get("source_id", "")).split("<SEP>") if sid})
+            ),
+            "length": self._merger.tokenizer.count_tokens(merged),
+        }
+        kg_instance.upsert_node(entity_name, node_data=node_data_dict)
+        return node_data_dict
 
     async def merge_edges(self, edges_data: tuple, kg_instance: BaseGraphStorage) -> dict:
+        (src_id, tgt_id), edge_list = edges_data
+        if src_id.startswith("event:") or tgt_id.startswith("event:"):
+            # 事件成员边同样确定性合并，不做 LLM 摘要
+            merged = "<SEP>".join(sorted({dp["description"] for dp in edge_list}))
+            if len(merged) > _EVENT_DESC_CAP:
+                merged = merged[:_EVENT_DESC_CAP]
+            source_ids = {
+                sid for dp in edge_list for sid in str(dp.get("source_id", "")).split("<SEP>") if sid
+            } | {
+                sid for sid in str((kg_instance.get_edge(src_id, tgt_id) or {}).get("source_id", "")).split("<SEP>") if sid
+            }
+            edge_data = {
+                "src_id": src_id,
+                "tgt_id": tgt_id,
+                "description": merged,
+                "source_id": "<SEP>".join(sorted(source_ids)),
+                "length": self._merger.tokenizer.count_tokens(merged),
+            }
+            kg_instance.upsert_edge(src_id, tgt_id, edge_data=edge_data)
+            return edge_data
         return await self._merger.merge_edges(edges_data, kg_instance=kg_instance)

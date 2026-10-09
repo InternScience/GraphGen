@@ -91,10 +91,6 @@ class PartitionService(BaseOperator):
                     "nodes": b[0],
                     "edges": b[1],
                 }
-                # PMS fork（Phase 2）：事件簇附带 event_ids，供出题端 support 校验。
-                event_ids = list(getattr(community, "metadata", {}) or {}).get("event_ids") or []
-                if event_ids:
-                    result["events"] = event_ids
                 result["_trace_id"] = self.get_trace_id(result)
                 yield result
             logger.info("Total communities partitioned: %d", count)
