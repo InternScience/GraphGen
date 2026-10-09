@@ -38,6 +38,10 @@ class PartitionService(BaseOperator):
             from graphgen.models import DFSPartitioner
 
             self.partitioner = DFSPartitioner()
+        elif method == "event_join":
+            from graphgen.models import EventJoinPartitioner
+
+            self.partitioner = EventJoinPartitioner()
         elif method == "ece":
             # before ECE partitioning, we need to:
             # 'quiz' and 'judge' to get the comprehension loss if unit_sampling is not random
@@ -87,6 +91,10 @@ class PartitionService(BaseOperator):
                     "nodes": b[0],
                     "edges": b[1],
                 }
+                # PMS fork（Phase 2）：事件簇附带 event_ids，供出题端 support 校验。
+                event_ids = list(getattr(community, "metadata", {}) or {}).get("event_ids") or []
+                if event_ids:
+                    result["events"] = event_ids
                 result["_trace_id"] = self.get_trace_id(result)
                 yield result
             logger.info("Total communities partitioned: %d", count)

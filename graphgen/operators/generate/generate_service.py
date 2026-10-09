@@ -130,18 +130,25 @@ class GenerateService(BaseOperator):
             unit="batch",
         )
 
+        from graphgen.models.generator.support import validate_support
+
         meta_updates = {}
         final_results = []
-        for input_trace_id, qa_pairs in zip(
-            [item["_trace_id"] for item in batch], results
-        ):
+        for item, qa_pairs in zip(batch, results):
             if not qa_pairs:
                 continue
+            # PMS fork（Phase 2 升级 C）：<support>.cited 必须全部存在于本分区
+            # 节点集合，否则整块剥离、题面保留（题面质量与审计质量解耦）。
+            node_names = {node[0] for node in item.get("nodes", []) if isinstance(node, (list, tuple)) and node}
             for qa_pair in qa_pairs:
+                support = qa_pair.pop("support", None) if isinstance(qa_pair, dict) else None
+                support = validate_support(support, node_names)
+                if support:
+                    qa_pair["support"] = support
                 res = self.generator.format_generation_results(
                     qa_pair, output_data_format=self.data_format
                 )
                 res["_trace_id"] = self.get_trace_id(res)
                 final_results.append(res)
-                meta_updates.setdefault(input_trace_id, []).append(res["_trace_id"])
+                meta_updates.setdefault(item["_trace_id"], []).append(res["_trace_id"])
         return final_results, meta_updates

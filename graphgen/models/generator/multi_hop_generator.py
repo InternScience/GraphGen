@@ -2,6 +2,7 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
+from graphgen.models.generator.support import parse_support
 from graphgen.utils import detect_main_language, logger
 
 
@@ -48,4 +49,8 @@ class MultiHopGenerator(BaseGenerator):
         answer = answer.strip('"').strip("'")
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", answer)
-        return [{"question": question, "answer": answer}]
+        qa_pairs = [{"question": question, "answer": answer}]
+        support = parse_support(response)
+        if support:
+            qa_pairs[0]["support"] = support
+        return qa_pairs

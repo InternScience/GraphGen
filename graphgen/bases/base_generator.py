@@ -84,6 +84,8 @@ class BaseGenerator(ABC):
     ) -> dict[str, Any]:
         question = result.get("question", "")
         answer = result.get("answer", "")
+        # PMS fork（Phase 2）：已校验的 <support> 引用块随 QA_pairs 输出透传。
+        support = result.get("support")
         if "options" in result and result["options"]:
             options = result["options"]
             options_str = "\n".join(
@@ -114,8 +116,11 @@ class BaseGenerator(ABC):
             }
 
         if output_data_format == "QA_pairs":
-            return {
+            output = {
                 "question": question,
                 "answer": answer,
             }
+            if support:
+                output["support"] = support
+            return output
         raise ValueError(f"Unknown output data format: {output_data_format}")

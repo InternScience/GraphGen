@@ -55,6 +55,24 @@
   时对 logprob 调用注入 `extra_body.chat_template_kwargs.enable_thinking=false`
   （Qwen 兼容后端）。普通生成调用不受影响。
 
+## #7 事件-实体星型图管线（Phase 2，2026-10-09）
+
+SAG 思想移植（MIT，arXiv:2606.15971；参考源码 `workspace/sag_reference/`，方案见 PMS 主仓
+`docs/2026-09-18-graphgen-phase2-sag-event-entity-plan.md` §3.2 复用地图）：
+
+- `templates/kg/event_entity_extraction.py`：事件抽取提示词（SAG extract_document v3.1 改编 +
+  PMS 锚点/字段锁定/数字接地铁律）。
+- `models/kg_builder/event_contract.py`：纯 stdlib 响应合同（禁合同外字段、is_valid 自报、
+  无锚 fail-closed 丢弃并计数）+ 数字接地校验（SAG grounding 移植）+ 确定性事件 ID。
+- `models/kg_builder/event_entity_kg_builder.py`：事件→星型编码（EVENT 节点 + 成员边，
+  边属性含角色）；合并/摘要/SEP 血缘复用官方 LightRAG merge。
+- `operators/build_kg/`：`kg_method: event_entity` 分发（默认 light_rag 与官方逐字节一致）。
+- `models/partitioner/event_join_partitioner.py`：共享实体 join + 同锚硬约束的事件簇分区
+  （SAG join 语义离线物化），产出官方 `Community`，metadata 携带 event_ids。
+- `models/generator/support.py` + atomic/multi_hop 解析 + GenerateService 校验：
+  `<support>{"cited": [...]}` 引用必须存在于本分区节点集合，失败剥离保留题面。
+- `templates/profiles/pms_policy.v3/`：v2 模板 + support 输出要求。
+
 ## 验收
 
 - 默认路径（无 profile/gate/并发参数）与官方行为逐字节一致；

@@ -6,6 +6,7 @@ from graphgen.common.init_llm import init_llm
 from graphgen.common.init_storage import init_storage
 from graphgen.utils import logger
 
+from .build_event_kg import build_event_entity_kg
 from .build_mm_kg import build_mm_kg
 from .build_text_kg import build_text_kg
 
@@ -27,6 +28,9 @@ class BuildKGService(BaseOperator):
         )
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
+        # PMS fork（Phase 2）：文本 KG 抽取方法分发。默认 light_rag 与官方逐字节
+        # 一致；event_entity 走事件-实体星型编码（见 models/kg_builder/event_entity_kg_builder.py）。
+        self.kg_method: str = str(self.build_kwargs.get("kg_method", "light_rag"))
 
     def process(self, batch: list) -> Tuple[list, dict]:
         """
@@ -49,6 +53,15 @@ class BuildKGService(BaseOperator):
 
         if len(text_chunks) == 0:
             logger.info("All text chunks are already in the storage")
+        elif self.kg_method == "event_entity":
+            logger.info("[Text Event and Entity Extraction] processing ...")
+            text_nodes, text_edges = build_event_entity_kg(
+                llm_client=self.llm_client,
+                kg_instance=self.graph_storage,
+                chunks=text_chunks,
+            )
+            nodes += text_nodes
+            edges += text_edges
         else:
             logger.info("[Text Entity and Relation Extraction] processing ...")
             text_nodes, text_edges = build_text_kg(
