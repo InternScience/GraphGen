@@ -374,3 +374,9 @@ This project is licensed under the [Apache License 2.0](LICENSE).
 ## 📅 Star History
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=InternScience/GraphGen&type=Date)](https://star-history.dera.page/#InternScience/GraphGen&Date)
+
+## Maintained fork: multi-project SDK and event profiles
+
+This repository also maintains the `Leon-Algo/GraphGen` fork. Fork-specific reusable capabilities, project-owned event extraction profiles, installation guidance, and compatibility boundaries are documented in [docs/MULTI_PROJECT_SDK.md](docs/MULTI_PROJECT_SDK.md). The immutable version/tag and release verification policy is in [docs/RELEASING.md](docs/RELEASING.md); the fork patch ledger and SAG attribution are in [docs/PMS_PATCHES.md](docs/PMS_PATCHES.md).
+
+Fork profiles are opt-in. The default LightRAG + ECE workflow remains unchanged, and PMS-specific prompts are not a default policy for other projects.

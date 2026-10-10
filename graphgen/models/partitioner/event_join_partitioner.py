@@ -1,26 +1,14 @@
-"""Event-join partitioner (PMS fork, SAG join semantics).
+"""Generic shared-participant event join partitioner (SAG join semantics).
 
-来源：共享实体 join 语义翻译自 Zleap-AI/SAG `modules/search/base.py` 的
-entity→event→relation 两跳查询（MIT，arXiv:2606.15971）；离线物化见 Phase 2 方案文档。
-
-事件 = EVENT 节点（id 形如 ``event:{anchor}:{hash12}``）+ 星型成员边。分区算法：
-1. 种子事件按节点 id 排序（确定性）；
-2. 通过共享参与者实体 join 一跳邻居事件；
-3. 硬约束：只接受同 project_anchor 事件（簇项目纯度 100%）；
-4. 容量上限：max_events_per_community 或事件描述 token 总和。
-
-产出官方 ``Community``（nodes = 事件+参与者实体，edges = 星型成员边），
-metadata 携带 event_ids 供出题端 support 校验。
+Anchor isolation reads an explicit node attribute and never infers domain data
+from event ID strings.
 """
 
-import math
 from collections import deque
 from typing import Any, Iterable, List, Optional, Set, Tuple
 
 from graphgen.bases import BaseGraphStorage, BasePartitioner
 from graphgen.bases.datatypes import Community
-
-EVENT_NODE_PREFIX = "event:"
 
 
 class EventJoinPartitioner(BasePartitioner):
@@ -32,13 +20,24 @@ class EventJoinPartitioner(BasePartitioner):
         max_events_per_community: int = 6,
         max_tokens_per_community: int = 4096,
         min_events_per_community: int = 1,
+        event_entity_type: str = "EVENT",
+        anchor_attribute: str = "anchor",
+        require_same_anchor: bool = True,
         **kwargs: Any,
     ) -> Iterable[Community]:
+        if not isinstance(require_same_anchor, bool):
+            raise ValueError("event_join_require_same_anchor_must_be_bool")
+        if not isinstance(event_entity_type, str) or not event_entity_type.strip():
+            raise ValueError("event_join_event_entity_type_required")
+        if not isinstance(anchor_attribute, str) or not anchor_attribute.strip():
+            raise ValueError("event_join_anchor_attribute_required")
+        if max_events_per_community < 1 or min_events_per_community < 1 or max_tokens_per_community < 1:
+            raise ValueError("event_join_limits_must_be_positive")
         events: List[Tuple[str, dict]] = []
         node_dict: dict[str, dict] = {}
         for nid, data in g.get_all_nodes():
             node_dict[nid] = data
-            if str(data.get("entity_type", "")).upper() == "EVENT":
+            if str(data.get("entity_type", "")).upper() == event_entity_type.upper():
                 events.append((nid, data))
         events.sort(key=lambda item: item[0])
 
@@ -54,8 +53,7 @@ class EventJoinPartitioner(BasePartitioner):
         used: Set[str] = set()
 
         def _anchor(event_id: str) -> str:
-            # event:{anchor}:{hash}
-            return event_id[len(EVENT_NODE_PREFIX):].rsplit(":", 1)[0]
+            return str(node_dict[event_id].get(anchor_attribute, ""))
 
         def _grow(seed: Tuple[str, dict]) -> Optional[Community]:
             member_events: List[str] = []
@@ -64,6 +62,8 @@ class EventJoinPartitioner(BasePartitioner):
             member_edges: Set[frozenset] = set()
             token_sum = 0
             anchor = _anchor(seed[0])
+            if require_same_anchor and not anchor:
+                raise ValueError(f"event_join_anchor_missing:{seed[0]}")
             queue = deque([seed[0]])
 
             while queue:
@@ -87,7 +87,7 @@ class EventJoinPartitioner(BasePartitioner):
                     for other in events_by_entity.get(entity_id, []):
                         if other in used or other in event_set:
                             continue
-                        if _anchor(other) != anchor:
+                        if require_same_anchor and _anchor(other) != anchor:
                             continue
                         if token_sum + int(node_dict[other].get("length", 0)) > max_tokens_per_community:
                             continue

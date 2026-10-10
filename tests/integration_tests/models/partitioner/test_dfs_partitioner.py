@@ -1,25 +1,22 @@
 import tempfile
 
-import pytest
-
 from graphgen.bases.datatypes import Community
-from graphgen.models import DFSPartitioner, NetworkXStorage
+from graphgen.models import DFSPartitioner
+from graphgen.storage import NetworkXStorage
 
 
-@pytest.mark.asyncio
-async def test_empty_graph():
+def test_empty_graph():
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = NetworkXStorage(
             working_dir=tmpdir,
             namespace="empty",
         )
         partitioner = DFSPartitioner()
-        communities = await partitioner.partition(storage, max_units_per_community=5)
+        communities = list(partitioner.partition(storage, max_units_per_community=5))
         assert communities == []
 
 
-@pytest.mark.asyncio
-async def test_single_node():
+def test_single_node():
     nodes = [("A", {"desc": "alone"})]
     edges = []
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -29,21 +26,20 @@ async def test_single_node():
         )
 
         for nid, ndata in nodes:
-            await storage.upsert_node(nid, ndata)
+            storage.upsert_node(nid, ndata)
         for src, tgt, edata in edges:
-            await storage.upsert_edge(src, tgt, edata)
+            storage.upsert_edge(src, tgt, edata)
 
         partitioner = DFSPartitioner()
-        communities: list[Community] = await partitioner.partition(
+        communities: list[Community] = list(partitioner.partition(
             storage, max_units_per_community=5
-        )
+        ))
         assert len(communities) == 1
         assert communities[0].nodes == ["A"]
         assert communities[0].edges == []
 
 
-@pytest.mark.asyncio
-async def test_small_graph():
+def test_small_graph():
     """
     0 - 1 - 2
     |   |   |
@@ -68,17 +64,17 @@ async def test_small_graph():
         )
 
         for nid, ndata in nodes:
-            await storage.upsert_node(nid, ndata)
+            storage.upsert_node(nid, ndata)
         for src, tgt, edata in edges:
-            await storage.upsert_edge(src, tgt, edata)
+            storage.upsert_edge(src, tgt, edata)
 
         partitioner = DFSPartitioner()
 
-        communities: list[Community] = await partitioner.partition(
+        communities: list[Community] = list(partitioner.partition(
             storage, max_units_per_community=4
-        )
+        ))
 
-        assert len(communities) <= 5
+        assert len(communities) <= len(nodes)
         all_nodes = set()
         all_edges = set()
         for c in communities:

@@ -1,4 +1,4 @@
-"""Event-entity KG construction over text chunks (PMS fork)."""
+"""Construct an event/entity star graph from text chunks."""
 
 from __future__ import annotations
 
@@ -16,9 +16,10 @@ def build_event_entity_kg(
     llm_client: BaseLLMWrapper,
     kg_instance: BaseGraphStorage,
     chunks: List[Chunk],
+    event_profile: str | None = None,
 ) -> tuple:
     """chunks → 事件星型图（合并/摘要/SEP 血缘全部复用官方 LightRAG merge）。"""
-    kg_builder = EventEntityKGBuilder(llm_client=llm_client)
+    kg_builder = EventEntityKGBuilder(llm_client=llm_client, profile=event_profile)
 
     results = run_concurrent(
         kg_builder.extract,
@@ -30,11 +31,21 @@ def build_event_entity_kg(
 
     nodes = defaultdict(list)
     edges = defaultdict(list)
+    event_ids = {
+        event_id
+        for node_map, _ in results
+        for event_id, rows in node_map.items()
+        if rows and str(rows[0].get("entity_type", "")).upper() == kg_builder.profile.event_entity_type
+    }
     for n, e in results:
         for k, v in n.items():
             nodes[k].extend(v)
         for k, v in e.items():
-            edges[tuple(sorted(k))].extend(v)
+            normalized_key = tuple(sorted(k))
+            if any(endpoint in event_ids for endpoint in normalized_key):
+                for edge in v:
+                    edge["event_member"] = True
+            edges[normalized_key].extend(v)
 
     nodes = run_concurrent(
         lambda kv: kg_builder.merge_nodes(kv, kg_instance=kg_instance),

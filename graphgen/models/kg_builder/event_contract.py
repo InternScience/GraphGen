@@ -1,10 +1,11 @@
-"""Pure stdlib contracts for SAG-adapted event extraction (testable without GraphGen)."""
+"""Pure stdlib contracts for profile-driven SAG event extraction."""
 from __future__ import annotations
+
 import hashlib
 import json
 import re
 from collections import defaultdict
-from typing import Any, Optional
+from typing import Any
 
 PMS_ENTITY_TYPES: list[dict] = [
     {"type": "PROJECT", "description": "项目本体，含完整项目编号"},
@@ -16,36 +17,53 @@ PMS_ENTITY_TYPES: list[dict] = [
     {"type": "DATE", "description": "日期或时间"},
     {"type": "METRIC", "description": "数量、比例等指标"},
 ]
-
 PROJECT_ID_RE = re.compile(r"\b[PI]-\d{6,}\b")
 _NUMBER_RE = re.compile(r"(?<![A-Za-z0-9_.])[-+]?(?:\d{1,3}(?:,\d{3})+|\d+)(?:\.\d+)?%?(?![A-Za-z0-9_.])")
-_ALLOWED_TYPES = {item["type"] for item in PMS_ENTITY_TYPES}
 _ALLOWED_EVENT_KEYS = {"title", "content", "entities", "is_valid"}
 _ALLOWED_ENTITY_KEYS = {"type", "name", "description"}
 
 
 def numbers_in(text: str) -> set[str]:
-    """原文/事件中的数字集合（SAG grounding 的确定性口径）。"""
+    """Return numeric strings using the deterministic SAG grounding policy."""
     return set(_NUMBER_RE.findall(text or ""))
 
 
-def event_anchor(content: str) -> str | None:
-    """事件的完整项目编号锚点；取首个出现的编号。"""
-    match = PROJECT_ID_RE.search(content or "")
-    return match.group(0) if match else None
+def event_anchor(content: str, pattern: str | None = None) -> str | None:
+    """Return the first configured anchor match, if any."""
+    if pattern is None:
+        return None
+    match = re.compile(pattern).search(content or "")
+    if match is None:
+        return None
+    if match.lastindex:
+        return match.group(1)
+    return match.group(0)
 
 
-def event_node_name(anchor: str, title: str, content: str) -> str:
-    """确定性事件节点 id：event:{anchor}:{hash12}（内容 SHA，重叠 chunk 天然去重）。"""
-    digest = hashlib.sha256(f"{anchor}\n{title}\n{content}".encode("utf-8")).hexdigest()[:12]
-    return f"event:{anchor}:{digest}"
+def event_node_name(anchor: str | None, title: str, content: str, *, legacy: bool = True) -> str:
+    """Create a deterministic node ID; legacy PMS mode preserves persisted IDs."""
+    if legacy:
+        digest = hashlib.sha256(f"{anchor}\n{title}\n{content}".encode("utf-8")).hexdigest()[:12]
+        return f"event:{anchor}:{digest}"
+    digest = hashlib.sha256(
+        json.dumps([anchor, title, content], ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()[:20]
+    return f"event:{digest}"
 
 
-def parse_extraction_response(response: str, *, chunk_content: str) -> tuple[list[dict], dict[str, int]]:
-    """解析并校验 LLM 事件抽取响应，返回 (有效事件列表, 丢弃计数)。
+def parse_extraction_response(
+    response: str,
+    *,
+    chunk_content: str,
+    entity_types: list[dict] | None = None,
+    anchor_pattern: str | None = None,
+    anchor_required: bool | None = None,
+    number_grounding: bool = True,
+) -> tuple[list[dict], dict[str, int]]:
+    """Parse the strict event response contract under an explicit profile policy.
 
-    严格合同（SAG schema.py 口径）：顶层/事件/实体禁合同外字段；is_valid=False、
-    无项目锚点、数字不接地、实体类型越界的事件整条丢弃并计数。
+    Omitted policy arguments retain the historical PMS behavior for callers that
+    import this pure-stdlib helper directly.
     """
     dropped: dict[str, int] = defaultdict(int)
     text = (response or "").strip()
@@ -59,22 +77,32 @@ def parse_extraction_response(response: str, *, chunk_content: str) -> tuple[lis
     except json.JSONDecodeError:
         dropped["response_not_json"] += 1
         return [], dict(dropped)
-    if not isinstance(payload, dict) or set(payload.keys()) != {"type", "data"}:
+    if not isinstance(payload, dict) or set(payload) != {"type", "data"}:
         dropped["response_contract_invalid"] += 1
         return [], dict(dropped)
     data = payload.get("data")
-    if not isinstance(data, dict) or set(data.keys()) != {"items"}:
+    if not isinstance(data, dict) or set(data) != {"items"} or not isinstance(data["items"], list):
         dropped["response_contract_invalid"] += 1
         return [], dict(dropped)
 
-    evidence_numbers = numbers_in(chunk_content)
+    profile_policy = entity_types is not None or anchor_pattern is not None or anchor_required is not None
+    if profile_policy:
+        types = entity_types or []
+        allowed_types = {str(item["type"]).strip().upper() for item in types}
+        if anchor_required is None:
+            anchor_required = True
+    else:
+        types = PMS_ENTITY_TYPES
+        allowed_types = {item["type"] for item in types}
+        anchor_pattern = PROJECT_ID_RE.pattern
+        anchor_required = True
+    evidence_numbers = numbers_in(chunk_content) if number_grounding else set()
     valid_events: list[dict] = []
-    for item in data.get("items") or []:
+    for item in data["items"]:
         if not isinstance(item, dict):
             dropped["event_not_object"] += 1
             continue
-        extra_keys = set(item.keys()) - _ALLOWED_EVENT_KEYS
-        if extra_keys:
+        if set(item) - _ALLOWED_EVENT_KEYS:
             dropped["event_extra_fields"] += 1
             continue
         title = str(item.get("title") or "").strip()
@@ -86,20 +114,22 @@ def parse_extraction_response(response: str, *, chunk_content: str) -> tuple[lis
         if item.get("is_valid") is False:
             dropped["event_self_invalid"] += 1
             continue
-        anchor = event_anchor(content)
-        if anchor is None:
+        anchor = event_anchor(content, anchor_pattern)
+        if anchor_required and anchor is None:
             dropped["event_missing_anchor"] += 1
             continue
-        ungrounded = {n for n in numbers_in(f"{title} {content}") if n not in evidence_numbers}
-        if ungrounded:
+        if number_grounding and {n for n in numbers_in(f"{title} {content}") if n not in evidence_numbers}:
             dropped["event_number_not_grounded"] += 1
             continue
         entities: list[dict] = []
+        if not isinstance(entities_raw, list):
+            dropped["event_entities_invalid"] += 1
+            continue
         for entity in entities_raw:
             if not isinstance(entity, dict):
                 dropped["entity_not_object"] += 1
                 continue
-            if set(entity.keys()) - _ALLOWED_ENTITY_KEYS:
+            if set(entity) - _ALLOWED_ENTITY_KEYS:
                 dropped["entity_extra_fields"] += 1
                 continue
             etype = str(entity.get("type") or "").strip().upper()
@@ -108,12 +138,9 @@ def parse_extraction_response(response: str, *, chunk_content: str) -> tuple[lis
             if not etype or not ename or not edesc:
                 dropped["entity_blank"] += 1
                 continue
-            if etype not in _ALLOWED_TYPES:
+            if etype not in allowed_types:
                 dropped["entity_type_unknown"] += 1
                 continue
             entities.append({"type": etype, "name": ename, "description": edesc})
-        valid_events.append(
-            {"title": title, "content": content, "anchor": anchor, "entities": entities}
-        )
+        valid_events.append({"title": title, "content": content, "anchor": anchor, "entities": entities})
     return valid_events, dict(dropped)
-

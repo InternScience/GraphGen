@@ -60,8 +60,7 @@
 SAG 思想移植（MIT，arXiv:2606.15971；参考源码 `workspace/sag_reference/`，方案见 PMS 主仓
 `docs/2026-09-18-graphgen-phase2-sag-event-entity-plan.md` §3.2 复用地图）：
 
-- `templates/kg/event_entity_extraction.py`：事件抽取提示词（SAG extract_document v3.1 改编 +
-  PMS 锚点/字段锁定/数字接地铁律）。
+- `templates/kg/event_entity_extraction.py` 保留旧 Python 常量的兼容导出；实际策略由版本化 event profile 资源提供。
 - `models/kg_builder/event_contract.py`：纯 stdlib 响应合同（禁合同外字段、is_valid 自报、
   无锚 fail-closed 丢弃并计数）+ 数字接地校验（SAG grounding 移植）+ 确定性事件 ID。
 - `models/kg_builder/event_entity_kg_builder.py`：事件→星型编码（EVENT 节点 + 成员边，
@@ -77,10 +76,20 @@ SAG 思想移植（MIT，arXiv:2606.15971；参考源码 `workspace/sag_referenc
   ID，不依赖自定义 Community metadata 以保证 JSONL cache 往返一致），失败剥离保留题面。
 - `templates/profiles/pms_policy.v3/`：v2 模板 + support 输出要求。
 
+## #8 通用事件抽取 Profile 与多项目 SAG 能力
+
+- 将事件抽取策略从 builder/契约代码中抽离为 `templates/event_profiles/<id>/` 下版本化 manifest + prompt。内置 `pms_event.v1` 保留原始 PMS prompt、8 类实体、P-/I- 锚点和旧事件 ID；`generic_event.v1` 与 `example_event.v1` 是机制示例/测试 fixture，不代表外部领域已验证策略。
+- `templates/event_profile_loader.py` 校验 schema、实体类型、锚点 regex、prompt 占位符及图设置，暴露 manifest/prompt SHA-256；显式无效 profile fail-closed。profile 从包资源读取，不依赖当前工作目录。
+- `build_kg.params.event_profile` 传入事件 builder。老 PMS 配置缺省解析为 `pms_event.v1`；新项目应显式传入自己的 profile。`light_rag` 默认保持不变。
+- `event_contract.py` 仍保证严格响应 JSON、实体 allowlist 和可选数字接地；实体类型、锚点是否必需及锚点模式由 profile 驱动。无锚模式不自动合成 PROJECT/其他锚点实体。
+- 事件节点写入显式 `anchor` 属性。`event_join` 按 `event_entity_type` 和 `anchor_attribute` 配置工作，`require_same_anchor` 控制同锚硬隔离；不再从 ID 推断锚点。PMS profile 使用旧 ID 以兼容既有图缓存，新 profile 使用不编码 domain anchor 的 ID。
+- `setup.py` 与 `MANIFEST.in` 将生成 profile JSON、事件 manifest/prompt 作为 `graphgen` wheel/sdist 包资源。
+- 多项目安装、profile authoring 与升级见 `docs/MULTI_PROJECT_SDK.md`；fork 不可变 tag 与发布门禁见 `docs/RELEASING.md`。
+
 ## 验收
 
 - 默认路径（无 profile/gate/并发参数）与官方行为逐字节一致；
 - PMS 主仓库 `tests/test_pms_graphgen_policy_generation.py`、
   `tests/test_run_graphgen_defaults.py` 为契约回归（rft 环境按路径加载
   纯 stdlib 模块校验）；
-- 真实生成由 GraphGen venv smoke 验收。
+- 事件 profile 合同和真实生成由 GraphGen venv smoke 验收。

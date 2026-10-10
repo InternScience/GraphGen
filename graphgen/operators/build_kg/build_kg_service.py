@@ -28,9 +28,13 @@ class BuildKGService(BaseOperator):
         )
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
-        # PMS fork（Phase 2）：文本 KG 抽取方法分发。默认 light_rag 与官方逐字节
-        # 一致；event_entity 走事件-实体星型编码（见 models/kg_builder/event_entity_kg_builder.py）。
+        # Opt-in fork capability. Existing configs continue to use LightRAG by default.
         self.kg_method: str = str(self.build_kwargs.get("kg_method", "light_rag"))
+        self.event_profile = self.build_kwargs.get("event_profile")
+        if self.kg_method == "event_entity":
+            from graphgen.templates.event_profile_loader import load_event_profile
+
+            self.event_profile = load_event_profile(self.event_profile).profile_id
 
     def process(self, batch: list) -> Tuple[list, dict]:
         """
@@ -59,6 +63,7 @@ class BuildKGService(BaseOperator):
                 llm_client=self.llm_client,
                 kg_instance=self.graph_storage,
                 chunks=text_chunks,
+                event_profile=self.event_profile,
             )
             nodes += text_nodes
             edges += text_edges

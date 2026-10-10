@@ -122,7 +122,13 @@ class GenerateService(BaseOperator):
         Generate question-answer pairs based on nodes and edges.
         """
         logger.info("[Generation] mode: %s, batches: %d", self.method, len(batch))
-        triples = [(item["nodes"], item["edges"]) for item in batch]
+        from graphgen.models.generator.support import build_generation_view, validate_support
+
+        generation_views = [build_generation_view(item) for item in batch]
+        triples = [
+            (view["nodes"], view["edges"])
+            for view in generation_views
+        ]
         results = run_concurrent(
             self.generator.generate,
             triples,
@@ -134,19 +140,13 @@ class GenerateService(BaseOperator):
 
         meta_updates = {}
         final_results = []
-        for item, qa_pairs in zip(batch, results):
+        for item, view, qa_pairs in zip(batch, generation_views, results):
             if not qa_pairs:
                 continue
-            # PMS fork（Phase 2 升级 C）：<support>.cited 必须全部存在于本分区
-            # 节点集合，否则整块剥离、题面保留（题面质量与审计质量解耦）。
-            node_names = {
-                node[0]
-                for node in item.get("nodes", [])
-                if isinstance(node, (list, tuple)) and node
-            }
             for qa_pair in qa_pairs:
                 support = qa_pair.pop("support", None) if isinstance(qa_pair, dict) else None
-                support = validate_support(support, node_names)
+                support = view["resolve_support"](support)
+                support = validate_support(support, set(view["canonical_nodes"]))
                 if support:
                     qa_pair["support"] = support
                 res = self.generator.format_generation_results(
