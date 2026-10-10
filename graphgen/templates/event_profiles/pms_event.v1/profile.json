@@ -1,0 +1,18 @@
+{
+  "schema_version": "graphgen_event_profile.v1",
+  "profile_id": "pms_event.v1",
+  "prompt_file": "prompt.zh.txt",
+  "entity_types": [
+    {"type": "PROJECT", "description": "项目本体，含完整项目编号"},
+    {"type": "PERSON", "description": "人员，项目成员或干系人"},
+    {"type": "ROLE", "description": "项目内职务或角色"},
+    {"type": "ORGANIZATION", "description": "组织、部门、公司或团队"},
+    {"type": "PHASE", "description": "项目阶段或状态"},
+    {"type": "LOCATION", "description": "地点或区域"},
+    {"type": "DATE", "description": "日期或时间"},
+    {"type": "METRIC", "description": "数量、比例等指标"}
+  ],
+  "anchor": {"required": true, "pattern": "\\b[PI]-\\d{6,}\\b", "entity_type": "PROJECT"},
+  "grounding": {"number_grounding": true},
+  "graph": {"event_entity_type": "EVENT", "legacy_event_id": true}
+}

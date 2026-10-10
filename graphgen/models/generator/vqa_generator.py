@@ -3,14 +3,14 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import VQA_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
 class VQAGenerator(BaseGenerator):
-    @staticmethod
+    TEMPLATE_KEY = "vqa"
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         nodes, edges = batch
         entities_str = "\n".join(
@@ -27,7 +27,7 @@ class VQAGenerator(BaseGenerator):
             ]
         )
         language = detect_main_language(entities_str + relationships_str)
-        prompt = VQA_GENERATION_PROMPT[language].format(
+        prompt = self.template(language).format(
             entities=entities_str, relationships=relationships_str
         )
         return prompt

@@ -29,6 +29,11 @@ class PartitionService(BaseOperator):
         self.tokenizer_instance: BaseTokenizer = Tokenizer(model_name=tokenizer_model)
         method = partition_kwargs["method"]
         self.method_params = partition_kwargs.get("method_params", {})
+        if method == "event_join":
+            self.method_params = dict(self.method_params)
+            self.method_params.setdefault("event_entity_type", partition_kwargs.get("event_entity_type", "EVENT"))
+            self.method_params.setdefault("anchor_attribute", partition_kwargs.get("anchor_attribute", "anchor"))
+            self.method_params.setdefault("require_same_anchor", partition_kwargs.get("require_same_anchor", True))
 
         if method == "bfs":
             from graphgen.models import BFSPartitioner
@@ -38,6 +43,10 @@ class PartitionService(BaseOperator):
             from graphgen.models import DFSPartitioner
 
             self.partitioner = DFSPartitioner()
+        elif method == "event_join":
+            from graphgen.models import EventJoinPartitioner
+
+            self.partitioner = EventJoinPartitioner()
         elif method == "ece":
             # before ECE partitioning, we need to:
             # 'quiz' and 'judge' to get the comprehension loss if unit_sampling is not random

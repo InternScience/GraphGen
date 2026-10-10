@@ -1,6 +1,6 @@
 from typing import Tuple
 
-__version__ = "0.1.0.post20250930"
+__version__ = "1.0.0"
 short_version = __version__
 
 

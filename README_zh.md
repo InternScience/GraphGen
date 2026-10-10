@@ -375,3 +375,9 @@ GraphGen 首先根据源文本构建细粒度的知识图谱，然后利用期�
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=InternScience/GraphGen&type=Date)](https://star-history.dera.page/#InternScience/GraphGen&Date)
 
+
+## 自维护 Fork：多项目 SDK 与事件 Profile
+
+本仓库同时维护 `Leon-Algo/GraphGen` fork。跨项目可复用能力、项目自有事件抽取 profile、安装与兼容边界见[多项目 SDK 指南](docs/MULTI_PROJECT_SDK.md)；不可变版本/tag 与发布验证规则见[发布规范](docs/RELEASING.md)；fork 补丁及 SAG 来源归属见[补丁台账](docs/PMS_PATCHES.md)。
+
+Fork 能力均显式 opt-in：默认 LightRAG + ECE 管线保持不变，PMS 专用提示词不会自动成为其他项目的策略。

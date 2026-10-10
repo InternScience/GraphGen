@@ -2,14 +2,16 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import MULTI_HOP_GENERATION_PROMPT
+from graphgen.models.generator.support import parse_support
 from graphgen.utils import detect_main_language, logger
 
 
 class MultiHopGenerator(BaseGenerator):
-    @staticmethod
+    TEMPLATE_KEY = "multi_hop"
+
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         nodes, edges = batch
         entities_str = "\n".join(
@@ -26,7 +28,7 @@ class MultiHopGenerator(BaseGenerator):
             ]
         )
         language = detect_main_language(entities_str + relationships_str)
-        prompt = MULTI_HOP_GENERATION_PROMPT[language].format(
+        prompt = self.template(language).format(
             entities=entities_str, relationships=relationships_str
         )
         return prompt
@@ -47,4 +49,8 @@ class MultiHopGenerator(BaseGenerator):
         answer = answer.strip('"').strip("'")
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", answer)
-        return [{"question": question, "answer": answer}]
+        qa_pairs = [{"question": question, "answer": answer}]
+        support = parse_support(response)
+        if support:
+            qa_pairs[0]["support"] = support
+        return qa_pairs

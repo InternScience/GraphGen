@@ -3,7 +3,6 @@ import re
 from typing import Any, Optional
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import AGGREGATED_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 random.seed(42)
@@ -16,9 +15,11 @@ class MaskedFillInBlankGenerator(BaseGenerator):
     2. mask: Randomly select a node from the input nodes, and then mask the name of the node in the rephrased text.
     """
 
-    @staticmethod
+    TEMPLATE_KEY = "masked_fill_in_blank"
+
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         """
         Build prompts for REPHRASE.
@@ -53,7 +54,7 @@ class MaskedFillInBlankGenerator(BaseGenerator):
         #                 for index, text in enumerate(original_text)
         #             ]
         #         )
-        prompt = AGGREGATED_GENERATION_PROMPT[language]["ANSWER_REPHRASING"].format(
+        prompt = self.template(language, "ANSWER_REPHRASING").format(
             entities=entities_str, relationships=relations_str
         )
         return prompt

@@ -2,14 +2,16 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import ATOMIC_GENERATION_PROMPT
+from graphgen.models.generator.support import parse_support
 from graphgen.utils import detect_main_language, logger
 
 
 class AtomicGenerator(BaseGenerator):
-    @staticmethod
+    TEMPLATE_KEY = "atomic"
+
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self,
+        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]],
     ) -> str:
         nodes, edges = batch
         context = ""
@@ -19,7 +21,7 @@ class AtomicGenerator(BaseGenerator):
             context += f"- {edge[0]} - {edge[1]}: {edge[2]['description']}\n"
         language = detect_main_language(context)
 
-        prompt = ATOMIC_GENERATION_PROMPT[language].format(context=context)
+        prompt = self.template(language).format(context=context)
         return prompt
 
     @staticmethod
@@ -44,4 +46,8 @@ class AtomicGenerator(BaseGenerator):
         answer = answer.strip('"').strip("'")
         logger.debug("Question: %s", question)
         logger.debug("Answer: %s", answer)
-        return [{"question": question, "answer": answer}]
+        qa_pairs = [{"question": question, "answer": answer}]
+        support = parse_support(response)
+        if support:
+            qa_pairs[0]["support"] = support
+        return qa_pairs

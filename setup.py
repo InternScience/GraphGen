@@ -38,14 +38,20 @@ if __name__ == "__main__":
     setup(
         name="graphg",
         version=get_version(),
-        url="https://github.com/open-sciencelab/GraphGen",
+        url="https://github.com/Leon-Algo/GraphGen",
         description="GraphGen: Enhancing Supervised Fine-Tuning for LLMs with Knowledge-Driven Synthetic Data Generation",
         long_description=readme(),
         long_description_content_type="text/markdown",
-        author="open-sciencelab",
-        author_email="open-sciencelab@pjlab.org.cn",
+        author="Leon-Algo GraphGen maintainers",
+        author_email="",
         packages=find_packages(exclude=["models"]),
-        package_data={"GraphGen": ["configs/*"]},
+        package_data={
+            "graphgen": [
+                "templates/profiles/*/*.json",
+                "templates/event_profiles/*/*.json",
+                "templates/event_profiles/*/*.txt",
+            ],
+        },
         include_package_data=True,
         install_requires=install_packages,
         classifiers=[

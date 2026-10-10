@@ -6,6 +6,7 @@ from graphgen.common.init_llm import init_llm
 from graphgen.common.init_storage import init_storage
 from graphgen.utils import logger
 
+from .build_event_kg import build_event_entity_kg
 from .build_mm_kg import build_mm_kg
 from .build_text_kg import build_text_kg
 
@@ -27,6 +28,13 @@ class BuildKGService(BaseOperator):
         )
         self.build_kwargs = build_kwargs
         self.max_loop: int = int(self.build_kwargs.get("max_loop", 3))
+        # Opt-in fork capability. Existing configs continue to use LightRAG by default.
+        self.kg_method: str = str(self.build_kwargs.get("kg_method", "light_rag"))
+        self.event_profile = self.build_kwargs.get("event_profile")
+        if self.kg_method == "event_entity":
+            from graphgen.templates.event_profile_loader import load_event_profile
+
+            self.event_profile = load_event_profile(self.event_profile).profile_id
 
     def process(self, batch: list) -> Tuple[list, dict]:
         """
@@ -49,6 +57,16 @@ class BuildKGService(BaseOperator):
 
         if len(text_chunks) == 0:
             logger.info("All text chunks are already in the storage")
+        elif self.kg_method == "event_entity":
+            logger.info("[Text Event and Entity Extraction] processing ...")
+            text_nodes, text_edges = build_event_entity_kg(
+                llm_client=self.llm_client,
+                kg_instance=self.graph_storage,
+                chunks=text_chunks,
+                event_profile=self.event_profile,
+            )
+            nodes += text_nodes
+            edges += text_edges
         else:
             logger.info("[Text Entity and Relation Extraction] processing ...")
             text_nodes, text_edges = build_text_kg(
