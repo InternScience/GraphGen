@@ -32,7 +32,7 @@ freeze1→freeze2→freeze3 每轮增量均经独立审查 agent 全树 diff 复
 - 单元 **29 passed**（原 25 + 后端门控 4）：release worktree 8.23s、冻结包解包副本 9.0s/9.1s、审查 agent 独立复跑 9.46s——三处独立通过
 - 真实 Ray integration **8/8 PASS**（专用 63800 集群、两方独立复验：session 审查 agent + 飞轮SDK 会话；日志 `/tmp/gg-loss-fix/ray-freeze2.log`、`ray-final.log`；freeze2→freeze3 代码逐字节相同，Ray 证据直接适用）
 - baseline 对照：同套件在 75daf5c **8/8 FAIL**（`ray-baseline.log`；ActorID 相同 4 项 + loss=None 4 项）——RED/GREEN 对照成立
-- 确定性最小复现（场景 A/A'/B/C）：75daf5c 全部 REPRODUCED；候选串行控制场景 C 保持全部保留
+- 确定性最小复现：75daf5c 的场景 A/A'/B 复现丢失更新，场景 C 为串行对照；原脚本直接调用协议外裸存储写入，不能用于证明候选事务协议的修复效果。
 - 飞轮SDK 独立复验收据：`/tmp/flywheel-fix-verify-1105/verification-receipt.json`（29 项自有探针 + 合并收集 29 项测试 + Kuzu 误用 NotImplementedError 负例 + 探针/日志证据 SHA 落档）
 - `git diff --check` — passed（code/docs 各自复验）
 
@@ -49,12 +49,13 @@ freeze1→freeze2→freeze3 每轮增量均经独立审查 agent 全树 diff 复
 - `workspace/graphgen_env/pyproject.toml` rev → `ffa16b850c4fb958d4833b5fd6fb5ef0340edb05`；`uv.lock` 同步再生成；契约测试 `test_graphgen_production_source.py` `GRAPHGEN_REV` 同步换新 SHA
 - PMS 兼容四套件在新 pin 口径重跑（结果见 pin commit）
 - PMS pin commit：落本地 `main`（该线长期未推送远程，push 与否由用户决定）
-- live venv（graphgen_env/.venv）收敛到 pin 安装需与 new skill data 会话（合同 pilot 所有者）确认无在跑依赖后执行
+- live venv 已经确认任务窗口并收敛到该 pin；direct_url 验证非 editable，launcher 导入冒烟通过。
+- 发行前未完整核实 release policy 要求的非 PMS extraction→star graph→event_join 与 PMS 真实端到端 smoke；上述测试不等同于这两项，发行门禁存在缺口。
 
 ## 发布操作记录（透明化）
 
 1. 首次 push 因 commit 基于 75daf5c 而非 pms/main 顶端 3553b44 被拒（non-fast-forward）；rebase 到 3553b44 后重推，rebase 内容零变化（diff 仅继承 1.2.0 docs 两文件）。
-2. 首次被拒的 push 同时把 `graphgen-fork-v1.2.1` tag 推向了被 rebase 孤立的旧 commit `6972bd8`；发现后立即 force 替换为正确提交 `ffa16b8`。时间窗秒级、无消费者（pin 未切、无公告、产物未流通），最终远端状态已验证：branch 与 tag `^{}` 均指向 `ffa16b8`。
+2. 首次被拒的 push 同时把 `graphgen-fork-v1.2.1` tag 推向了被 rebase 孤立的旧 commit `6972bd8`；发现后立即 force 替换为正确提交 `ffa16b8`。当时 pin 尚未切换且未发布公告，但无法证明没有其他消费者；替换后的远端 branch 与 tag `^{}` 均指向 `ffa16b8`。这违反了 tag 不可移动的发行策略。
 3. tag 一经发布不再移动；本条为事故记录，v1.2.1 的最终身份以 `ffa16b850c4fb958d4833b5fd6fb5ef0340edb05` 为准。
 
 ## Known limitations

@@ -7,7 +7,7 @@
 
 ## 背景
 
-1.2.0 发布后独立审查与真实 Ray 复现确认：judge 缓存/新判 loss 写回在 `replicas>1`（生产 run10 实际 `replicas: 8`）时存在丢失更新竞态——写回是 reload→update→flush 的多操作周期，共享 actor 内存被并发 reload 打断或独立内存 stale 整图快照覆盖时，已写 loss 静默丢失。确定性最小复现（场景 A/A'/B/C）在 75daf5c 上全部可复现；run10 全量审计（400,046/400,047 KV loss、100% 图边覆盖）证明该 run 未受损，但覆盖不构成逐值正确性证明，机制修复仍必要。
+1.2.0 发布后独立审查与真实 Ray 复现确认：judge 缓存/新判 loss 写回在 `replicas>1`（生产 run10 实际 `replicas: 8`）时存在丢失更新竞态——写回是 reload→update→flush 的多操作周期，共享 actor 内存被并发 reload 打断或独立内存 stale 整图快照覆盖时，已写 loss 静默丢失。确定性最小复现在 75daf5c 上复现 A/A'/B 丢失更新，C 是串行对照；run10 审计记录 400,046/400,047 KV loss、100% 图边覆盖，但覆盖率不证明逐值正确，不能据此断言该 run 未受影响。
 
 ## 行为变更（PMS_PATCHES.md #17）
 
@@ -16,7 +16,7 @@
 | 执行方事务写回 `write_losses` | reload→全目标校验（缺失 KeyError fail-closed）→loss-only merge→flush 在持 POSIX flock 的执行进程内一次 RPC 完成；调用方不再拆多 RPC、不再持有锁；调用方死亡不提前释放锁 | 修复（竞态） |
 | 具名 actor 身份改为 SHA256(backend+realpath(working_dir)+namespace) | 消除跨目录 actor 误复用与错误目录文件锁 | 修复（竞态） |
 | 非全功能后端 fail-closed 门控 | `BaseGraphStorage.write_losses` 改为 `NotImplementedError`（消息含 backend 类名与原因）；事务实现下沉 `NetworkXStorage` override。默认 `graph_backend` 为 kuzu 的配置若启用 loss 写回将得到清晰报错而非静默部分提交（生产实证 `graph_backend: networkx`） | 行为变更（有意，fail-closed） |
-| judge 写回失败整批传播 | 缓存写回重试×3+静默跳过（1.2.0）移除；写回失败向上抛出、由下游 `min_loss_coverage` 门响亮失败。替代 1.2.0 的兜底行为（项目不变式禁止静默兜底/零填充） | 行为变更（有意，fail-closed） |
+| judge 写回失败整批传播 | 缓存写回重试×3+静默跳过（1.2.0）移除；写回失败直接向上传播、批次失败；不依赖下游 `min_loss_coverage` 门触发。替代 1.2.0 的兜底行为（项目不变式禁止静默兜底/零填充） | 行为变更（有意，fail-closed） |
 
 ## 兼容性
 
