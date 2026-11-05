@@ -1,3 +1,5 @@
+import hashlib
+import os
 from typing import Any, Dict, List, Set, Union
 
 import ray
@@ -73,6 +75,10 @@ class GraphStorageActor:
 
     def index_done_callback(self):
         return self.graph.index_done_callback()
+
+    def write_losses(self, updates: list) -> int:
+        # 单个同步 actor 调用，锁必须在执行 I/O 的 actor 内获取和释放。
+        return self.graph.write_losses(updates)
 
     def is_directed(self) -> bool:
         return self.graph.is_directed()
@@ -195,6 +201,9 @@ class RemoteGraphStorageProxy(BaseGraphStorage):
     def index_done_callback(self):
         return ray.get(self.actor.index_done_callback.remote())
 
+    def write_losses(self, updates: list) -> int:
+        return ray.get(self.actor.write_losses.remote(updates))
+
     def is_directed(self) -> bool:
         return ray.get(self.actor.is_directed.remote())
 
@@ -292,14 +301,23 @@ class StorageFactory:
     """
 
     @staticmethod
-    def create_storage(backend: str, working_dir: str, namespace: str):
+    def _actor_name(actor_kind: str, backend: str, working_dir: str, namespace: str) -> str:
+        # 具名 actor 的构造参数在 get_if_exists 命中时会被忽略，因此身份
+        # 必须包含 backend + 规范目录 + namespace；路径别名复用同一 actor。
+        identity = repr((backend, os.path.realpath(working_dir), namespace))
+        digest = hashlib.sha256(identity.encode("utf-8")).hexdigest()
+        return f"Actor_{actor_kind}_{digest}"
 
+    @staticmethod
+    def create_storage(backend: str, working_dir: str, namespace: str):
+        # 在调用方解析相对路径；actor worker 的 cwd 不一定与 driver 相同。
+        working_dir = os.path.realpath(working_dir)
         if backend in ["json_kv", "rocksdb"]:
-            actor_name = f"Actor_KV_{namespace}"
+            actor_name = StorageFactory._actor_name("KV", backend, working_dir, namespace)
             actor_class = KVStorageActor
             proxy_class = RemoteKVStorageProxy
         elif backend in ["networkx", "kuzu"]:
-            actor_name = f"Actor_Graph_{namespace}"
+            actor_name = StorageFactory._actor_name("Graph", backend, working_dir, namespace)
             actor_class = GraphStorageActor
             proxy_class = RemoteGraphStorageProxy
         else:

@@ -39,6 +39,14 @@ class FakeGraph:
         self.edges = {("a", "b"): {"description": "edge desc"}}
         self.updated = []
 
+    def write_losses(self, updates):
+        for index, loss in updates:
+            if isinstance(index, str):
+                self.update_node(index, {"loss": loss})
+            else:
+                self.update_edge(*index, {"loss": loss})
+        return len(updates)
+
     def reload(self):
         return None
 

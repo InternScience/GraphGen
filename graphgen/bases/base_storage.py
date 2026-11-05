@@ -53,6 +53,23 @@ class BaseKVStorage(Generic[T], StorageNameSpace):
 
 
 class BaseGraphStorage(StorageNameSpace, ABC):
+    def write_losses(self, updates: list) -> int:
+        """loss 批量写回协议入口（fail-closed 门控）。
+
+        协议语义：在执行方（actor/直连侧）一次完成 reload→全目标校验→
+        loss-only merge→flush，全过程持 working_dir 互斥锁，Ray 侧必须
+        作为单个同步 actor 方法调用，不能拆成多个 RPC。该原子性仅在
+        networkx 后端验证（文件锁 + 整文件原子替换发布）；其他后端
+        （如 kuzu）没有数据库级事务包裹，会部分提交，故在此拒绝而非
+        静默部分写入。生产配置 graph_backend: networkx。
+        """
+        raise NotImplementedError(
+            f"{type(self).__name__} does not implement write_losses: "
+            "loss 写回原子性协议仅在 networkx 后端验证（执行方文件锁 + "
+            "整文件原子替换发布），当前后端无数据库级事务包裹、会部分提交，"
+            "fail-closed 拒绝。生产配置请使用 graph_backend: networkx。"
+        )
+
     @abstractmethod
     def is_directed(self) -> bool:
         pass

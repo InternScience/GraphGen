@@ -42,34 +42,8 @@ class JudgeService(BaseOperator):
         return value
 
     def _write_back_losses(self, records: list) -> int:
-        """把 KV 记录中的 loss 写回图存储（缓存命中路径同样必须落图）。
-
-        PMS_PATCHES.md #13：loss 只存在于图属性时 partition 的 max_loss 采样
-        才有信号；缓存命中记录若跳过写回，重跑会静默零信号。
-        传输时序注：图 actor 的 reload 在文件刚被 index_done_callback 整写后
-        可能读到中间态（ParseError 无明细）；此时重试，仍失败则跳过本次写回
-        （图属性已有 loss 的场景——如重建预置——写回本就是冗余兜底），不让
-        兜底路径阻断主流程。
-        """
-        for attempt in range(3):
-            try:
-                self.graph_storage.reload()
-                break
-            except Exception as exc:  # pylint: disable=broad-except
-                self.logger.warning(
-                    "[judge] graph reload failed (attempt %d/3): %s: %s",
-                    attempt + 1, type(exc).__name__, str(exc)[:200],
-                )
-                if attempt == 2:
-                    self.logger.warning(
-                        "[judge] skip cached-loss write-back; graph must already "
-                        "carry loss attributes for partition max_loss sampling"
-                    )
-                    return 0
-                import time
-
-                time.sleep(10)
-        written = 0
+        """缓存和新判共用一次执行方原子写回；失败必须传播，不能跳过落图。"""
+        updates = []
         for result in records:
             if not isinstance(result, dict) or not result:
                 continue
@@ -77,27 +51,13 @@ class JudgeService(BaseOperator):
             loss = result.get("loss")
             if index is None or not isinstance(loss, (int, float)):
                 continue
-            if isinstance(index, str):
-                node_data = self.graph_storage.get_node(index)
-                if not node_data:
-                    continue
-                node_data["loss"] = loss
-                self.graph_storage.update_node(index, node_data)
-                written += 1
-            elif isinstance(index, tuple):
-                edge_source, edge_target = index
-                edge_data = self.graph_storage.get_edge(edge_source, edge_target)
-                if not edge_data:
-                    continue
-                edge_data["loss"] = loss
-                self.graph_storage.update_edge(edge_source, edge_target, edge_data)
-                written += 1
-        self.graph_storage.index_done_callback()
-        return written
+            if isinstance(index, str) or (isinstance(index, tuple) and len(index) == 2):
+                updates.append((index, loss))
+        return self.graph_storage.write_losses(updates)
 
     def split(self, batch):
         # 缓存命中的记录由基类直接 yield，绕过 process()——这里补上它们的
-        # 图写回（replicas=1 单写者，无竞态）。
+        # 图写回（执行方单 RPC 事务，允许多 judge 副本）。
         to_process, recovered = super().split(batch)
         if not recovered.empty:
             written = self._write_back_losses(recovered.to_dict(orient="records"))
@@ -144,8 +104,6 @@ class JudgeService(BaseOperator):
         """
         Judge the description in the item and compute the loss.
         """
-        self.graph_storage.reload()
-
         results = run_concurrent(
             self._process_single_judge,
             batch,
@@ -153,6 +111,9 @@ class JudgeService(BaseOperator):
             unit="description",
         )
 
+        # 不在 judge 进程拆分 reload/update/flush RPC；一次 actor 调用保证
+        # partition、graph_units 的 reload 不能插入未落盘更新之间。
+        self._write_back_losses(results)
         to_store = []
         meta_update = {}
 
@@ -161,23 +122,9 @@ class JudgeService(BaseOperator):
         ):
             if not result:
                 continue
-            index = result["index"]
-            loss = result["loss"]
-            if isinstance(index, str):
-                node_id = index
-                node_data = self.graph_storage.get_node(node_id)
-                node_data["loss"] = loss
-                self.graph_storage.update_node(node_id, node_data)
-            elif isinstance(index, tuple):
-                edge_source, edge_target = index
-                edge_data = self.graph_storage.get_edge(edge_source, edge_target)
-                edge_data["loss"] = loss
-                self.graph_storage.update_edge(edge_source, edge_target, edge_data)
-
             result["_trace_id"] = self.get_trace_id(result)
             to_store.append(result)
             meta_update.setdefault(input_trace_id, []).append(result["_trace_id"])
-        self.graph_storage.index_done_callback()
 
         # PMS_PATCHES.md #16：图写回已完成，对外产出把边 index 编码回 JSON
         # 字符串（与 graph_units 传输口径一致；列保持纯 str，Arrow 安全）。

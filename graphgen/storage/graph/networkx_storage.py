@@ -235,3 +235,36 @@ class NetworkXStorage(BaseGraphStorage):
         Reload the graph from the GraphML file.
         """
         self.__post_init__()
+
+    def write_losses(self, updates: list) -> int:
+        """在执行方一次完成 reload→loss-only 更新→flush（原子性协议实现）。
+
+        Ray 侧必须作为一个同步 actor 方法调用，不能拆成多个 RPC。文件锁
+        由真实执行进程持有至 flush 完成，保护独立 actor/运行共用目录，
+        且不因等待 RPC 的 judge 进程死亡而提前释放。其他 actor 方法
+        （包括 partition/graph_units 的 reload）由同步 actor 自然串行。
+        NetworkX 通过已有的文件原子替换发布整批。本协议不保护与独立
+        建图/裸快照写者并发的场景。BaseGraphStorage 对其他后端
+        fail-closed（kuzu 无数据库级事务包裹，拒绝部分提交）。
+        """
+        from graphgen.utils.concurrency import graph_write_lock
+
+        if not updates:
+            return 0
+        with graph_write_lock(self.working_dir, self.namespace):
+            self.reload()
+            # 先核实所有目标，缺失不得静默声称已落图。
+            for index, _loss in updates:
+                if isinstance(index, str):
+                    exists = self.has_node(index)
+                else:
+                    exists = self.has_edge(*index)
+                if not exists:
+                    raise KeyError(f"graph loss target missing: {index!r}")
+            for index, loss in updates:
+                if isinstance(index, str):
+                    self.update_node(index, {"loss": loss})
+                else:
+                    self.update_edge(*index, {"loss": loss})
+            self.index_done_callback()
+        return len(updates)

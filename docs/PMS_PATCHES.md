@@ -192,3 +192,64 @@ SAG 思想移植（MIT，arXiv:2606.15971；参考源码 `workspace/sag_referenc
   持久化更新，放开需 actor 侧批量写回 API。每个含缓存命中 batch 触发一次
   整图 reload+持久化，45,942 节点级图上为已知成本；如需优化可在 `__call__`
   级汇总一次写回。
+
+## #17 judge loss 写回执行方事务原子性（2026-11-05）
+
+- **动机**：judge 图写回是 reload→update*→flush 多操作区间，1.2.0 上三类
+  确定性交错静默丢 loss（最终触发 partition `min_loss_coverage` 门）：
+  1. `replicas>1` 共享同一 storage actor 内存时，他副本 reload 整体替换
+     `_graph`，丢本副本未 flush 更新；
+  2. 两次独立运行/独立内存实例同 working_dir，后 flush 者以陈旧全量快照
+     整写覆盖先 flush 者已落盘 loss（"last-writer-wins 安全"仅单写者成立）；
+  3. 独立审查真实 Ray 验证：judge worker 持锁等 flush RPC 时被 kill，OS
+     只释放调用方锁而 actor 的真实 I/O 继续，延迟 replace 用旧快照覆盖
+     他方状态——锁必须由执行 I/O 的进程持有，调用方锁无效；
+  4. 独立审查真实 Ray 复现：同一 Ray namespace 下 `Actor_Graph_graph` 按
+     namespace 命名，不同 working_dir 经 `get_actor` 复用首个 actor（写回
+     丢 loss 且后到目录文件不落盘）；partition/graph_units 的无锁 reload
+     亦会打断 judge update/flush（原子文件替换不保护 actor 内存）。
+- **实现**（弃调用方锁，执行方单事务）：
+  - `BaseGraphStorage.write_losses(updates)`：fail-closed 后端门控——基类
+    直接 `raise NotImplementedError`（消息含 backend 类名与原因：loss 写回
+    原子性协议仅在 networkx 后端验证；kuzu 无数据库级事务包裹、会部分
+    提交，拒绝部分提交）。完整事务实现下沉到 `NetworkXStorage` override：
+    一次完成 reload→先验证全部目标（缺失 KeyError fail-closed）→loss-only
+    merge（其余属性不动）→flush，全过程在执行进程内持
+    `graphgen/utils/concurrency.py` 的 POSIX flock（realpath(working_dir)
+    级；非 POSIX import 即失败，不静默降级）。同 actor 其他方法由官方
+    同步 actor 串行，因此 partition/graph_units 的 reload 与事务天然不
+    交错；独立 actor/运行由执行方文件锁串行；调用方死亡不提前释放执行
+    方锁。每次写回一次整图 reload+持久化（#16 已知成本，本补丁未改变）。
+    生产配置 `graph_backend: networkx`（PMS 仓库
+    `training/agent_task/PMS_AI/data_generation/graphgen-data/config/`
+    下 `pms_project_query_balanced_300_batch_0002_atomic.yaml` 等
+    批产配置实证），kuzu 仅代码默认值；actor/proxy 通用转发不动，非
+    networkx 后端经 actor 调用时自然抛 NotImplementedError。
+  - `GraphStorageActor`/`RemoteGraphStorageProxy` 透传该单 RPC；judge
+    新判与缓存恢复共用，judge 侧不再有锁、前置 reload 或逐条 RPC。
+  - `StorageFactory` 具名 actor 身份改为 SHA256(backend + realpath
+    (working_dir) + namespace)，消除跨目录误复用（相对路径先在调用方
+    解析，worker cwd 不可依赖）。
+- **边界（明确不声称）**：仅 NetworkX loss 写者间互斥/NetworkX 整批发布
+  原子；不保护独立 build_kg/裸快照写者或跨 Ray namespace/cluster 的 KV
+  并发；同 unit 多配置仍最后 loss 胜出（不保证 lineage）；多节点 Ray 需
+  同机/共享文件系统语义。测试基建/集群隔离仅限测试，无生产代码路径。
+- **(a) 后端边界（有意 fail-closed）**：事务写回协议仅 NetworkX 验证；
+  其他后端（kuzu 等）经基类门控直接拒绝（NotImplementedError，消息含
+  backend 类名与原因），不做部分提交兜底。生产配置 networkx 不受影响。
+  覆盖：`tests/unit_tests/storage/test_write_losses_backend_gate.py`。
+- **(b) 行为变更（有意）**：写回失败现为整批 fail-closed——judge 批次
+  异常向上传播、不静默跳过（1.2.0 原行为为逐条重试×3 + 失败静默跳过）。
+  覆盖：`test_flush_failure_is_not_published_as_success[cached False/True]`
+  （`test_judge_loss_writeback_atomicity.py`，flush 抛 OSError 时经 split
+  与 process 传播、文件无 loss）与目标缺失 KeyError 测试。
+- **覆盖**：`tests/unit_tests/operators/test_judge_loss_writeback_atomicity.py`
+  （缓存/新判、共享/独立内存、跨进程、loss-only merge、目标缺失
+  fail-closed、flush 失败不冒充成功；前 5 项在 75daf5c 基线失败）、
+  `tests/unit_tests/utils/test_file_lock.py`（真/别名路径同锁、线程/
+  进程互斥、异常释放、非 POSIX 拒绝）、`tests/unit_tests/operators/
+  test_judge_transport_regressions.py`（FakeGraph 增加 write_losses 桩）、
+  `tests/integration_tests/test_loss_actor_transactions.py`（真实 Ray/
+  factory/proxy/JudgeService/graph_units/partition：目录隔离与别名复用
+  2 项、reload 插队 4 项、caller-kill 2 项；同套件在 75daf5c 8/8 失败，
+  候选 8/8 通过）。
