@@ -103,3 +103,92 @@ SAG 思想移植（MIT，arXiv:2606.15971；参考源码 `workspace/sag_referenc
 ## #10 Event extraction prompt: no example-id copying (1.1.1)
 
 - `templates/event_profiles/pms_event.v1/prompt.zh.txt` requires the anchor to be taken verbatim from the fragment and forbids copying the illustrative id, matching the generation-policy hardening in PMS `pms_policy.v2_2`.
+
+## #11 畸形响应按空响应处理（2026-10-30）
+
+- `openai_client.generate_answer`：思考模型把 `max_tokens` 全花在 `<think>` 内时，
+  部分 OpenAI 兼容后端返回 `choices[0].message.content = None`；网关内容过滤偶发
+  返回空 `choices`。官方实现直接 `filter_think_tags(completion.choices[0].message.content)`，
+  两种情况分别抛 `TypeError` / `IndexError`。
+- 这两类异常既非传输错误也非格式错误：池的可重试分类器判为不可重试，在**第一次
+  尝试**就 fail-closed（跨源 failover 完全失效），上层 `run_concurrent` 再把该 chunk
+  静默丢弃，造成数据缺口。
+- 修复：读取 `content` 前先判 `choices` 是否为空，`None` 归一为 `""`，交给既有的
+  `GRAPHGEN_EMPTY_RETRY` 有界重试语义处理。非空响应路径不变。
+- 覆盖：`tests/unit_tests/models/test_openai_client_empty_response.py`（4 项：None
+  content、空 choices、重试后成功、正常 `<think>` 剥离）。
+
+## #12 graph_units source：从既有图存储枚举描述单元（2026-11-04）
+
+- **动机**：loss 分区（quiz→judge→max_loss）的合法上游是 build_kg 的
+  node/edge 条目流（`quiz_service` 只认 `item["node"]/item["edge"]`）；
+  partition/generate 无上游时拿到空数据集根本不执行。对已建好的 KG 重做
+  loss 分区只能全量重建 build_kg（含 LLM 描述改写，KG 非 byte-stable）。
+- **实现**：`operators/graph_units/graph_units.py`：source 算子
+  `graph_units`，从 graph storage 枚举全部带描述单元，输出
+  `{"index": node_id|edge_tuple, "description": str, "_trace_id"}`，
+  直接喂 judge（fork 中 quiz 产出无消费者，跳过 quiz 省一半调用）。
+  图是唯一持久态（`<working_dir>/graph.graphml`），换新 working_dir 只拷
+  graphml 即可复用整张图，且天然避开 BaseOperator `_meta_forward` 把旧
+  QA recover 回数据流的坑。
+- 空单元枚举 fail-closed（`graph_units_empty`）。纯枚举逻辑拆在
+  `_collect_units`（无 ray，可单测）。
+- 注册：`operators/__init__.py` `"graph_units"`。
+
+## #13 loss 链路 fail-closed（2026-11-04）
+
+- **judge index 归一**：跨 operator 的 Arrow/pandas 边界会把二元组
+  `(src_id, tgt_id)` 变成 list；`JudgeService.process` 按
+  `isinstance(index, tuple)` 分派节点/边写回，不归一会让全部边单元的
+  loss **静默不落图**。`_process_single_judge` 入口把 2 元 list 归一成
+  tuple。
+- **分区 loss 覆盖率门**：`ECEPartitioner.partition` 新增
+  `min_loss_coverage`（默认 0.95）。`unit_sampling != random` 时，真实
+  loss（非 `default_loss=-log(0.1)` 假值）覆盖率低于阈值直接
+  raise `partition_loss_coverage_too_low`。动机：没跑 judge / TRAINEE
+  漏配（`init_llm` 返回 None）/ judge 逐条失败的单元全部落 default_loss
+  假高值，恰聚在 max_loss 排序最前——旧行为下 run 正常出题但零信号且
+  无任何报错。
+
+## #14 合同 challenge 集合题输出门（2026-11-04）
+
+- `operators/generate/gates.py` 新增 `pms_contract_challenge`：在
+  `pms_contract_anchor`（合同号 token / “该合同”指代）基础上放行第三类
+  锚点——完整项目编号（P-/I- + ≥6 位）。batch1003 腿B 挑战 profile 的
+  集合/聚合题以项目编号为锚点，现役门会把它们整条静默丢弃（表现为
+  “模型出不了集合题”的假象）。锚点真实性仍由 PMS 侧 mapper/审计把关，
+  gate 只做形态存在性判定。
+
+## #15 partition max_communities 截断（2026-11-04）
+
+- **动机**：batch1003 试产只需几百个社区出题；全图 ECE 分区在 45,942 节点 +
+  177,052 边上产出 ~2.7 万社区，generate 全跑是数千次教师调用。loss 采样下
+  `ECEPartitioner` 按种子单元 loss 降序产出社区——**取前 N 即"盲区选题"**，
+  截断本身就是选题机制而非降级。
+- **实现**：`PartitionService` 新增 `max_communities`（默认 None = 官方全量
+  行为不变）；`generator()` 产出计数达 N 即 break。配合 `unit_sampling:
+  max_loss` 组合使用；random 采样下等价任意抽样。
+
+## #16 graphml 原子写与跨 operator 传输可靠性（2026-11-04）
+
+- **graphml 原子写**：`networkx_storage.write_nx_graph` 改唯一临时名
+  （pid+uuid）+ `os.replace` 原子替换——整文件非原子写会让并发 reload 读到
+  截断文件（ParseError: no element found）；固定 `.tmp` 名在 judge 多 actor
+  并发写回时互踩（A replace 后 B 再 replace 报 FileNotFoundError）。写失败
+  （不可序列化属性/磁盘满）清理 tmp 不残留。actor 内存图是唯一真源、每次
+  全量快照，最后写入者胜出语义安全。
+- **有界重试 reload**：judge 缓存 loss 写回（`_write_back_losses`）与
+  partition `kg_instance.reload` 对刚被整写的 graphml 做 3 次有界重试；judge
+  侧仍失败则跳过本次写回（图属性已有 loss 时写回是冗余兜底），不阻断主流程。
+- **index 传输口径**：Arrow/pandas 边界把边二元组 index 变 list，
+  graph_units 再把边 index 编码为 JSON 字符串（混合 str/list 列炸 Arrow
+  tensor 分支）。judge 两条入口（`_process_single_judge`、缓存恢复行）统一经
+  `_normalize_unit_index` 还原为 tuple 供图写回分派；对外产出（process 结果
+  与 split 恢复行）统一把边 index 编码回 JSON 字符串、节点保持 str——列保持
+  纯 str，Arrow 安全。`process` 对 run_concurrent 的 None 占位（输入行缺
+  description 等异常逃出内层 try）与图写回同款守卫跳过，不崩整批。
+- **已知约束**：缓存 loss 写回假设 judge `replicas=1`（当前生产配置）——
+  `replicas>1` 时 `reload()` 会以文件内容覆盖 actor 内存图，丢其他副本未
+  持久化更新，放开需 actor 侧批量写回 API。每个含缓存命中 batch 触发一次
+  整图 reload+持久化，45,942 节点级图上为已知成本；如需优化可在 `__call__`
+  级汇总一次写回。

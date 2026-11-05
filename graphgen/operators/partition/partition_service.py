@@ -29,6 +29,10 @@ class PartitionService(BaseOperator):
         self.tokenizer_instance: BaseTokenizer = Tokenizer(model_name=tokenizer_model)
         method = partition_kwargs["method"]
         self.method_params = partition_kwargs.get("method_params", {})
+        # PMS_PATCHES.md #15：max_communities 截断分区输出——loss 采样下分区按
+        # 种子单元 loss 降序产出社区，取前 N 即"盲区选题"；random 采样下为任意
+        # 抽样。None（官方默认）= 全量社区，行为不变。
+        self.max_communities: int | None = partition_kwargs.get("max_communities")
         if method == "event_join":
             self.method_params = dict(self.method_params)
             self.method_params.setdefault("event_entity_type", partition_kwargs.get("event_entity_type", "EVENT"))
@@ -80,7 +84,22 @@ class PartitionService(BaseOperator):
     def process(self, batch: list) -> Tuple[Iterable[dict], dict]:
         # this operator does not consume any batch data
         # but for compatibility we keep the interface
-        self.kg_instance.reload()
+        # PMS_PATCHES.md #16：上游 index_done_callback 整文件写 graphml 与本处
+        # reload 之间存在窗口（ParseError 无明细）；有界重试读完整文件。
+        import time
+
+        for attempt in range(3):
+            try:
+                self.kg_instance.reload()
+                break
+            except Exception as exc:  # pylint: disable=broad-except
+                if attempt == 2:
+                    raise
+                logger.warning(
+                    "[partition] kg reload failed (attempt %d/3): %s: %s",
+                    attempt + 1, type(exc).__name__, str(exc)[:200],
+                )
+                time.sleep(10)
 
         communities: Iterable = self.partitioner.partition(
             g=self.kg_instance, **self.method_params
@@ -89,6 +108,8 @@ class PartitionService(BaseOperator):
         def generator():
             count = 0
             for community in communities:
+                if self.max_communities is not None and count >= self.max_communities:
+                    break
                 count += 1
                 b = self.partitioner.community2batch(community, g=self.kg_instance)
 

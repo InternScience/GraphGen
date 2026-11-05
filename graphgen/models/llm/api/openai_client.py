@@ -208,7 +208,17 @@ class OpenAIClient(BaseLLMWrapper):
                         "total_tokens": completion.usage.total_tokens,
                     }
                 )
-            content = self.filter_think_tags(completion.choices[0].message.content)
+            # PMS fork (docs/PMS_PATCHES.md #11): malformed responses are "empty",
+            # not hard failures. Thinking models can spend every max_tokens inside
+            # <think>, so some backends return message.content=None; gateways can
+            # also return an empty choices list. Indexing/None-passthrough raises
+            # IndexError/TypeError, which pool classifiers treat as non-retryable
+            # and fail-closed on the first attempt (no cross-source failover),
+            # leaving run_concurrent to silently drop the chunk.
+            raw_content = (
+                completion.choices[0].message.content if completion.choices else None
+            )
+            content = self.filter_think_tags(raw_content or "")
             if content.strip():
                 break
             logger.warning(

@@ -1,5 +1,6 @@
 import html
 import os
+import uuid
 from dataclasses import dataclass
 from typing import Any, Dict, List, Optional, Set, Union, cast
 
@@ -45,8 +46,24 @@ class NetworkXStorage(BaseGraphStorage):
 
     @staticmethod
     def write_nx_graph(graph: "nx.Graph", file_name):
-
-        nx.write_graphml(graph, file_name)
+        # PMS_PATCHES.md #16：整文件非原子写会让并发 reload 读到截断文件
+        # （ParseError: no element found）；写临时文件后原子替换。
+        # #16 追加：judge 多 actor 并发写回时固定 .tmp 名互相踩踏（A 先 replace，
+        # B 再 replace 时 tmp 已不存在 → FileNotFoundError）；改唯一 tmp 名。
+        # actor 内存图是唯一真源、每次全量快照，最后写入者胜出语义安全，
+        # 读方仍只见完整文件（os.replace 原子性不变）。
+        tmp_name = f"{file_name}.{os.getpid()}-{uuid.uuid4().hex[:8]}.tmp"
+        try:
+            nx.write_graphml(graph, tmp_name)
+        except Exception:  # pylint: disable=broad-except
+            # 序列化失败（不可序列化属性/磁盘满）不得残留 tmp：大图反复失败
+            # 会累积数 GB 垃圾文件。
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
+        os.replace(tmp_name, file_name)
 
     @staticmethod
     def stable_largest_connected_component(graph: "nx.Graph") -> "nx.Graph":

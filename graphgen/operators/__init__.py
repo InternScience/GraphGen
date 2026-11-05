@@ -4,6 +4,7 @@ from .evaluate import EvaluateService
 from .extract import ExtractService
 from .filter import FilterService
 from .generate import GenerateService
+from .graph_units import graph_units
 from .judge import JudgeService
 from .partition import PartitionService
 from .quiz import QuizService
@@ -13,6 +14,7 @@ from .search import SearchService
 
 operators = {
     "read": read,
+    "graph_units": graph_units,
     "chunk": ChunkService,
     "build_kg": BuildKGService,
     "quiz": QuizService,

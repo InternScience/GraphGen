@@ -60,6 +60,7 @@ class ECEPartitioner(BFSPartitioner):
         min_units_per_community: int = 1,
         max_tokens_per_community: int = 10240,
         unit_sampling: str = "random",
+        min_loss_coverage: float = 0.95,
         **kwargs: Any,
     ) -> Iterable[Community]:
         nodes: List[Tuple[str, dict]] = g.get_all_nodes()
@@ -71,6 +72,26 @@ class ECEPartitioner(BFSPartitioner):
         all_units: List[Tuple[str, Any, dict]] = [
             (NODE_UNIT, nid, d) for nid, d in nodes
         ] + [(EDGE_UNIT, frozenset((u, v)), d) for u, v, d in edges]
+
+        # PMS_PATCHES.md #13：loss 采样下，"没跑 judge / TRAINEE 漏配 / judge
+        # 逐条失败"的单元都会落 default_loss≈2.30 的假高 loss，恰聚在 max_loss
+        # 排序最前——run 正常出题但零信号。这里 fail-closed：真实 loss 覆盖率
+        # 低于阈值直接拒绝分区。
+        if unit_sampling != "random" and all_units:
+            default_loss = -math.log(0.1)
+            judged = [
+                unit
+                for unit in all_units
+                if isinstance(unit[-1].get("loss"), (int, float))
+                and abs(unit[-1]["loss"] - default_loss) > 1e-9
+            ]
+            coverage = len(judged) / len(all_units)
+            if coverage < min_loss_coverage:
+                raise ValueError(
+                    f"partition_loss_coverage_too_low:{coverage:.3f}<{min_loss_coverage}"
+                    " — loss 采样要求 quiz→judge 先产真实 loss（TRAINEE_* 配置、"
+                    "judge 失败率、上游单元枚举都可能是缺口）"
+                )
 
         used_n: Set[str] = set()
         used_e: Set[frozenset[str]] = set()
