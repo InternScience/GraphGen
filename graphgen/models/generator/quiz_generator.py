@@ -10,9 +10,8 @@ class QuizGenerator(BaseGenerator):
     Quiz Generator rephrases given descriptions to create quiz questions.
     """
 
-    @staticmethod
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
         """
         Build prompt for rephrasing the description.

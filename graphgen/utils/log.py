@@ -62,9 +62,9 @@ CURRENT_LOGGER_VAR = contextvars.ContextVar("current_logger")
 
 
 def get_current_logger() -> logging.Logger:
-    current_logger = CURRENT_LOGGER_VAR.get()
-    if not current_logger:
-        raise RuntimeError("No logger is set in the current context.")
+    current_logger = CURRENT_LOGGER_VAR.get(None)
+    if current_logger is None:
+        return logging.getLogger("GraphGen")
     return current_logger
 
 

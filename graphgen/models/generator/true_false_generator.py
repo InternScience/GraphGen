@@ -2,11 +2,12 @@ import re
 from typing import Any
 
 from graphgen.bases import BaseGenerator
-from graphgen.templates import TF_GENERATION_PROMPT
 from graphgen.utils import detect_main_language, logger
 
 
 class TrueFalseGenerator(BaseGenerator):
+    TEMPLATE_KEY = "true_false"
+
     def __init__(self, llm_client, num_of_questions) -> None:
         super().__init__(llm_client)
         self.num_of_questions = num_of_questions
@@ -64,7 +65,6 @@ class TrueFalseGenerator(BaseGenerator):
 
         return qa_pairs
 
-    # pylint: disable=W0221
     def build_prompt(
         self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
@@ -84,7 +84,7 @@ class TrueFalseGenerator(BaseGenerator):
         )
         context = entities_str + "\n" + relationships_str
         language = detect_main_language(entities_str + relationships_str)
-        prompt = TF_GENERATION_PROMPT[language].format(
+        prompt = self.template(language).format(
             context=context,
             num_of_questions=self.num_of_questions,
         )
