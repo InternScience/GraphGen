@@ -2,3 +2,4 @@ include requirements.txt
 include graphgen/configs/*.yaml
 recursive-include graphgen/configs *.yaml
 recursive-include graphgen/templates/profiles *.json
+recursive-include graphgen/templates/event_profiles *
