@@ -1,25 +1,22 @@
 import tempfile
 
-import pytest
-
 from graphgen.bases.datatypes import Community
-from graphgen.models import ECEPartitioner, NetworkXStorage
+from graphgen.models import ECEPartitioner
+from graphgen.storage import NetworkXStorage
 
 
-@pytest.mark.asyncio
-async def test_ece_empty_graph():
+def test_ece_empty_graph():
     """ECE partitioning on an empty graph should return an empty community list."""
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = NetworkXStorage(working_dir=tmpdir, namespace="empty")
         partitioner = ECEPartitioner()
-        communities = await partitioner.partition(
+        communities = list(partitioner.partition(
             storage, max_units_per_community=5, unit_sampling="random"
-        )
+        ))
         assert communities == []
 
 
-@pytest.mark.asyncio
-async def test_ece_single_node():
+def test_ece_single_node():
     """A single node must be placed in exactly one community under any edge-sampling strategy."""
     nodes = [("A", {"desc": "alone", "length": 10, "loss": 0.1})]
 
@@ -29,19 +26,18 @@ async def test_ece_single_node():
                 working_dir=tmpdir, namespace=f"single_{strategy}"
             )
             for nid, ndata in nodes:
-                await storage.upsert_node(nid, ndata)
+                storage.upsert_node(nid, ndata)
 
             partitioner = ECEPartitioner()
-            communities: list[Community] = await partitioner.partition(
+            communities: list[Community] = list(partitioner.partition(
                 storage, max_units_per_community=5, unit_sampling=strategy
-            )
+            ))
             assert len(communities) == 1
             assert communities[0].nodes == ["A"]
             assert communities[0].edges == []
 
 
-@pytest.mark.asyncio
-async def test_ece_small_graph_random():
+def test_ece_small_graph_random():
     """
     2x3 grid graph:
         0 — 1 — 2
@@ -63,14 +59,14 @@ async def test_ece_small_graph_random():
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = NetworkXStorage(working_dir=tmpdir, namespace="small_random")
         for nid, ndata in nodes:
-            await storage.upsert_node(nid, ndata)
+            storage.upsert_node(nid, ndata)
         for src, tgt, edata in edges:
-            await storage.upsert_edge(src, tgt, edata)
+            storage.upsert_edge(src, tgt, edata)
 
         partitioner = ECEPartitioner()
-        communities: list[Community] = await partitioner.partition(
+        communities: list[Community] = list(partitioner.partition(
             storage, max_units_per_community=4, unit_sampling="random"
-        )
+        ))
 
         # Basic integrity checks
         all_nodes = set()
@@ -83,8 +79,7 @@ async def test_ece_small_graph_random():
         assert len(all_edges) == 7
 
 
-@pytest.mark.asyncio
-async def test_ece_small_graph_min_loss():
+def test_ece_small_graph_min_loss():
     """
     Same grid graph, but using min_loss sampling.
     Edges with lower loss should be preferred during community expansion.
@@ -105,14 +100,14 @@ async def test_ece_small_graph_min_loss():
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = NetworkXStorage(working_dir=tmpdir, namespace="small_min")
         for nid, ndata in nodes:
-            await storage.upsert_node(nid, ndata)
+            storage.upsert_node(nid, ndata)
         for src, tgt, edata in edges:
-            await storage.upsert_edge(src, tgt, edata)
+            storage.upsert_edge(src, tgt, edata)
 
         partitioner = ECEPartitioner()
-        communities: list[Community] = await partitioner.partition(
+        communities: list[Community] = list(partitioner.partition(
             storage, max_units_per_community=4, unit_sampling="min_loss"
-        )
+        ))
 
         all_nodes = set()
         all_edges = set()
@@ -124,8 +119,7 @@ async def test_ece_small_graph_min_loss():
         assert len(all_edges) == 7
 
 
-@pytest.mark.asyncio
-async def test_ece_small_graph_max_loss():
+def test_ece_small_graph_max_loss():
     """
     Same grid graph, but using max_loss sampling.
     Edges with higher loss should be preferred during community expansion.
@@ -147,14 +141,14 @@ async def test_ece_small_graph_max_loss():
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = NetworkXStorage(working_dir=tmpdir, namespace="small_max")
         for nid, ndata in nodes:
-            await storage.upsert_node(nid, ndata)
+            storage.upsert_node(nid, ndata)
         for src, tgt, edata in edges:
-            await storage.upsert_edge(src, tgt, edata)
+            storage.upsert_edge(src, tgt, edata)
 
         partitioner = ECEPartitioner()
-        communities: list[Community] = await partitioner.partition(
+        communities: list[Community] = list(partitioner.partition(
             storage, max_units_per_community=4, unit_sampling="max_loss"
-        )
+        ))
 
         all_nodes = set()
         all_edges = set()
@@ -166,8 +160,7 @@ async def test_ece_small_graph_max_loss():
         assert len(all_edges) == 7
 
 
-@pytest.mark.asyncio
-async def test_ece_max_tokens_limit():
+def test_ece_max_tokens_limit():
     """Ensure max_tokens_per_community is respected."""
     # node id -> data
     node_data = {"A": {"length": 3000}, "B": {"length": 3000}, "C": {"length": 3000}}
@@ -177,17 +170,17 @@ async def test_ece_max_tokens_limit():
     with tempfile.TemporaryDirectory() as tmpdir:
         storage = NetworkXStorage(working_dir=tmpdir, namespace="token_limit")
         for nid, ndata in node_data.items():
-            await storage.upsert_node(nid, ndata)
+            storage.upsert_node(nid, ndata)
         for src, tgt, edata in edges:
-            await storage.upsert_edge(src, tgt, edata)
+            storage.upsert_edge(src, tgt, edata)
 
         partitioner = ECEPartitioner()
-        communities: list[Community] = await partitioner.partition(
+        communities: list[Community] = list(partitioner.partition(
             storage,
             max_units_per_community=10,
             max_tokens_per_community=5000,  # 1 node (3000) + 1 edge (2000) = 5000
             unit_sampling="random",
-        )
+        ))
 
         # With a 5000-token budget we need at least two communities
         assert len(communities) >= 2
