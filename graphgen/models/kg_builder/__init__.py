@@ -1,2 +1,3 @@
+from .event_entity_kg_builder import EventEntityKGBuilder
 from .light_rag_kg_builder import LightRAGKGBuilder
 from .mm_kg_builder import MMKGBuilder

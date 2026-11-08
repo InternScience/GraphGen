@@ -2,6 +2,7 @@ from .anchor_bfs_partitioner import AnchorBFSPartitioner
 from .bfs_partitioner import BFSPartitioner
 from .dfs_partitioner import DFSPartitioner
 from .ece_partitioner import ECEPartitioner
+from .event_join_partitioner import EventJoinPartitioner
 from .leiden_partitioner import LeidenPartitioner
 from .quintuple_partitioner import QuintuplePartitioner
 from .triple_partitioner import TriplePartitioner
