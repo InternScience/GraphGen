@@ -33,7 +33,7 @@ class PartitionService(BaseOperator):
             self.method_params = dict(self.method_params)
             self.method_params.setdefault("event_entity_type", partition_kwargs.get("event_entity_type", "EVENT"))
             self.method_params.setdefault("anchor_attribute", partition_kwargs.get("anchor_attribute", "anchor"))
-            self.method_params.setdefault("require_same_anchor", partition_kwargs.get("require_same_anchor", True))
+            self.method_params.setdefault("require_same_anchor", partition_kwargs.get("require_same_anchor", False))
 
         if method == "bfs":
             from graphgen.models import BFSPartitioner

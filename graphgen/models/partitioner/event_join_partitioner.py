@@ -63,7 +63,7 @@ class EventJoinPartitioner(BasePartitioner):
         min_events_per_community: int = 1,
         event_entity_type: str = "EVENT",
         anchor_attribute: str = "anchor",
-        require_same_anchor: bool = True,
+        require_same_anchor: bool = False,
         **kwargs: Any,
     ) -> Iterable[Community]:
         _validate_params(

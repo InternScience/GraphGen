@@ -82,3 +82,20 @@ def test_event_join_keeps_unanchored_events_without_anchor_requirement():
         "event:unanchored",
         "entity:operator",
     }
+
+
+def test_event_join_default_does_not_require_an_anchor():
+    """The shipped generic profile stores no anchor; defaults must still partition."""
+    storage = FakeStorage(
+        _nodes(),
+        {
+            "event:unanchored": ["entity:operator"],
+            "event:anchored-1": ["entity:operator"],
+            "event:anchored-2": ["entity:operator"],
+        },
+    )
+
+    communities = list(EventJoinPartitioner().partition(storage))
+
+    assert len(communities) == 1
+    assert "event:unanchored" in communities[0].nodes

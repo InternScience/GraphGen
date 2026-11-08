@@ -30,21 +30,12 @@ def build_event_entity_kg(
 
     nodes = defaultdict(list)
     edges = defaultdict(list)
-    event_ids = {
-        event_id
-        for node_map, _ in results
-        for event_id, rows in node_map.items()
-        if rows and str(rows[0].get("entity_type", "")).upper() == kg_builder.profile.event_entity_type
-    }
+    # membership edges already carry ``event_member``/``role`` from extract()
     for node_map, edge_map in results:
         for key, value in node_map.items():
             nodes[key].extend(value)
         for key, value in edge_map.items():
-            normalized_key = tuple(sorted(key))
-            if any(endpoint in event_ids for endpoint in normalized_key):
-                for edge in value:
-                    edge["event_member"] = True
-            edges[normalized_key].extend(value)
+            edges[tuple(sorted(key))].extend(value)
 
     merged_nodes = run_concurrent(
         lambda kv: kg_builder.merge_nodes(kv, kg_instance=kg_instance),
