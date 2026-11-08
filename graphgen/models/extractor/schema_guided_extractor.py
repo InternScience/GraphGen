@@ -1,4 +1,5 @@
 import json
+import os
 
 from graphgen.bases import BaseExtractor, BaseLLMWrapper, Chunk
 from graphgen.templates import SCHEMA_GUIDED_EXTRACTION_PROMPT
@@ -63,6 +64,20 @@ class SchemaGuidedExtractor(BaseExtractor):
 
         prompt = self.build_prompt(text)
         response = await self.llm_client.generate_answer(prompt)
+
+        # Strict-prompt extraction backends occasionally hit EOS as the first
+        # token. When GRAPHGEN_EMPTY_EXTRACTION_PREFILL=1 and the first
+        # response is empty, retry once with a deterministic assistant prefill
+        # that seeds the opening of the expected JSON output; non-empty
+        # responses are never retried or modified.
+        if (
+            not response.strip()
+            and os.environ.get("GRAPHGEN_EMPTY_EXTRACTION_PREFILL", "0") == "1"
+        ):
+            logger.warning("Empty extraction response; retrying with assistant prefill")
+            response = await self.llm_client.generate_answer(
+                prompt, assistant_prefill="{"
+            )
         try:
             extracted_info = json.loads(response)
             # Ensure all required keys are present

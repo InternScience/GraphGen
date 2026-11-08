@@ -1,23 +1,45 @@
 from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Optional
 
 from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
 
 
 class BaseGenerator(ABC):
-    """
-    Generate QAs based on given prompts.
-    """
+    """Generate QAs based on given prompts."""
+
+    TEMPLATE_KEY: Optional[str] = None
 
     def __init__(self, llm_client: BaseLLMWrapper):
         self.llm_client = llm_client
+        self._profile_templates: Optional[dict] = None
 
-    @staticmethod
+    def apply_prompt_profile(self, profile: str) -> None:
+        """Attach a versioned prompt profile to this generator instance."""
+        from graphgen.templates.prompt_profiles import load_profile_template
+
+        if self.TEMPLATE_KEY is None:
+            raise ValueError(
+                f"prompt_profile_unsupported_generator:{type(self).__name__}"
+            )
+        self._profile_templates = load_profile_template(profile, self.TEMPLATE_KEY)
+
+    def template(self, language: str, key: Optional[str] = None) -> str:
+        """Resolve the effective template for this generator."""
+        from graphgen.templates.prompt_profiles import OFFICIAL_TEMPLATES
+
+        if self.TEMPLATE_KEY is None:
+            raise ValueError(f"prompt_template_key_missing:{type(self).__name__}")
+        if self._profile_templates is not None:
+            node = self._profile_templates[language]
+        else:
+            node = OFFICIAL_TEMPLATES[self.TEMPLATE_KEY][language]
+        return node[key] if key is not None else node
+
     @abstractmethod
     def build_prompt(
-        batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
+        self, batch: tuple[list[tuple[str, dict]], list[tuple[Any, Any, dict]]]
     ) -> str:
-        """Build prompt for LLM based on the given batch"""
+        """Build prompt for LLM based on the given batch."""
 
     @staticmethod
     @abstractmethod

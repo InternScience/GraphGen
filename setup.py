@@ -45,7 +45,12 @@ if __name__ == "__main__":
         author="open-sciencelab",
         author_email="open-sciencelab@pjlab.org.cn",
         packages=find_packages(exclude=["models"]),
-        package_data={"GraphGen": ["configs/*"]},
+        package_data={
+            "graphgen": [
+                "configs/*",
+                "templates/profiles/*/*.json",
+            ],
+        },
         include_package_data=True,
         install_requires=install_packages,
         classifiers=[
