@@ -1,4 +1,5 @@
 import math
+import os
 from typing import Any, Dict, List, Optional
 
 import openai
@@ -13,6 +14,7 @@ from tenacity import (
 from graphgen.bases.base_llm_wrapper import BaseLLMWrapper
 from graphgen.bases.datatypes import Token
 from graphgen.models.llm.limitter import RPM, TPM
+from graphgen.utils import logger
 
 
 def get_top_response_tokens(response: openai.ChatCompletion) -> List[Token]:
@@ -86,7 +88,9 @@ class OpenAIClient(BaseLLMWrapper):
         else:
             raise ValueError(f"Unsupported backend {self.backend}. Use 'openai_api' or 'azure_openai_api'.")
 
-    def _pre_generate(self, text: str, history: List[str]) -> Dict:
+    def _pre_generate(
+        self, text: str, history: List[str], assistant_prefill: Optional[str] = None
+    ) -> Dict:
         kwargs = {
             "temperature": self.temperature,
             "top_p": self.top_p,
@@ -105,6 +109,11 @@ class OpenAIClient(BaseLLMWrapper):
         if history:
             assert len(history) % 2 == 0, "History should have even number of elements."
             messages = history + messages
+
+        # Optional deterministic assistant prefill for strict-prompt backends
+        # that occasionally emit EOS as the first token.
+        if assistant_prefill is not None:
+            messages.append({"role": "assistant", "content": assistant_prefill})
 
         kwargs["messages"] = messages
         return kwargs
@@ -130,6 +139,16 @@ class OpenAIClient(BaseLLMWrapper):
         # Limit max_tokens to 1 to avoid long completions
         kwargs["max_tokens"] = 1
 
+        # Thinking models spend the first tokens inside <think> content, which
+        # makes next-token yes/no logprobs meaningless for judge/loss calls.
+        # GRAPHGEN_DISABLE_THINKING=1 asks the backend to disable thinking for
+        # these logprob-based calls only.
+        if os.environ.get("GRAPHGEN_DISABLE_THINKING", "0") == "1":
+            kwargs["extra_body"] = {
+                **kwargs.get("extra_body", {}),
+                "chat_template_kwargs": {"enable_thinking": False},
+            }
+
         completion = await self.client.chat.completions.create(  # pylint: disable=E1125
             model=self.model, **kwargs
         )
@@ -149,31 +168,53 @@ class OpenAIClient(BaseLLMWrapper):
         self,
         text: str,
         history: Optional[List[str]] = None,
+        assistant_prefill: Optional[str] = None,
         **extra: Any,
     ) -> str:
-        kwargs = self._pre_generate(text, history)
+        kwargs = self._pre_generate(text, history, assistant_prefill)
 
         prompt_tokens = 0
         for message in kwargs["messages"]:
             prompt_tokens += len(self.tokenizer.encode(message["content"]))
         estimated_tokens = prompt_tokens + kwargs["max_tokens"]
 
-        if self.request_limit:
-            await self.rpm.wait(silent=True)
-            await self.tpm.wait(estimated_tokens, silent=True)
+        # Bounded retry on empty responses. Thinking backends occasionally
+        # return only <think> content that is stripped to nothing downstream;
+        # retry instead of propagating an empty string that would fail
+        # parsing. GRAPHGEN_EMPTY_RETRY=0 keeps the official single-attempt
+        # behavior.
+        try:
+            empty_retries = max(0, int(os.environ.get("GRAPHGEN_EMPTY_RETRY", "0")))
+        except ValueError:
+            empty_retries = 0
 
-        completion = await self.client.chat.completions.create(  # pylint: disable=E1125
-            model=self.model, **kwargs
-        )
-        if hasattr(completion, "usage"):
-            self.token_usage.append(
-                {
-                    "prompt_tokens": completion.usage.prompt_tokens,
-                    "completion_tokens": completion.usage.completion_tokens,
-                    "total_tokens": completion.usage.total_tokens,
-                }
+        content = ""
+        for attempt in range(empty_retries + 1):
+            if self.request_limit:
+                await self.rpm.wait(silent=True)
+                await self.tpm.wait(estimated_tokens, silent=True)
+
+            completion = await self.client.chat.completions.create(  # pylint: disable=E1125
+                model=self.model, **kwargs
             )
-        return self.filter_think_tags(completion.choices[0].message.content)
+            if hasattr(completion, "usage"):
+                self.token_usage.append(
+                    {
+                        "prompt_tokens": completion.usage.prompt_tokens,
+                        "completion_tokens": completion.usage.completion_tokens,
+                        "total_tokens": completion.usage.total_tokens,
+                    }
+                )
+            content = self.filter_think_tags(completion.choices[0].message.content)
+            if content.strip():
+                break
+            logger.warning(
+                "Empty LLM response (attempt %d/%d, model=%s)",
+                attempt + 1,
+                empty_retries + 1,
+                self.model,
+            )
+        return content
 
     async def generate_inputs_prob(
         self, text: str, history: Optional[List[str]] = None, **extra: Any
