@@ -18,8 +18,15 @@ class BingSearch:
     Bing Search client to searcher with Bing.
     """
 
-    def __init__(self, subscription_key: str):
+    def __init__(self, subscription_key: str, endpoint: str = BING_SEARCH_V7_ENDPOINT):
+        """
+        Initialize the Bing Search client.
+        :param subscription_key: Your Bing subscription key.
+        :param endpoint: The search endpoint. Defaults to the Bing Web Search v7 endpoint;
+            set it to use any service that implements the same API.
+        """
         self.subscription_key = subscription_key
+        self.endpoint = endpoint
 
     def search(self, query: str, num_results: int = 1):
         """
@@ -30,7 +37,7 @@ class BingSearch:
         """
         params = {"q": query, "mkt": BING_MKT, "count": num_results}
         response = requests.get(
-            BING_SEARCH_V7_ENDPOINT,
+            self.endpoint,
             headers={"Ocp-Apim-Subscription-Key": self.subscription_key},
             params=params,
             timeout=10,

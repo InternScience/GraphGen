@@ -13,14 +13,19 @@ GOOGLE_SEARCH_ENDPOINT = "https://customsearch.googleapis.com/customsearch/v1"
 
 
 class GoogleSearch:
-    def __init__(self, subscription_key: str, cx: str):
+    def __init__(
+        self, subscription_key: str, cx: str, endpoint: str = GOOGLE_SEARCH_ENDPOINT
+    ):
         """
         Initialize the Google Search client with the subscription key and custom searcher engine ID.
         :param subscription_key: Your Google API subscription key.
         :param cx: Your custom searcher engine ID.
+        :param endpoint: The search endpoint. Defaults to the Custom Search JSON API endpoint;
+            set it to use any service that implements the same API.
         """
         self.subscription_key = subscription_key
         self.cx = cx
+        self.endpoint = endpoint
 
     def search(self, query: str, num_results: int = 1):
         """
@@ -35,7 +40,7 @@ class GoogleSearch:
             "q": query,
             "num": num_results,
         }
-        response = requests.get(GOOGLE_SEARCH_ENDPOINT, params=params, timeout=10)
+        response = requests.get(self.endpoint, params=params, timeout=10)
         if not response.ok:
             logger.error("Search engine error: %s", response.text)
             raise HTTPException(response.status_code, "Search engine error.")
