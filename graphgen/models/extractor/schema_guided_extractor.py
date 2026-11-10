@@ -78,6 +78,12 @@ class SchemaGuidedExtractor(BaseExtractor):
             response = await self.llm_client.generate_answer(
                 prompt, assistant_prefill="{"
             )
+            # Backends differ in how they honour a trailing assistant message:
+            # some genuinely continue the turn (returning only the text after
+            # "{"), others start a fresh turn that already includes it.
+            # Normalise so both parse; json.loads tolerates leading whitespace.
+            if not response.lstrip().startswith("{"):
+                response = "{" + response
         try:
             extracted_info = json.loads(response)
             # Ensure all required keys are present
